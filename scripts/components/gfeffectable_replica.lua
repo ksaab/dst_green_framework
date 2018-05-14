@@ -1,0 +1,129 @@
+local effectList = GFEffectList
+local effectNamesToID = GFEffectNameToID
+local effectIDToNames = GFEffectIDToName
+
+local invalidString = "<NO INFO>"
+
+local function GenerateHudInfo(inst)
+    --reset info
+    local self = inst.replica.gfeffectable
+
+    self.hudInfo.positive = {}
+    self.hudInfo.negative = {}
+
+    local postable = {}
+    local negtable = {}
+    local affixtable = {}
+    local enchtable = {}
+
+    for effectName, effect in pairs(self.effects) do
+        local type = effect.type
+        if type == 1 then
+            --positive effects
+            if effect.wantsIcon then self.hudInfo.positive[effectName] = effect end
+            if effect.wantsHover then table.insert(postable, effect.hoverText or invalidString) end
+        elseif type == 2 then
+            --negative effects
+            if effect.wantsIcon then self.hudInfo.negative[effectName] = effect end
+            if effect.wantsHover then table.insert(negtable, effect.hoverText or invalidString) end
+        elseif type == 3 then
+            --affixes
+            if effect.wantsHover then table.insert(affixtable, effect.hoverText or invalidString) end
+        elseif type == 4 then
+            --enchants
+            if effect.wantsHover then table.insert(enchtable, effect.hoverText or invalidString) end
+        else
+            GFDebugPrint(("GFEffectable Replica: effects %s has invalid type %i"):format(effectName, type))
+        end
+    end
+
+    self.hudInfo.positiveString = table.concat(postable, ", ")
+    self.hudInfo.negativeString = table.concat(negtable, ", ")
+    self.hudInfo.affixString = table.concat(affixtable, ", ")
+    self.hudInfo.enchantString = table.concat(enchtable, ", ")
+
+    inst:PushEvent("gfupdateeffectshud")
+end
+
+local function SliceEffectsString(inst)
+    local self = inst.replica.gfeffectable
+    GFDebugPrint("GFEffectable Replica: effects string: ", self._effectsList:value())
+    --if GFGetIsMasterSim() then return end
+    local effectsArray = self._effectsList:value():split(';')
+    local newEffects = {}
+    local currTime = GetTime()
+    for k, v in pairs(effectsArray) do
+        local effectsString = v:split(',')
+        local effectName = effectIDToNames[tonumber(effectsString[1])]
+        local effectStacks = tonumber(effectsString[2]) or 1
+        local effectRemain = tonumber(effectsString[3]) or 0
+        --local effectTotal = tonumber(effectsString[4]) or 0
+        newEffects[effectName] = true --set that the effect exists, nonexisting effects will be removed
+
+        local effect = self.effects[effectName]
+        
+        if effect == nil then
+            effect = effectList[effectName]()
+            self.effects[effectName] = effect
+            if effect.hudonapplyfn then
+                effect:hudonapplyfn(inst)
+            end
+        else
+            if effect.hudonrefreshfn then
+                effect:hudonrefreshfn(inst)
+            end
+        end
+        effect.expirationTime = effect.static and 0 or effectRemain + currTime
+        effect.stacks = effectStacks
+    end
+
+    for effName, effect in pairs(self.effects) do
+        --removing nonexistent effects
+        if not newEffects[effName] then
+            if effect.hudonremovefn then
+                effect:hudonremovefn(inst)
+            end
+            self.effects[effName] = nil
+        end
+    end
+
+    GenerateHudInfo(inst)
+end
+
+local GFEffectable = Class(function(self, inst)
+    self.inst = inst
+    self.effects = {}
+    self.hudInfo = 
+    {
+        positive = {},
+        negative = {},
+        positiveString = "",
+        negativeString = "",
+        affixString = "",
+        enchantString = "",
+    }
+
+    self._effectsList = net_string(inst.GUID, "GFEffectable._effectsList", "gfeffectsupdated")
+    if not GFGetIsMasterSim() then
+        inst:ListenForEvent("gfeffectsupdated", SliceEffectsString)
+    elseif not GFGetDedicatedNet() then
+        inst:ListenForEvent("gfeffectsupdated", GenerateHudInfo)
+    end
+end)
+
+function GFEffectable:UpdateEffectsList()
+    local comp = self.inst.components.gfeffectable
+    local str = {}
+    local currTime = GetTime()
+    self.effects = comp.effects
+    for effectName, effect in pairs(comp.effects) do
+        if effect.type ~= 0 then --0 is the server only effect type
+            local expTime = effect.static and 0 or effect.expirationTime - currTime
+            table.insert(str, string.format("%i,%i,%.2f", effectNamesToID[effectName], effect.stacks, expTime))
+        end
+    end
+    self._effectsList:set_local("")
+    self._effectsList:set(table.concat(str), ';')
+end
+
+return GFEffectable
