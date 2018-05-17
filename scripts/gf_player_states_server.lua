@@ -164,7 +164,7 @@ AddStategraphActionHandler("wilson", ActionHandler(ACTIONS.GFCASTPELL, function(
         local splcstr = item.replica.gfspellitem
         if splcstr then
             --print("has component")
-            local itemSpell = splcstr:GetItemSpell()
+            local itemSpell = splcstr:GetItemSpellName()
             if itemSpell then
                 --print("has spell")
                 spell = spellList[itemSpell]

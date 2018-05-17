@@ -9,6 +9,10 @@ local function DoCast(self, doer, target, pos, spelldata)
     return true
 end
 
+local function SpellCheck(self, inst)
+    return true --inst:HasTag("pyromaniac")
+end
+
 local function AiCheck(self, inst)
     local x, y, z = inst.Transform:GetWorldPosition()
     local res = 
@@ -24,8 +28,10 @@ local Spell = Class(GFSpell, function(self, inst)
     --recharge
     --self.doerRecharge = 5 --perconal cd is shared on all item for caster with same spell
     self.itemRecharge = 10
-
+    self.spellCheckFn = SpellCheck
     self.instant = false
+
+    self.requiredTag = "pyromaniac"
 
     self.spellfn = DoCast --the main spell function
     self.aicheckfn = AiCheck

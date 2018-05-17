@@ -38,6 +38,7 @@ local Effect = Class(GFEffect, function(self, inst)
     GFEffect._ctor(self, "testeffect") --inheritance
     self.type = 2
 
+    self.hoverText = "test negative" --text under name for pos and neg effect, text above for affixes
     self.titleText = "Test negative" --title for icon
     self.descText = "It's a negative test effect." --text for icon
 
@@ -60,6 +61,8 @@ local Effect = Class(GFEffect, function(self, inst)
 
     self.baseDuration = 20
     self.tickPeriod = 1
+
+    self.applyPrefab = "effectsunderarmor"
 
     self.onapplyfn = OnApply
     self.onrefreshfn = OnRefresh

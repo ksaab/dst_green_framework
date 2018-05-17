@@ -67,63 +67,12 @@ function GFAddCustomEffect(name, route, id)
     GFEffectIDToName[id] = name
 end
 
-function GFAddSpellToEntity(inst, spellname, passive)
-    --local spell = require("spell")
-    local spelldata = require("spells/" .. spellname)
-    assert(spelldata, "spell ".. spellname .. " does not exist!")
-
-    inst.spell = spelldata(inst)
-    inst.spell:Set(passive)
-end
-
-function GFAttachSpell(inst, spells)
-    if inst.spells == nil then inst.spells = {} end
-    local untagged = true
-	for k, v in pairs(spells) do
-		local sp = require("spells/" .. v)
-		modassert(sp, ("spell %s not found in scripts/spells"):format(v))
-        inst.spells[v] = sp(inst)
-        if untagged then
-            inst:AddTag("spellcaster")
-            untagged = false
-        end
-	end
-end
-
-function GFMakeInventoryCastingItem(inst, allSpells, itemSpell)
-    inst:AddTag("gfscclientside")
-    inst:AddTag("rechargeable")
-    inst:AddComponent("gfspellpointer")
-    if GFGetIsMasterSim() then
-        inst:AddComponent("gfspellitem")
-        if allSpells ~= nil then
-            if type(allSpells) == "table" then
-                for _, v in pairs(allSpells) do
-                    inst.components.gfspellitem:AddSpell(v)
-                end
-            else
-                inst.components.gfspellitem:AddSpell(allSpells)
-            end
-            inst.components.gfspellitem:SetItemSpell(itemSpell)
-        end
-    end
-end
-
 function GFMakePlayerCaster(inst, allSpells)
-    if not GFGetDedicatedNet() then
-        --inst:AddComponent("gfrechargewatcher")
-    end
     inst:AddTag("gfscclientside")
     if GFGetIsMasterSim() then
         inst:AddComponent("gfspellcaster")
         if allSpells ~= nil then
-            if type(allSpells) == "table" then
-                for _, v in pairs(allSpells) do
-                    inst.components.gfspellcaster:AddSpell(v)
-                end
-            else
-                inst.components.gfspellcaster:AddSpell(allSpells)
-            end
+            inst.components.gfspellcaster:AddSpell(allSpells)
         end
     end
 end
@@ -132,8 +81,23 @@ function GFMakeCaster(inst, allSpells)
     if GFGetIsMasterSim() then
         inst:AddComponent("gfspellcaster")
         if allSpells ~= nil then
-            for _, v in pairs(allSpells) do
-                inst.components.gfspellcaster:AddSpell(v)
+            inst.components.gfspellcaster:AddSpell(allSpells)
+        end
+    end
+end
+
+function GFMakeInventoryCastingItem(inst, allSpells)
+    inst:AddTag("gfscclientside")
+    inst:AddTag("rechargeable")
+    inst:AddComponent("gfspellpointer")
+    if GFGetIsMasterSim() then
+        inst:AddComponent("gfspellitem")
+        if allSpells ~= nil then
+            inst.components.gfspellitem:AddSpell(allSpells)
+            if type(allSpells) == "table" then
+                inst.components.gfspellitem:SetItemSpell(allSpells[1])
+            else
+                inst.components.gfspellitem:SetItemSpell(allSpells)
             end
         end
     end
@@ -158,7 +122,7 @@ function GFGetValidSpawnPosition(x, y, z, minradius, maxradius, ground, maxtries
     return pt
 end
 
-function GFListenForEventOnce(inst, event, fn, source)
+function GFListenForEventOnce(inst, event, fn, source) --not mine, author simplex
     -- Currently, inst2 is the source, but I don't want to make that assumption.
     local function gn(inst2, data)
         inst:RemoveEventCallback(event, gn, source) --as you can see, it removes the event listener even before firing the function
@@ -290,15 +254,16 @@ return
     GFIsEntityOnLine = GFIsEntityOnLine,
     GFListenForEventOnce = GFListenForEventOnce,
     GFGetValidSpawnPosition = GFGetValidSpawnPosition,
-    GFAttachSpell = GFAttachSpell,
-    GFAddSpellToEntity = GFAddSpellToEntity,
     GFDebugPrint = GFDebugPrint,
     GFGetWorld = GFGetWorld,
     GFGetDedicatedNet = GFGetDedicatedNet,
     GFGetIsMasterSim = GFGetIsMasterSim,
     GFIsTogether = GFIsTogether,
+    GFGetPVPEnabled = GFGetPVPEnabled,
     GFMakeInventoryCastingItem = GFMakeInventoryCastingItem,
     GFMakeCaster = GFMakeCaster,
     GFMakePlayerCaster = GFMakePlayerCaster,
-    GFPumpkinTest = GFPumpkinTest
+    GFPumpkinTest = GFPumpkinTest,
+    GFAddCustomEffect = GFAddCustomEffect,
+    GFAddCustomSpell = GFAddCustomSpell,
 }

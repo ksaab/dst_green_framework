@@ -38,6 +38,7 @@ local Effect = Class(GFEffect, function(self, inst)
     GFEffect._ctor(self, "testpositive") --inheritance
     self.type = 1
 
+    self.hoverText = "test positive" --text under name for pos and neg effect, text above for affixes
     self.titleText = "Test positive" --title for icon
     self.descText = "It's a positive test effect." --text for icon
 
@@ -60,6 +61,9 @@ local Effect = Class(GFEffect, function(self, inst)
 
     self.baseDuration = 20
     self.tickPeriod = 1
+
+    self.followPrefab = "effectbloodlust"
+    self.followPrefabOffset = true
 
     self.onapplyfn = OnApply
     self.onrefreshfn = OnRefresh

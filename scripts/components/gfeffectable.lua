@@ -4,6 +4,120 @@ local function RemoveEffectsOnDeath(inst)
     inst.components.gfeffectable:RemoveAllEffects(false, "death")
 end
 
+local gfEffectsSymbols = { 
+	greententacle = {"tentacle_pieces", -560},	
+    monkey = {"kiki_head", -100},	
+    mole = {"mole_body", -100},	
+    spider = {"body", -100},	
+    walrus = {"pig_torso", -200},	
+    knight = {"spring", -200},	
+    bee = {"body", -100},	
+    --houndmound = {not_found, -200},	
+    pigman = {"pig_torso", -200},	
+    rabbit = {"chest", -100},	
+    beefalo = {"beefalo_body", -400},	
+    catcoon = {"catcoon_torso", -100},	
+    merm = {"pig_torso", -200},	
+    beehive = {"beehive_01", -260},	
+    tallbird = {"head", -400},	
+    lizardman = {"body", -200},	
+    bishop = {"waist", -200},	
+    spiderden = {"c1", -360},	
+    spider_dropper = {"body", -100},	
+    spider_hider = {"body", -100},	
+    tentacle = {"tentacle_pieces", -560},	
+    spider_spitter = {"body", -100},	
+    wasphive = {"waspnest_pieces", -260},	
+    slurtle = {"shell", -200},	
+    lightninggoat = {"lightning_goat_body", -200},	
+    worm = {"wormlure", 0},	
+    rocky = {"chest", -200},	
+    spider_warrior = {"body", -100},	
+    green_snake = {"body", -200},	
+    frog = {"frogsack", -100},	
+    robin = {"crow_body", -100},
+    crawlinghorror = {"shadowcreature1_body", -260 },
+    terrorbeak = {"shadowcreature2_body", -860 },
+    killerbee = {"body", -100},
+    smallbird = {"head", -100},
+    mossling = {"swap_fire", -200},
+    mosquito = {"body", -100},
+    leif = {"marker", -400},
+    rook = {"swap_fire", -200},
+    crow = {"crow_body", -100},
+    spiderqueen = {"body", -400},		
+    babybeefalo = {"beefalo_body", -200},	
+    bat = {"bat_body", -200},
+    buzzard = {"buzzard_body", -200},
+    moose = {"swap_fire", -400},
+    hound = {"hound_body", -200},
+    icehound = {"hound_body", -200},
+    butterfly = {"butterfly_body", -100},
+    perd = {"pig_torso", -200},
+    bunnyman = {"manrabbit_torso", -200},
+    rook_nightmare = {"swap_fire", -200},
+    minotaur = {"spring", -200},
+    bishop_nightmare = {"waist", -200},			
+    knight_nightmare = {"spring", -200},	
+    pigking = {"pigking_torso", -200},		
+}
+
+local function SetFollowSymbol(self)
+    local inst = self.inst
+    local symbol, y
+    if inst:HasTag("player") then
+        symbol = "torso"
+        y = -200
+    else
+        --if symbol wasn't declared before, try to find it
+        if gfEffectsSymbols[inst.prefab] ~= nil then
+            local symb = gfEffectsSymbols[inst.prefab]
+            symbol = symb[1]
+            y = symb[2]
+        else					
+            if inst.AnimState ~= nil then
+                local animState = inst.AnimState
+
+                --searching for valid symbol
+                if inst.components.burnable ~= nil
+                    and inst.components.burnable.fxdata[1] ~= nil
+                    and inst.components.burnable.fxdata[1].follow ~= nil
+                then
+                    symbol = inst.components.burnable.fxdata[1].follow
+                else
+                    if animState:BuildHasSymbol(inst.prefab .. "_torso") then
+                        symbol = inst.prefab .. "_torso"
+                    elseif animState:BuildHasSymbol(inst.prefab .. "_body") then
+                        symbol = inst.prefab .. "_body"
+                    elseif animState:BuildHasSymbol("chest") then
+                        symbol = "chest"
+                    elseif animState:BuildHasSymbol("torso") then
+                        symbol = "torso"
+                    elseif animState:BuildHasSymbol("body") then
+                        symbol = "body"
+                    end
+                end
+
+                --searching for offset
+                if inst:HasTag("smallcreature") then
+                    y = -100
+                elseif inst:HasTag("largecreature") then
+                    y = -400
+                end
+            end
+        end
+    end
+
+    self.followSymbol = symbol or "not_found"
+    self.followYOffset = y or -200
+
+    if not gfEffectsSymbols[inst.prefab] then
+        gfEffectsSymbols[inst.prefab] = {self.followSymbol, self.followYOffset }
+        print("new symbol for effectable:")
+        print(("%s = {\"%s\", %i}"):format(tostring(inst.prefab), self.followSymbol, self.followYOffset))
+    end
+end
+
 local GFEffectable = Class(function(self, inst)
     self.inst = inst
     self.effects = {}
@@ -18,8 +132,10 @@ local GFEffectable = Class(function(self, inst)
     self.isUpdating = false
     
     inst:AddTag("gfeffectable")
+
     inst:ListenForEvent("death", RemoveEffectsOnDeath)
-    inst:StartUpdatingComponent(self)
+    SetFollowSymbol(self)
+    --inst:StartUpdatingComponent(self)
 end)
 
 function GFEffectable:ChangeResist(resist, value)
@@ -79,6 +195,11 @@ function GFEffectable:ApplyEffect(effectName, effectParam)
             end
             self.inst.replica.gfeffectable:UpdateEffectsList()
 
+            --update user interface for host, clients call this from the replica 
+            if self.inst == ThePlayer and effect.hudonrefreshfn then
+                effect:hudonrefreshfn(self.inst)
+            end
+
             return true
         end
     else
@@ -92,6 +213,43 @@ function GFEffectable:ApplyEffect(effectName, effectParam)
             end
             self.inst.replica.gfeffectable:UpdateEffectsList()
 
+            if effect.applyPrefab then
+                local fx = SpawnPrefab(effect.applyPrefab)
+                if fx and fx.Follower ~= nil then
+                    local yof = effect.applyPrefabOffset and self.followYOffset or 0
+                    fx.Transform:SetPosition(self.inst.Transform:GetWorldPosition())
+                    fx.Follower:FollowSymbol(self.inst.GUID, self.followSymbol, 0, yof + (fx.yOffset or 0), 0)
+                    fx.entity:SetParent(self.inst.entity)
+                    fx:ApplyFX()
+                else
+                    fx:DoTaskInTime(0, fx.Remove)
+                end
+            end
+
+            if effect.followPrefab then
+                local fx = SpawnPrefab(effect.followPrefab)
+                if fx and fx.Follower ~= nil then
+                    local yof = effect.followPrefabOffset and self.followYOffset or 0
+                    fx.Transform:SetPosition(self.inst.Transform:GetWorldPosition())
+                    fx.Follower:FollowSymbol(self.inst.GUID, self.followSymbol, 0, yof + (fx.yOffset or 0), 0)
+                    fx.entity:SetParent(self.inst.entity)
+                    self.effectsfx[effectName] = fx
+                    fx:StartFollowFX()
+                else
+                    fx:DoTaskInTime(0, fx.Remove)
+                end
+            end
+
+            --update user interface for host, clients call this from the replica 
+            if self.inst == ThePlayer and effect.hudonapplyfn then
+                effect:hudonapplyfn(self.inst)
+            end
+
+            if not effect.static--[[ and not self.isUpdating]] then --static effects are permanent modificators, so don't need to update
+                self.inst:StartUpdatingComponent(self)
+                self.isUpdating = true
+            end
+
             return true
         end
     end
@@ -99,9 +257,15 @@ function GFEffectable:ApplyEffect(effectName, effectParam)
     return false
 end
 
+--this wasn't test, but should work
 function GFEffectable:ConsumeStacks(effectName, value)
     if effectName == nil or self.effects[effectName] == nil then return end
     self.effects[effectName]:ConsumeStack(inst, value)
+    if self.effects[effectName] ~= nil then
+        if self.effects[effectName].hudonrefreshfn then
+            self.effects[effectName]:hudonrefreshfn(self.inst)
+        end
+    end
 end
 
 function GFEffectable:RemoveEffect(effectName, reason)
@@ -111,12 +275,18 @@ function GFEffectable:RemoveEffect(effectName, reason)
     if effect == nil then return end --effect isn't existed on entity
 
     if self.effectsfx[effectName] and self.effectsfx[effectName]:IsValid() then
-        self.effectsfx[effectName]:Remove()
+        self.effectsfx[effectName]:StopFollowFX()
+        self.effectsfx[effectName] = nil
     end
 
     effect:Remove(self.inst)
     self.effects[effectName] = nil
     self.inst.replica.gfeffectable:UpdateEffectsList()
+
+    --update user interface for host, clients call this from the replica 
+    if self.inst == ThePlayer and effect.hudonremovefn then
+        effect:hudonremovefn(self.inst)
+    end
 
     if not effect.static then
         self.inst:PushEvent("gfeffectremoved", {effect = effect, reason = reason}) 
@@ -165,6 +335,7 @@ end
 
 function GFEffectable:OnUpdate(dt)
     local currTime = GetTime()
+    local needToStopUpdating = true
     for effectName, effect in pairs(self.effects) do
         if effect.updateable then
             --call the effect onupdate funtion when it's needed
@@ -178,6 +349,46 @@ function GFEffectable:OnUpdate(dt)
             if currTime >= effect.expirationTime then
                 self:RemoveEffect(effectName, "expire")
             end
+            needToStopUpdating = false
+        end
+    end
+
+    if needToStopUpdating then
+        self.inst:StopUpdatingComponent(self)
+        self.isUpdating = false
+    end
+end
+
+function GFEffectable:OnSave(data)
+    local savetable = {}
+    local currTime = GetTime()
+    for effectName, effect in pairs(self.effects) do
+        if effect.savable then
+            local remain = effect.expirationTime - currTime
+            if effect.static or (effect.expirationTime ~= nil and remain > 0) then
+                savetable[effectName] = 
+                {
+                    remain = remain,
+                    --total = effect.expirationTime - effect.applicationTime,
+                    stacks = effect.stacks,
+                }
+            end
+        end
+    end
+
+    return {savedata = savetable}
+end
+
+function GFEffectable:OnLoad(data)
+    self.isNew = false
+    if data ~= nil and data.savedata ~= nil then 
+        local savedata = data.savedata
+        for k, v in pairs(savedata) do
+            self:ApplyEffect(k, 
+                {
+                    duration = v.remain, 
+                    stacks = v.stacks,
+                })
         end
     end
 end
@@ -204,7 +415,7 @@ function GFEffectable:GetDebugString()
     end
 
     local a, n = self:GetEffectsCount()
-    return string.format("effects %i (%i): %s, resists: %s", a, n, table.concat(str, ", "), resstr)
+    return string.format("upd: %s effects %i (%i): %s, resists: %s", tostring(self.isUpdating), a, n, table.concat(str, ", "), resstr)
 end
 
 

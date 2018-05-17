@@ -10,6 +10,8 @@ local GFRechargeWatcher = Class(function(self, inst)
     self.inst = inst
     self.itemList = {}
 
+    UpdateRechareable(inst)
+
     inst:StartUpdatingComponent(self)
     inst:ListenForEvent("itemget", UpdateRechareable)
     --inst:ListenForEvent("itemlose", UpdateRechareable)
@@ -24,7 +26,7 @@ function GFRechargeWatcher:UpdateRechareableList()
             local scr = item.replica.gfspellitem
             if scr then
                 item:PushEvent("rechargechange", { percent = 1 })
-                local spell = item.replica.gfspellitem:GetItemSpell()
+                --[[ local spell = item.replica.gfspellitem:GetItemSpellName()
                 if spell
                     and (not item.replica.gfspellitem:CanCastSpell(spell)
                         or not self.inst.replica.gfspellcaster:CanCastSpell(spell))
@@ -36,6 +38,18 @@ function GFRechargeWatcher:UpdateRechareableList()
                     table.insert(self.itemList, {item = item, remain = remain, total = total})
                     GFDebugPrint(("GFRechargeWatcher: %s adding %s [%.2f/%.2f] to recharge list."):format(tostring(inst),
                         tostring(item), remain, total))
+                end ]]
+                local spell = item.replica.gfspellitem:GetItemSpellName()
+                if spell then
+                    local remain, total = item.replica.gfspellitem:GetSpellRecharge(spell)
+                    local oremain, ototal = inst.replica.gfspellcaster:GetSpellRecharge(spell)
+                    if remain > 0 or oremain > 0 then
+                        remain = remain >= oremain and remain or oremain 
+                        total = total >= ototal and total or ototal 
+                        table.insert(self.itemList, {item = item, remain = remain, total = total})
+                        GFDebugPrint(("GFRechargeWatcher: %s adding %s [%.2f/%.2f] to recharge list."):format(tostring(inst),
+                            tostring(item), remain, total))
+                    end
                 end
             end
         end

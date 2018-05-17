@@ -2,6 +2,7 @@ local SpellArchetype = require("spells/archetypes/chainlightning_archetype")
 
 local Spell = Class(SpellArchetype, function(self)
     SpellArchetype._ctor(self, "equip_chainlightning") --inheritance
+    self.title = STRINGS.GF.SPELLS.EQUIP_CHAINLIGHTNING.TITLE
 
     if not GFGetIsMasterSim() then 
         return 
@@ -10,11 +11,16 @@ local Spell = Class(SpellArchetype, function(self)
     self.itemRecharge = 2
     self.doerRecharge = 2
 
-    self.burnChance = 0
-    self.damage = 35
-    self.jumpCount = 4
+    --params
+    self.spellParams.burnChance = 0
+    self.spellParams.damage = 35
+    self.spellParams.jumpCount = 2
+    
+    --visual
+    self.spellVisuals.lightningDrawerColour = 1
+    self.spellVisuals.impactFx = "shock_fx"
+    self.spellVisuals.impactSound = nil
 
-    self.lightningDrawerColour = 1
 end)
 
 return Spell()

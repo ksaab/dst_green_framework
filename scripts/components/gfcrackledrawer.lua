@@ -80,7 +80,7 @@ function GFCrackleDrawer:DrowCrackles(points)
     --deidcated server doesn't need to draw lightnings
     if TheNet:IsDedicated() then return end
 
-    print("number of lightning:", #points)
+    --print("number of lightning:", #points)
 
     for _, lgtn in pairs(points) do
         local dx, dz = lgtn.finish.x - lgtn.start.x, lgtn.finish.z - lgtn.start.z

@@ -23,7 +23,10 @@ local effectArray =
     [1] = {name = "testeffect"},
     [2] = {name = "testpositive"},
     [3] = {name = "testnegative"},
-    [4] = {name = "affix_test", folder = "affix/"}
+    [4] = {name = "affix_test", folder = "affix/"},
+    [5] = {name = "affix_shaman", folder = "affix/"},
+    [6] = {name = "lesser_rejuvenation", folder = "positive/"},
+    [7] = {name = "slow", folder = "negative/"},
 }
 
 local effectsFolder = "effects/"

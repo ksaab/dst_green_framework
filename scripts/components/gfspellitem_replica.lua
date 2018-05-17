@@ -113,6 +113,8 @@ function GFSpellItem:SetSpellRecharges()
 end
 
 function GFSpellItem:CanCastSpell(spellname)
+    if spellList[spellname].passive then return false end
+    
     if self.spellsReadyTime[spellname] ~= nil then
         return GetTime() > self.spellsReadyTime[spellname]
     else
@@ -130,8 +132,16 @@ function GFSpellItem:GetSpellRecharge(spellname)
     return r, t
 end
 
+function GFSpellItem:GetItemSpellName()
+    return self.itemSpell and self.itemSpell.name or nil
+end
+
+function GFSpellItem:GetItemSpellTitle()
+    return self.itemSpell and self.itemSpell.title or ""
+end
+
 function GFSpellItem:GetItemSpell()
-    return self.itemSpell and self.itemSpell.name
+    return self.itemSpell
 end
 
 function GFSpellItem:GetSpellCount()

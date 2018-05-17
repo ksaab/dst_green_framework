@@ -4,6 +4,19 @@ local function GetSpell(spellname)
     return spellname and spellList[spellname] or nil
 end
 
+local function AfterCast(self, spellName)
+    local inst = self.inst
+    local spell = spellList[spellName]
+
+    if spell.removeAllOnCast then
+        inst:Remove()
+    elseif inst.components.finiteuses and spell.decayPerCast then
+        inst.components.finiteuses:SetUses(inst.components.finiteuses:GetUses() - spell.decayPerCast)
+    elseif inst.components.stackable and spell.removeOneOnCast then
+        inst.components.stackable:Get():Remove()
+    end
+end
+
 local function ForcePushRecharges(inst)
     if inst.replica.gfspellitem then
         inst.replica.gfspellitem:SetSpellRecharges()
@@ -18,6 +31,9 @@ local GFSpellItem = Class(function(self, inst)
     self.spellsReadyTime = {}
     self.spellsRechargeDuration = {}
 
+    self.afterCastFn = AfterCast
+    self.onCastDoneFn = nil
+
     inst:ListenForEvent("onpickup", ForcePushRecharges)
 end)
 
@@ -25,11 +41,40 @@ function GFSpellItem:ForceUpdateReplicaSpells()
     self.inst.replica.gfspellitem:SetSpells()
 end
 
-function GFSpellItem:AddSpell(spellname, nonUpdateReplica)
+function GFSpellItem:AddSpell(spellStr)
+    if spellStr == nil then 
+        print("GFSpellItem: spell string or array is not valid")
+        return false 
+    end
+
+    if type(spellStr) == "table" then
+        for k, spellName in pairs(spellStr) do
+            if not self.spells[spellName] then
+                local spell = GetSpell(spellName)
+                if spell then
+                    self.spells[spellName] = spell
+                end
+            end
+        end
+    else
+        if not self.spells[spellStr] then
+            local spell = GetSpell(spellStr)
+            if spell then
+                self.spells[spellStr] = spell
+            end
+        end
+    end
+
+    self.inst.replica.gfspellitem:SetSpells()
+    
+    return true
+end
+
+--[[ function GFSpellItem:AddSpell(spellname, nonUpdateReplica)
     if GetSpell(spellname) then
         if not self.spells[spellname] then
             self.spells[spellname] = spellList[spellname]
-            if not nonUpdateReplica then
+            if self.onClient then
                 self.inst.replica.gfspellitem:SetSpells()
             end
             return true
@@ -42,6 +87,28 @@ function GFSpellItem:AddSpell(spellname, nonUpdateReplica)
     print(("GFSpellItem: spell %s is not valid"):format(spellname or "none"))
     return false
 end
+
+function GFSpellItem:AddSpells(spellArr)
+    if spellArr then
+        for k, v in pairs(spellArr) do
+            if not self.spells[spellname] then
+                local spell = GetSpell(spellname)
+                if spell then
+                    self.spells[spellname] = spell
+                end
+            end
+        end
+
+        if self.onClient then
+            self.inst.replica.gfspellcaster:SetSpells()
+        end
+
+        return true
+    end
+
+    print("GFSpellCaster: spell array is not valid"))
+    return false
+end ]]
 
 function GFSpellItem:RemoveSpell(spellName, nonUpdateReplica)
     if spellName then
@@ -59,7 +126,7 @@ function GFSpellItem:SetItemSpell(spellname, removeOld)
         return
     end
 
-    if spellname == self:GetItemSpell() then return end
+    if spellname == self:GetItemSpellName() then return end
 
     if not self.spells[spellname] then
         print(("GFSpellItem: spell %s is not binded to %s"):format(spellname, tostring(self.inst)))
@@ -76,7 +143,7 @@ function GFSpellItem:SetItemSpell(spellname, removeOld)
 end
 
 function GFSpellItem:ChangeSpell()
-    local currSpell = self:GetItemSpell()
+    local currSpell = self:GetItemSpellName()
     local spellCount = 0
     local nextSpell 
     local firstSpell
@@ -122,9 +189,14 @@ function GFSpellItem:OnCastDone(spellname, doer)
         end
         self:PushRecharge(spellname,  itemRecharge)
     end
+
+    if self.onCastDoneFn then self:onCastDoneFn(spellname) end
+    self:afterCastFn(spellname)
 end
 
 function GFSpellItem:CanCastSpell(spellname)
+    if spellList[spellname].passive then return false end
+    
     if self.spellsReadyTime[spellname] ~= nil then
         return GetTime() > self.spellsReadyTime[spellname]
     else
@@ -142,8 +214,16 @@ function GFSpellItem:GetSpellRecharge(spellname)
     return r, t
 end
 
+function GFSpellItem:GetItemSpellName()
+    return self.itemSpell and self.itemSpell.name or nil
+end
+
+function GFSpellItem:GetItemSpellTitle()
+    return self.itemSpell and self.itemSpell.title or nil
+end
+
 function GFSpellItem:GetItemSpell()
-    return self.itemSpell and self.itemSpell.name
+    return self.itemSpell
 end
 
 function GFSpellItem:GetSpellCount()

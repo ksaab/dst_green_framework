@@ -5,24 +5,22 @@ local assets =
 }
 
 local function ReplicateCast(inst, data)
-    if data.owner 
-        and data.owner:IsValid() 
-        and not data.owner:HasTag("playerghost") 
+    local owner = data.owner
+    if owner 
+        and owner:IsValid() 
+        and not owner:HasTag("playerghost") 
         and not (data.target and not data.target:IsValid())
+        and not (inst.components.gfspellitem:GetSpellRecharge("amulet_magic_echo") > 0)
     then
-        data.owner.components.gfspellcaster:CastSpell(data.spell.name, data.target, data.pos, nil, true)
-        inst._readyIn = GetTime() + 8
+        owner.components.gfspellcaster:CastSpell("amulet_magic_echo", owner, nil, inst)
+        owner.components.gfspellcaster:CastSpell(data.spell.name, data.target, data.pos, nil, true)
     end
     inst._task = nil
 end
 
 local function OnOwnerCast(owner, data)
     local inst = owner.components.inventory:GetEquippedItem(EQUIPSLOTS.BODY)
-    if inst._task == nil 
-        and inst._readyIn < GetTime() 
-        and data.spell 
-        and data.spell:HasSpellTag("replicateable") 
-    then
+    if inst._task == nil and data.spell:HasSpellTag("replicateable") then
         data.owner = owner
         inst._task = inst:DoTaskInTime(2, ReplicateCast, data)
     end
@@ -56,7 +54,7 @@ local function fn()
     inst.AnimState:SetBuild("amulets")
     inst.AnimState:PlayAnimation("redamulet")
 
-    GFMakeInventoryCastingItem(inst)
+    GFMakeInventoryCastingItem(inst, "amulet_magic_echo", "amulet_magic_echo")
 
     if not TheWorld.ismastersim then
         return inst
@@ -64,6 +62,9 @@ local function fn()
 
     inst:AddComponent("inspectable")
     inst:AddComponent("inventoryitem")
+    inst.components.inventoryitem.imagename = "amulet"
+    inst.components.inventoryitem.atlasname = "images/inventoryimages.xml"
+
     inst:AddComponent("equippable")
     inst.components.equippable.equipslot = EQUIPSLOTS.BODY
     inst.components.equippable:SetOnEquip(onequip)

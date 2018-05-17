@@ -75,7 +75,7 @@ local gfgroundslam = State{
 		inst.components.locomotor:Stop()
 
         inst.AnimState:PlayAnimation("atk_leap_pre")
-        inst.AnimState:PushAnimation("atk_leap", false)
+        inst.AnimState:PushAnimation("atk_leap_lag", false)
 
         inst:PerformPreviewBufferedAction()
 		inst.sg:SetTimeout(2)
@@ -130,7 +130,7 @@ AddStategraphActionHandler("wilson_client", ActionHandler(ACTIONS.GFCASTPELL, fu
         --cast with spell item
         local splcstr = item.replica.gfspellitem
         if splcstr then
-            local itemSpell = splcstr:GetItemSpell()
+            local itemSpell = splcstr:GetItemSpellName()
             if itemSpell then
                 spell = spellList[itemSpell]
                 if act.pos == nil then act.pos = Vector3(act.target.Transform:GetWorldPosition()) end

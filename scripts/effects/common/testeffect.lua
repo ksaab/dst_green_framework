@@ -51,6 +51,7 @@ local Effect = Class(GFEffect, function(self, inst)
     if not GFGetIsMasterSim() then return end
 
     self.updateable = true
+    self.savable = true
     self.static = false
 
     self.tags = 
@@ -58,7 +59,7 @@ local Effect = Class(GFEffect, function(self, inst)
         damage = true
     }
 
-    self.baseDuration = 20
+    self.baseDuration = 30
     self.tickPeriod = 1
 
     self.onapplyfn = OnApply

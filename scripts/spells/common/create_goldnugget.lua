@@ -26,6 +26,8 @@ local Spell = Class(GFSpell, function(self, inst)
     self.itemRecharge = 10
 
     self.instant = false
+    --self.passive = true
+    self.forbiddenTag = "valkyrie"
 
     self.spellfn = DoCast --the main spell function
     self.aicheckfn = AiCheck

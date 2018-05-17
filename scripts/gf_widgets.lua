@@ -21,123 +21,115 @@ AddClassPostConstruct( "widgets/controls", function(self)
 				end
 			end
 		end
+		--[[ if GLOBAL.GFGetIsMasterSim() then
+			if ownr.components.gfspellcaster then
+				ownr.components.gfspellcaster:ForceUpdateReplicaHUD()
+			end
+		end ]]
 		
 	end)
 end)
 
+--it's not good, but no idae how to make it better
 local function PostHoverer(self, anim, owner)
 	require("constants")
 	local Text = require "widgets/text"
 
 	self._prevEntity = nil
+	--text fields
 	self.abilitiesString = self:AddChild(Text(GLOBAL.UIFONT, 18, nil, {105/255, 175/255, 234/255, 1}))
-	self.spellString = self:AddChild(Text(GLOBAL.UIFONT, 15, nil, {229/255, 216/255, 105/255, 1}))
+	self.spellString = self:AddChild(Text(GLOBAL.UIFONT, 18, nil, {50/255, 205/255, 50/255, 1}))
 	self.positiveString = self:AddChild(Text(GLOBAL.UIFONT, 15, nil, {229/255, 216/255, 105/255, 1}))
 	self.negativeString = self:AddChild(Text(GLOBAL.UIFONT, 15, nil, {104/255, 82/255, 128/255, 1}))
 
+	--text fields positions
 	self.abilitiesString:SetPosition(0, 65, 0)
-	self.spellString:SetPosition(0, 5, 0)
-	self.positiveString:SetPosition(0, 20, 0)
-	self.negativeString:SetPosition(0, 5, 0)
+	self.spellString:SetPosition(0, 18, 0)
+	self.positiveString:SetPosition(0, 18, 0) -- -1
+	self.negativeString:SetPosition(0, 3, 0) -- -16
 
 	self.lasttimeinvUpdate = 0
 	self.lasttimeEffectsUpdate = 0
 
 	self._OnUpdate = self.OnUpdate
-	self.OnUpdate = function(dt)
+	self.OnUpdate  = function(dt)
 		self:_OnUpdate(dt)
-		local obj = GLOBAL.TheInput:GetWorldEntityUnderMouse()
+		if not self.shown then return end
+
 		local affoff = 0
-		local sistring
+		local buffoff = 0
+		local invoff = 0
+		local obj = GLOBAL.TheInput:GetWorldEntityUnderMouse()
+
 		if obj == nil then
-			--print(self.owner.components.playercontroller:GetCursorInventoryObject())
 			if self.owner.HUD 
 				and self.owner.HUD.controls.inv 
 				and self.owner.HUD.controls.inv.focus 
 			then 
-				if self.owner.HUD.controls.inv.inv then
-					for k, v in pairs(self.owner.HUD.controls.inv.inv) do
-						if v.focus then
-							if v.tile ~= nil then
-								obj = v.tile.item
-								affoff = affoff + 20
-								sistring = obj.replica.gfspellitem and obj.replica.gfspellitem:GetItemSpell() or nil
+				local hudTable = {self.owner.HUD.controls.inv.equip, self.owner.HUD.controls.inv.inv}
+				for _, hudElem in pairs(hudTable) do
+					if hudElem ~= nil then
+						for k, v in pairs(hudElem) do
+							if v.focus then
+								if v.tile ~= nil then
+									obj = v.tile.item
+									affoff = affoff + 20
+									invoff = -20
+								end
+	
+								break
 							end
-
-							break
-						end
-					end
-				end
-
-				if self.owner.HUD.controls.inv.equip and obj == nil then
-					for k, v in pairs(self.owner.HUD.controls.inv.equip) do
-						if v.focus then
-							if v.tile ~= nil then
-								obj = v.tile.item
-								affoff = affoff + 20
-								sistring = obj.replica.gfspellitem and obj.replica.gfspellitem:GetItemSpell() or nil
-							end
-
-							break
 						end
 					end
 				end
 			end
 		end
-		if obj ~= nil  --[[and obj ~= ThePlayer]] then
-			--print(obj)
+
+		if obj and (obj.replica.gfeffectable or obj.replica.gfspellitem) then
 			if obj ~= self._prevEntity or GLOBAL.GetTime() - self.lasttimeEffectsUpdate > 1 then
-				if sistring then
-					self.spellString:SetString(sistring)
+				local posstr, negstr, affstr, encstr, ispellstr
+				if obj.replica.gfeffectable then
+					local scei = obj.replica.gfeffectable.hudInfo
+					posstr = scei.positiveString
+					negstr = scei.negativeString
+					affstr = scei.affixString
+					encstr = scei.enchantString
+				end
+				if obj.replica.gfspellitem then
+					ispellstr = obj.replica.gfspellitem:GetItemSpellTitle()
+				end
+				if ispellstr then
+					self.spellString:SetString(ispellstr)
+					self.spellString:SetPosition(0, 18 + invoff, 0)
+					invoff = -18 + invoff
 				else
 					self.spellString:SetString("")
 				end
-				if obj.replica and obj.replica.gfeffectable then
-					local scei = obj.replica.gfeffectable.hudInfo
-                    local posstr = scei.positiveString
-                    local negstr = scei.negativeString
-                    local affstr = scei.affixString
-					local encstr = scei.enchantString
-					
-					if posstr:len() > 0 then
-						self.positiveString:SetString(posstr)
-						self.negativeString:SetPosition(0, 5, 0)
-					else
-						self.negativeString:SetPosition(0, 20, 0)
-						self.positiveString:SetString("")
-					end
-					if negstr:len() > 0 then
-						self.negativeString:SetString(negstr)
-					--else
-						--self.positiveString:SetPosition(0, 10, 0)
-					end
-					--if scei:GetAbilitiesCount() > 0 then
-					if affstr:len() > 0 or encstr:len() > 0 then
-						self.abilitiesString:SetPosition(0, 65 + affoff, 0)
-						self.abilitiesString:SetString(string.format("%s %s", affstr, encstr))
-					end
-					--else
-						--self.positiveString:SetPosition(0, 10, 0)
-					--end
-					
-					self.lasttimeEffectsUpdate = GLOBAL.GetTime()
-					self._prevEntity = obj
-
-					return
+				if posstr then
+					self.positiveString:SetString(posstr)
+					self.positiveString:SetPosition(0, 18 + invoff, 0)
+					self.negativeString:SetPosition(0, 3 + invoff, 0)
+				else
+					self.positiveString:SetString("")
+					self.negativeString:SetPosition(0, 18 + invoff, 0)
 				end
-			else
-				return
+				self.negativeString:SetString(negstr or "")
+				if affstr or encstr then
+					self.abilitiesString:SetPosition(0, 65 + affoff, 0)
+					self.abilitiesString:SetString(string.format("%s%s", affstr or "", encstr or ""))
+				else
+					self.abilitiesString:SetString("")
+				end
+				
 			end
+		else
+			self.abilitiesString:SetString("")
+			self.spellString:SetString("")
+			self.positiveString:SetString("")
+			self.negativeString:SetString("")
 		end
-
-		self._prevEntity = nil
-		
-		self.abilitiesString:SetString("")
-		--self.spellString:SetString("")
-		self.positiveString:SetString("")
-		self.negativeString:SetString("")
 	end
 end
 
---titles for effects
+--titles for effects and spells
 AddClassPostConstruct("widgets/hoverer", PostHoverer)

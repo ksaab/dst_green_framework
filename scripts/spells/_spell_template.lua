@@ -1,13 +1,13 @@
-local spelllist = GFSpellList
-local spelllistcached = GFSpellNameToID
+local GFSpell = require("gf_spell")
 
 local function EmptySpell(self)
     print(("Spell: spell %s has no cast function..."):format(self.name))
 end
 
-local Spell = Class(function(self, name)
+local Spell = Class(GFSpell, function(self)
+    GFSpell._ctor(self, "_spell_template")  --set the "phantom" name, which will be used ONLY in the gf_spell constuctor, 
+                                            --real spell name will math the file name
     --both side
-    self.name = name --spell name
     self.title = STRINGS.GF.SPELLS.INVALID_TITLE --a title for the hoverer widget
 
     self.range = 12 --cast range
@@ -30,9 +30,6 @@ local Spell = Class(function(self, name)
         return 
     end
     --server side
-    self.spellParams = {}
-    self.spellVisuals = {}
-    
     self.itemRecharge = 0 --can't cast the spell with item
     self.doerRecharge = 0 --caster can't cast the spell (even if he equips an another item with the same spell)
 
@@ -56,68 +53,6 @@ local Spell = Class(function(self, name)
                                 --args (self, caster, target, pos)
     self.aicheckfn = nil    --AI call this fn from the brain
                             --args (self, caster)
-
-    GFDebugPrint(("Spell: spell %s created"):format(self.name))
 end)
 
-
---can be used in fn-handlers for spell cast events
-function Spell:HasSpellTag(tag)
-    return self.tags[tag]
-end
-
---used in the spellitem component
-function Spell:GetItemRecharge()
-    if self.getRechargefn then
-        local _, r = self:getRechargefn()
-        return r
-    else
-        return self.itemRecharge
-    end
-    --return self.modRechacgeFn and self:modRechacgeFn(self.itemRecharge) or self.itemRecharge
-end
-
---used in the spellcaster component
-function Spell:GetDoerRecharge()
-    if self.getRechargefn then
-        local r = self:getRechargefn()
-        return r
-    else
-        return self.doerRecharge
-    end
-    --return self.modRechacgeFn and self:modRechacgeFn(self.doerRecharge) or self.doerRecharge
-end
-
---used in stategraphs
-function Spell:GetRange()
-    return self.range
-end
-
---used in stategraphs
-function Spell:GetPlayerState()
-    return self.playerState
-end
-
---AI call this fn from the brain
-function Spell:AICheckFn(ent)
-    return self.aicheckfn and self:aicheckfn(ent) or false
-end
-
---it is called at the CASTPELL action, if this returns false, the action will return true ("silent" fail)
---and character will say alerting phrase ("I can't cast it, cuz I'm not so skilled")
-function Spell:CanBeCastedBy(inst)
-    return not (self.spellCheckFn and not self:spellCheckFn(inst))
-        and not (self.requiredTag and not inst:HasTag(self.requiredTag))
-        and not (self.forbiddenTag and inst:HasTag(self.forbiddenTag))
-end
-
-function Spell:DoCastSpell(...)
-    return self:spellfn(...)
-end
-
-function Spell:__tostring()
-    return string.format("spell: name: %s, id: %i, item: %.2f, doer: %.2f, state: %s", 
-        self.name or "UNKNOWN", self.id or 0, self.itemRecharge or 0, self.doerRecharge or 0, self.state or "none")
-end
-
-return Spell
+return Spell()

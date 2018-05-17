@@ -80,6 +80,13 @@ local Effect = Class(GFEffect, function(self, name)
     self.updateTime = 0 --this will be setted is gfeffectable
     self.baseDuration = 10 --base duration
     self.tickPeriod = 1 --how often onupdate function will be called 
+
+    --effect fx
+    --fx will be attached only if has Follower
+    self.applyPrefab = nil --this will be not removed by component
+    self.applyPrefabOffset = false --if true the applyPrefab will be shown above the target
+    self.followPrefab = nil --this wili be removed by component
+    self.followPrefabOffset = false --if true the followPrefab will be shown above the target
     
     --functions, feel free to set any to nil
     self.checkfn = DoCheck

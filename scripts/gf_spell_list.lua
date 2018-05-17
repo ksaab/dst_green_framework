@@ -25,6 +25,10 @@ local spellArray =
     [3] = { name = "equip_chainlightning", folder = "item/"},
     [4] = { name = "equip_crushlightning", folder = "item/"},
     [5] = { name = "equip_groundslam", folder = "item/"},
+
+    [100] = {name = "amulet_magic_echo"},
+    [101] = {name = "apply_lesser_rejuvenation"},
+    [102] = {name = "apply_slow"},
 }
 
 local spellsFolder = "spells/"

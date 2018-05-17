@@ -47,7 +47,7 @@ end
 
 local function MakeCaster(self)
 	local DoCast = 
-	GLOBAL.WhileNode(function() return self.inst.components.gfspellcaster --[[and CheckSpells(self.inst)]] end, "Can Cast",
+	GLOBAL.WhileNode(function() return self.inst.components.gfspellcaster end, "Can Cast",
 		GLOBAL.DoAction(self.inst, CheckSpells, "Cast Spell", true, 3))
 
 	for k, v in ipairs(self.bt.root.children) do

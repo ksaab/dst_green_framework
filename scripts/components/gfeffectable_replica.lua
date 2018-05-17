@@ -37,10 +37,10 @@ local function GenerateHudInfo(inst)
         end
     end
 
-    self.hudInfo.positiveString = table.concat(postable, ", ")
-    self.hudInfo.negativeString = table.concat(negtable, ", ")
-    self.hudInfo.affixString = table.concat(affixtable, ", ")
-    self.hudInfo.enchantString = table.concat(enchtable, ", ")
+    self.hudInfo.positiveString = #postable > 0 and table.concat(postable, ", ") or nil
+    self.hudInfo.negativeString = #negtable > 0 and table.concat(negtable, ", ") or nil
+    self.hudInfo.affixString = #affixtable > 0 and table.concat(affixtable, ", ") or nil
+    self.hudInfo.enchantString = #enchtable > 0 and table.concat(enchtable, ", ") or nil
 
     inst:PushEvent("gfupdateeffectshud")
 end
@@ -65,11 +65,11 @@ local function SliceEffectsString(inst)
         if effect == nil then
             effect = effectList[effectName]()
             self.effects[effectName] = effect
-            if effect.hudonapplyfn then
+            if effect.hudonapplyfn  and inst == ThePlayer then
                 effect:hudonapplyfn(inst)
             end
         else
-            if effect.hudonrefreshfn then
+            if effect.hudonrefreshfn and inst == ThePlayer then
                 effect:hudonrefreshfn(inst)
             end
         end
@@ -80,7 +80,7 @@ local function SliceEffectsString(inst)
     for effName, effect in pairs(self.effects) do
         --removing nonexistent effects
         if not newEffects[effName] then
-            if effect.hudonremovefn then
+            if effect.hudonremovefn and inst == ThePlayer then
                 effect:hudonremovefn(inst)
             end
             self.effects[effName] = nil

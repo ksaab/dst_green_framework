@@ -99,6 +99,9 @@ function GFSpellCaster:SetSpellRecharges()
 end
 
 function GFSpellCaster:CanCastSpell(spellname)
+    --if not spellList[spellname]:CanBeCasted(self.inst) then return false end
+    if spellList[spellname].passive then return false end
+    
     if self.spellsReadyTime[spellname] ~= nil then
         return GetTime() > self.spellsReadyTime[spellname]
     else

@@ -4,23 +4,27 @@ local function DoCast(self, doer, target, pos, spellData)
     if doer == nil or (target == nil and pos == nil) then return false end
 
     spellData = spellData or {}
+    local visuals = self.spellVisuals or {}
+    local params = self.spellParams or {}
     --the lightning can hit each entity only once
     --the lightning prefers entities with combat component 
     local function FindValidTarget(pos, range, affected)
         local noncombat = {}
-        local notags = GFGetPVPEnabled()
-            and { "shadow", "playerghost", "INLIMBO", "NOCLICK", "FX" } 
-            or { "player", "shadow", "playerghost", "INLIMBO", "NOCLICK", "FX" }
+        local notags = { "shadow", "playerghost", "INLIMBO", "NOCLICK", "FX" } 
 
         local ents = TheSim:FindEntities(pos.x, 0, pos.z, range, nil, notags)
         for k, v in pairs(ents) do
             if not (affected ~= nil and table.contains(affected, v)) then
-                if v.components.combat ~= nil and not (v.components.health and v.components.health:IsDead()) then
-                    if not (v:HasTag("bird") and v.sg and v.sg:HasStateTag("flight")) then
-                        return v -- first valid entity with combat
-                    end
+                if doer.components.gfspellcaster:IsTargetFriendly(v) then
+                    table.insert(affected, v)
                 else
-                    table.insert(noncombat, v) 
+                    if v.components.combat ~= nil and not (v.components.health and v.components.health:IsDead()) then
+                        if not (v:HasTag("bird") and v.sg and v.sg:HasStateTag("flight")) then
+                            return v -- first valid entity with combat
+                        end
+                    else
+                        table.insert(noncombat, v) 
+                    end
                 end
             end
         end
@@ -29,13 +33,15 @@ local function DoCast(self, doer, target, pos, spellData)
     end
 
     local function DoLightning(dummy, from, to)
-        GFDebugPrint(string.format("Lightning from %s to %s", tostring(from), tostring(to)))
+        --GFDebugPrint(string.format("Lightning from %s to %s", tostring(from), tostring(to)))
         local x, y, z = from.Transform:GetWorldPosition()
         local xt, yt, zt = to.Transform:GetWorldPosition()
 
-        if to.components.burnable ~= nil and not to.components.burnable:IsBurning() then
-            if to.components.fueled == nil and math.random() < self.burnChance then
-                to.components.burnable:Ignite(true)
+        if params.burnChance and params.burnChance > 0 then
+            if to.components.burnable ~= nil and not to.components.burnable:IsBurning() then
+                if to.components.fueled == nil and math.random() < params.burnChance then
+                    to.components.burnable:Ignite(true)
+                end
             end
         end
 
@@ -44,8 +50,7 @@ local function DoCast(self, doer, target, pos, spellData)
             and dummy.doer.components.combat ~= nil 
         then
             local spellpower =  dummy.sp or 1
-            local cldamage = self.damage * spellpower
-            --print("damage", cldamage)
+            local cldamage = params.damage * spellpower
             to.components.combat:GetAttacked(dummy.doer or dummy, cldamage, nil, "electric")
         end
 
@@ -63,9 +68,8 @@ local function DoCast(self, doer, target, pos, spellData)
             })
 
         fxdummy.components.gflightningdrawer:DoLightning(lpos)
-        --fxdummy.components.gflightningdrawer:DoLightning({x = x, z = z}, {x = xt, z = zt})
-        fxdummy.SoundEmitter:PlaySound("dontstarve/common/whip_small") 
-        SpawnPrefab("shock_fx").Transform:SetPosition(xt, yt, zt)
+        if visuals.impactSound then fxdummy.SoundEmitter:PlaySound(visuals.impactSound) end
+        if visuals.impactFx then SpawnPrefab(visuals.impactFx).Transform:SetPosition(xt, yt, zt) end
     end
 
     --if spell was casted on ground, then need to find a valid entity in small range
@@ -74,25 +78,18 @@ local function DoCast(self, doer, target, pos, spellData)
     end
 
     local x, y, z = doer.Transform:GetWorldPosition()
-    --local dummy = SpawnPrefab("gf_lightning_dummy")
     local dummy = SpawnPrefab("gf_local_dummy")
     dummy.Transform:SetPosition(x, y, z)
-    --[[ if self.lightningDrawerColour ~= nil then
-        dummy.components.gflightningdrawer:SetLightning(self.lightningDrawerColour)
-    end ]]
-    if self.lightningDrawerColour ~= nil then
-        dummy.lightinigColour = self.lightningDrawerColour
+    if visuals.lightningDrawerColour ~= nil then
+        dummy.lightinigColour = visuals.lightningDrawerColour
     end
 
     --if target wasn't found, then just make a fx and return
     if target == nil then
         local fxdummy = SpawnPrefab("gf_lightning_dummy")
         fxdummy.Transform:SetPosition(x, y, z)
-        if dummy.lightinigColour ~= nil then
-            fxdummy.components.gflightningdrawer:SetColour(dummy.lightinigColour)
-        end 
+        if dummy.lightinigColour then fxdummy.components.gflightningdrawer:SetColour(dummy.lightinigColour) end 
 
-        --fxdummy.components.gflightningdrawer:DoLightning({x = x, z = z}, {x = pos.x, z = pos.z})
         local lpos = {}
         table.insert(lpos,
             {
@@ -100,8 +97,8 @@ local function DoCast(self, doer, target, pos, spellData)
                 finish = {x = pos.x, z = pos.z},
             })
         fxdummy.components.gflightningdrawer:DoLightning(lpos)
-        fxdummy.SoundEmitter:PlaySound("dontstarve/common/whip_small") 
-        SpawnPrefab("shock_fx").Transform:SetPosition(pos.x, 0, pos.z)
+        if visuals.impactSound then fxdummy.SoundEmitter:PlaySound(visuals.impactSound) end
+        if visuals.impactFx then SpawnPrefab(visuals.impactFx).Transform:SetPosition(pos.x, 0, pos.z) end
 
         return true
     end
@@ -115,7 +112,7 @@ local function DoCast(self, doer, target, pos, spellData)
     table.insert(affected, doer)
     table.insert(affected, target)
     --Count of bounces
-    local jumps = self.jumpCount
+    local jumps = params.jumpCount
     --last pos for the lightning's bounce
     local lastpos = Vector3(target.Transform:GetWorldPosition())
 
@@ -152,13 +149,14 @@ local function DoCast(self, doer, target, pos, spellData)
 end
 
 local function AiCheck(self, inst)
+    local aiParams = self.aiParams
     local target = inst.components.combat.target
-    if target and not inst:IsNear(target, self.aiMinDist) then
+    if target and not inst:IsNear(target, aiParams.minDist) then
         local x, y, z = inst.Transform:GetWorldPosition()
         local res = 
         {
             target = target,
-            distance = self.aiMaxDist,
+            distance = aiParams.maxDist,
         }
 
         return res
@@ -192,17 +190,28 @@ local Spell = Class(GFSpell, function(self, name)
     self.spellfn = DoCast 
 
     --spell parameters
-    self.burnChance = 0
-    self.damage = 50
-    self.jumpCount = 3
-
+    self.spellParams =
+    {
+        burnChance = 20,
+        damage = 50,
+        jumpCount = 3,
+    }
+    
     --visual
-    self.lightningDrawerColour = nil --lightning colour
+    self.spellVisuals =
+    {
+        lightningDrawerColour = nil, --lightning colour
+        impactFx = nil,
+        impactSound = nil,
+    }
 
     --AI--
     self.aicheckfn = AiCheck
-    self.aiMinDist = 3
-    self.aiMaxDist = 12
+    self.aiParams = 
+    {
+        minDist = 3,
+        maxDist = 12
+    }
 end)
 
 return Spell
