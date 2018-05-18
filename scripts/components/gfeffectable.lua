@@ -257,11 +257,12 @@ function GFEffectable:ApplyEffect(effectName, effectParam)
     return false
 end
 
---this wasn't test, but should work
+--this wasn't tested, but should work
 function GFEffectable:ConsumeStacks(effectName, value)
     if effectName == nil or self.effects[effectName] == nil then return end
     self.effects[effectName]:ConsumeStack(inst, value)
     if self.effects[effectName] ~= nil then
+        self.inst.replica.gfeffectable:UpdateEffectsList()
         if self.effects[effectName].hudonrefreshfn then
             self.effects[effectName]:hudonrefreshfn(self.inst)
         end

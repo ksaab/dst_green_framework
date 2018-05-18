@@ -69,7 +69,7 @@ local function SliceEffectsString(inst)
                 effect:hudonapplyfn(inst)
             end
         else
-            if effect.hudonrefreshfn and inst == ThePlayer then
+            if effect.hudonrefreshfn and inst == ThePlayer --[[and effect.stacks ~= effectStacks]] then
                 effect:hudonrefreshfn(inst)
             end
         end

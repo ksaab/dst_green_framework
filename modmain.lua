@@ -16,6 +16,8 @@ PrefabFiles =
 
 Assets = 
 {
+    Asset("ANIM", "anim/gf_lightning_spear.zip"),
+    Asset("ANIM", "anim/swap_gf_lightning_spear.zip"),
     Asset("IMAGE", "images/gfdefaulticons.tex"),
     Asset("ATLAS", "images/gfdefaulticons.xml"),
 }
