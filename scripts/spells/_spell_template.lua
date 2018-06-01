@@ -21,9 +21,9 @@ local Spell = Class(GFSpell, function(self)
     self.spellCheckFn = nil --custon check for spells (check for the day time or caster's sanity pool)
                             --args (self, caster)
     self.requiredTag = nil --fail cast if caster DOESN'T have this tag
-    self.forbiddenTag = nil --fail cast if caster HAVE this tag
+    self.forbiddenTag = nil --fail cast if caster HAS this tag
 
-    self.tags = {} --not sure shoud this be server only or not
+    self.tags = {} --not sure should this be server only or not
     
     if not GFGetIsMasterSim() then 
         GFDebugPrint(("Spell: spell %s created"):format(self.name))

@@ -44,7 +44,11 @@ local GFSpellCaster = Class(function(self, inst)
 
     self.onClient = inst:HasTag("gfscclientside")
 
-    if not self.onClient then return end
+    if not self.onClient then 
+        return 
+    else
+        --inst:RemoveTag("gfscclientside")
+    end
     
     self.spells = {} --full spell list
     --self.activeSpell = {}
@@ -67,7 +71,7 @@ local GFSpellCaster = Class(function(self, inst)
     end
 
     if not GFGetDedicatedNet() and inst == ThePlayer then 
-        
+        --inst:PushEvent("gfsc_updaterechargesdirty")
     end
 end)
 

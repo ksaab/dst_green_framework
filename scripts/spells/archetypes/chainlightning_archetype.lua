@@ -6,6 +6,7 @@ local function DoCast(self, doer, target, pos, spellData)
     spellData = spellData or {}
     local visuals = self.spellVisuals or {}
     local params = self.spellParams or {}
+    local affected = {}
     --the lightning can hit each entity only once
     --the lightning prefers entities with combat component 
     local function FindValidTarget(pos, range, affected)
@@ -74,7 +75,7 @@ local function DoCast(self, doer, target, pos, spellData)
 
     --if spell was casted on ground, then need to find a valid entity in small range
     if target == nil or not target:IsValid() then
-        target = FindValidTarget(pos, 5)
+        target = FindValidTarget(pos, 5, affected)
     end
 
     local x, y, z = doer.Transform:GetWorldPosition()
@@ -108,7 +109,6 @@ local function DoCast(self, doer, target, pos, spellData)
     DoLightning(dummy, doer, target)
 
     --the lightning can hit each entity only once and can't hit the caster
-    local affected = {}
     table.insert(affected, doer)
     table.insert(affected, target)
     --Count of bounces
@@ -116,34 +116,36 @@ local function DoCast(self, doer, target, pos, spellData)
     --last pos for the lightning's bounce
     local lastpos = Vector3(target.Transform:GetWorldPosition())
 
-    dummy._chltask = dummy:DoPeriodicTask(0.3, function(dummy, data)
-        if data.jumps ~= 0 and dummy.doer and dummy.doer:IsValid() then
-            local affected = data.affected
-            --previous target is the last element
-            local prev = affected[#affected]
-            --but if it is not valid then we need to spawn a dummy
-            --at the previous target's position
-            if prev == nil or not prev:IsValid() then
-                prev = SpawnPrefab("gf_local_dummy")
-                prev.Transform:SetPosition(lastpos.x, 0, lastpos.z)
-            end
-            --looking for the next target for bounce
-            local newtarget = FindValidTarget(lastpos, 20, affected)
-            --stop the task, if there are no valid targets
-            if newtarget == nil then 
-                dummy._chltask:Cancel()
-                return
-            end
+    if jumps > 0 then
+        dummy._chltask = dummy:DoPeriodicTask(params.jumpDelay, function(dummy, data)
+            if data.jumps ~= 0 and dummy.doer and dummy.doer:IsValid() then
+                local affected = data.affected
+                --previous target is the last element
+                local prev = affected[#affected]
+                --but if it is not valid then we need to spawn a dummy
+                --at the previous target's position
+                if prev == nil or not prev:IsValid() then
+                    prev = SpawnPrefab("gf_local_dummy")
+                    prev.Transform:SetPosition(lastpos.x, 0, lastpos.z)
+                end
+                --looking for the next target for bounce
+                local newtarget = FindValidTarget(lastpos, 20, affected)
+                --stop the task, if there are no valid targets
+                if newtarget == nil then 
+                    dummy._chltask:Cancel()
+                    return
+                end
 
-            DoLightning(dummy, prev, newtarget)
-            --add new traget to affected
-            table.insert(affected, newtarget)
-            data.jumps = data.jumps - 1
-            data.lastpos = Vector3(newtarget.Transform:GetWorldPosition())
-        else
-            dummy._chltask:Cancel()
-        end
-    end, nil, {affected = affected, jumps = jumps, lastpos = lastpos})
+                DoLightning(dummy, prev, newtarget)
+                --add new traget to affected
+                table.insert(affected, newtarget)
+                data.jumps = data.jumps - 1
+                data.lastpos = Vector3(newtarget.Transform:GetWorldPosition())
+            else
+                dummy._chltask:Cancel()
+            end
+        end, nil, {affected = affected, jumps = jumps, lastpos = lastpos})
+    end
 
     return true
 end
@@ -195,6 +197,7 @@ local Spell = Class(GFSpell, function(self, name)
         burnChance = 20,
         damage = 50,
         jumpCount = 3,
+        jumpDelay = 0.3
     }
     
     --visual

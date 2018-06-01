@@ -1,13 +1,17 @@
 local SpellArchetype = require("spells/archetypes/targeteffect_archetype")
 
-local function CustomAICheck(target)
-    return not target.components.health:IsDead()
+local function CustomAICheck(self, inst, target)
+    return inst:IsValid()
+        and target:IsValid()
+        and not target.components.health:IsDead()
         and target.components.health:GetPercent() < 0.75
 end
 
 local Spell = Class(SpellArchetype, function(self)
     SpellArchetype._ctor(self, "apply_lesser_rejuvenation") --inheritance
+    self.title = "Lesser rejuvenation"
     self.playerState = "gfcastwithstaff"
+    self.pointer = require("pointers/nature")
 
     if not GFGetIsMasterSim() then return end
 

@@ -26,6 +26,8 @@ local Effect = Class(GFEffect, function(self, name)
 
     if not GFGetIsMasterSim() then return end
 
+    self.savable = true
+
     --effect data
     self.tags = {} --can be used for resists checks, event listeners and etc
     self.applier = nil --who apply the effect

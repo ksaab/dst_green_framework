@@ -32,7 +32,7 @@ local function AiCheck(self, inst)
         for k, ent in pairs(ents) do
             if inst.components.gfspellcaster:IsTargetFriendly(ent) then
                 if aiparams.customCheck ~= nil then
-                    if aiparams.customCheck(ent) then
+                    if aiparams:customCheck(inst, ent) then
                         target = ent
                         break
                     end
@@ -65,9 +65,10 @@ end
 local Spell = Class(GFSpell, function(self, name)
     GFSpell._ctor(self, name) --inheritance
 
-    self.instant = true
+    --self.instant = true
     self.playerState = "gfcastwithstaff"
     self.pointer = nil
+    self.needTarget = true
 
     self.tags = {
         magic = true,

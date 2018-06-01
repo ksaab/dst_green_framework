@@ -68,17 +68,21 @@ function GFAddCustomEffect(name, route, id)
 end
 
 function GFMakePlayerCaster(inst, allSpells)
-    inst:AddTag("gfscclientside")
-    if GFGetIsMasterSim() then
-        inst:AddComponent("gfspellcaster")
-        if allSpells ~= nil then
-            inst.components.gfspellcaster:AddSpell(allSpells)
+    if not inst:HasTag("gfmodified") then
+        inst:AddTag("gfmodified")
+        inst:AddTag("gfscclientside")
+        if GFGetIsMasterSim() then
+            inst:AddComponent("gfspellcaster")
+            if allSpells ~= nil then
+                inst.components.gfspellcaster:AddSpell(allSpells)
+            end
         end
     end
 end
 
 function GFMakeCaster(inst, allSpells)
-    if GFGetIsMasterSim() then
+    if GFGetIsMasterSim() and not inst:HasTag("gfmodified") then
+        inst:AddTag("gfmodified")
         inst:AddComponent("gfspellcaster")
         if allSpells ~= nil then
             inst.components.gfspellcaster:AddSpell(allSpells)
@@ -87,17 +91,20 @@ function GFMakeCaster(inst, allSpells)
 end
 
 function GFMakeInventoryCastingItem(inst, allSpells)
-    inst:AddTag("gfscclientside")
-    inst:AddTag("rechargeable")
-    inst:AddComponent("gfspellpointer")
-    if GFGetIsMasterSim() then
-        inst:AddComponent("gfspellitem")
-        if allSpells ~= nil then
-            inst.components.gfspellitem:AddSpell(allSpells)
-            if type(allSpells) == "table" then
-                inst.components.gfspellitem:SetItemSpell(allSpells[1])
-            else
-                inst.components.gfspellitem:SetItemSpell(allSpells)
+    if not inst:HasTag("gfmodified") then
+        inst:AddTag("gfmodified")
+        inst:AddTag("gfscclientside")
+        inst:AddTag("rechargeable")
+        inst:AddComponent("gfspellpointer")
+        if GFGetIsMasterSim() then
+            inst:AddComponent("gfspellitem")
+            if allSpells ~= nil then
+                inst.components.gfspellitem:AddSpell(allSpells)
+                if type(allSpells) == "table" then
+                    inst.components.gfspellitem:SetItemSpell(allSpells[1])
+                else
+                    inst.components.gfspellitem:SetItemSpell(allSpells)
+                end
             end
         end
     end

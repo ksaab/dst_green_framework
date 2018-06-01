@@ -3,13 +3,14 @@ local SpellArchetype = require("spells/archetypes/groundslam_archetype")
 local Spell = Class(SpellArchetype, function(self)
     SpellArchetype._ctor(self, "equip_groundslam") --inheritance
     self.title = STRINGS.GF.SPELLS.EQUIP_GROUND_SLAM.TITLE
+    self.pointer = require("pointers/conus_crackles90")
 
     if not GFGetIsMasterSim() then 
         return 
     end
     
-    self.itemRecharge = 5
-    self.doerRecharge = 50
+    self.itemRecharge = 50
+    self.doerRecharge = 5
 
     self.spellParams.damage = 50
     self.spellParams.sector = 120

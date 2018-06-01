@@ -7,6 +7,13 @@ local function RefreshReticule(self, inst)
     end
 end
 
+local function DisablePointerOnUnequipped(inst)
+    local self = inst.components.gfspellpointer
+    if self:IsEnabled() then
+        self:SetEnabled(false)
+    end
+end
+
 local function OnDirty(inst)
     local self = inst.components.gfspellpointer
     if inst.replica.inventoryitem and inst.replica.inventoryitem:IsHeldBy(ThePlayer) then
@@ -27,11 +34,25 @@ local GFSpellPointer = Class(function(self, inst)
 
     self.RefreshReticule = RefreshReticule
 
-    inst:ListenForEvent("gfspellpointerdirty", OnDirty)
+    if GFGetIsMasterSim() then
+        inst:ListenForEvent("unequipped", DisablePointerOnUnequipped)
+    end
+
+    --dedicated server doesn't need to listen for the pointer event
+    if not GFGetDedicatedNet() then
+        inst:ListenForEvent("gfspellpointerdirty", OnDirty)
+    end
 end)
 
 function GFSpellPointer:OnRemoveFromEntity()
     self:SetEnabled(false)
+    if GFGetIsMasterSim() then
+        self.inst:RemoveEventCallback("unequipped", DisablePointerOnUnequipped)
+    end
+
+    if not GFGetDedicatedNet() then
+        self.inst:RemoveEventCallback("gfspellpointerdirty", OnDirty)
+    end
 end
 
 function GFSpellPointer:IsEnabled()

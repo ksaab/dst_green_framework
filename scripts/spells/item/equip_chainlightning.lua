@@ -17,7 +17,7 @@ local Spell = Class(SpellArchetype, function(self)
     self.spellParams.jumpCount = 2
     
     --visual
-    self.spellVisuals.lightningDrawerColour = 1
+    --self.spellVisuals.lightningDrawerColour = 1
     self.spellVisuals.impactFx = "shock_fx"
     self.spellVisuals.impactSound = nil
 

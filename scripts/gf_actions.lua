@@ -34,7 +34,8 @@ end)
 ACTIONS.GFCASTPELL.distance = math.huge
 ACTIONS.GFCASTPELL.priority = 10
 ACTIONS.GFCASTPELL.instant = false
-ACTIONS.GFCASTPELL.forced = true
+--ACTIONS.GFCASTPELL.forced = true
+--ACTIONS.GFCASTPELL.canforce = true
 
 AddAction("GFSTARTSPELLTARGETING", "Target", function(act)
 	local item = act.invobject--doer.replica.inventory:GetEquippedItem(GLOBAL.EQUIPSLOTS.HANDS)
@@ -78,10 +79,25 @@ end)
 ACTIONS.GFCHANGEITEMSPELL.instant = true
 ACTIONS.GFCHANGEITEMSPELL.priority = -2
 
+AddAction("GFDRINKIT", "Drink", function(act)
+	local obj = act.target or act.invobject
+	if obj ~= nil 
+		and obj.components.gfdrinkable ~= nil 
+		and act.doer.components.eater
+		and act.doer:HasTag("gfcandrink") 
+	then
+        return act.doer.components.eater:Drink(obj)
+    end
+end)
+
 --ACTION COLLECTORS------
 -------------------------
 AddComponentAction("POINT", "gfspellitem", function(inst, doer, pos, actions, right)
-    if doer.sg:HasStateTag("casting") then return end -- player is casting something at this moment
+    if doer.sg:HasStateTag("casting") -- player is casting something at this moment
+        or doer.replica.inventory:GetActiveItem() ~= nil
+    then 
+        return
+    end 
     if right then
         if doer.replica.gfspellcaster then
             local itemSpell = inst.replica.gfspellitem:GetItemSpellName()
@@ -126,13 +142,18 @@ AddComponentAction("POINT", "gfspellitem", function(inst, doer, pos, actions, ri
 end)
 
 AddComponentAction("EQUIPPED", "gfspellitem", function(inst, doer, target, actions, right)
-    if doer.sg:HasStateTag("casting") then return end -- player is casting something at this moment
+    if doer.sg:HasStateTag("casting") -- player is casting something at this moment
+        or doer.replica.inventory:GetActiveItem() ~= nil
+    then 
+        return
+    end
     if right then
+        print(target)
         if doer.replica.gfspellcaster then
             local itemSpell = inst.replica.gfspellitem:GetItemSpellName()
             if itemSpell ~= nil then
                 --spell doesn't require a pointer
-                if spellList[itemSpell].instant and not spellList[itemSpell].needTarget then
+                if spellList[itemSpell].instant then
                     if inst.replica.gfspellitem:CanCastSpell(itemSpell)
                         and doer.replica.gfspellcaster:CanCastSpell(itemSpell) 
                     then
@@ -170,11 +191,21 @@ AddComponentAction("EQUIPPED", "gfspellitem", function(inst, doer, target, actio
     end
 end)
 
-
 AddComponentAction("INVENTORY", "gfspellitem", function(inst, doer, actions)
     if inst.replica.gfspellitem
         and inst.replica.gfspellitem:GetSpellCount() > 1
     then
         table.insert(actions, ACTIONS.GFCHANGEITEMSPELL)
+    end
+end)
+
+AddComponentAction("INVENTORY", "gfdrinkable", function(inst, doer, actions, right)
+    if (right or inst.replica.equippable == nil) and
+        not (doer.replica.inventory:GetActiveItem() == inst
+            and doer.replica.rider ~= nil
+			and doer.replica.rider:IsRiding())
+		and doer:HasTag("gfcandrink")
+    then
+        table.insert(actions, ACTIONS.GFDRINKIT)
     end
 end)

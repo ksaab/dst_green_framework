@@ -11,7 +11,8 @@ local Spell = Class(function(self, name)
     self.title = STRINGS.GF.SPELLS.INVALID_TITLE --a title for the hoverer widget
 
     self.range = 12 --cast range
-    self.instant = true --can be casted by one right-click or not
+    self.instant = false --can be casted by one right-click or not
+    self.needTarget = false
     self.passive = false --if true, spell can not be casted by players or creatures, but can be casted with gfspellcaster:CastSpell()
 
     self.pointer = nil --spell pointer

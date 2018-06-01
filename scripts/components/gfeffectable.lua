@@ -1,4 +1,5 @@
 local effectList = GFEffectList
+local affixList = GFAffixList
 
 local function RemoveEffectsOnDeath(inst)
     inst.components.gfeffectable:RemoveAllEffects(false, "death")
@@ -118,12 +119,33 @@ local function SetFollowSymbol(self)
     end
 end
 
+local function TryAddAffix(inst)
+    local self = inst.components.gfeffectable
+    if self and self.isNew then
+        print("new creature, try to add affix")
+        if math.random() < (self.affixes.chance or 1) * self.eliteChanceMult then
+            --print("elite")
+            --[[ if TUNING.CCW.ELITE_HEALTH_MULTIPLIER > 1 then
+                self:ApplyEffect("elite_healthbonus")
+            end ]]
+            self:ApplyEffect(self.affixes.list[math.random(#(self.affixes.list))])
+        end
+    else
+        print("old creature, refusing")
+    end
+end
+
 local GFEffectable = Class(function(self, inst)
     self.inst = inst
     self.effects = {}
     self.resists = {}
 
     self.isNew = true
+
+    self.eliteChanceMult = 1
+    self.eliteEnabled = self.eliteChanceMult > 0
+    self.affixes = affixList[inst.prefab]
+
     --set data for effect fx
     self.effectsfx = {}
     self.followSymbol = "body"
@@ -134,7 +156,13 @@ local GFEffectable = Class(function(self, inst)
     inst:AddTag("gfeffectable")
 
     inst:ListenForEvent("death", RemoveEffectsOnDeath)
-    SetFollowSymbol(self)
+
+    if not inst.components.equippable then
+        SetFollowSymbol(self)
+    end
+    if self.eliteEnabled and self.affixes ~= nil then
+        inst:DoTaskInTime(0, TryAddAffix)
+    end
     --inst:StartUpdatingComponent(self)
 end)
 

@@ -243,6 +243,31 @@ function GFSpellItem:OnUpdate(dt)
     end
 end
 
+function GFSpellItem:OnSave(data)
+    local savetable = {}
+    local currTime = GetTime()
+    for spellName, val in pairs(self.spellsReadyTime) do
+        local rech = val - currTime
+        if rech > 10 then
+            savetable[spellName] = {r = rech, t = self.spellsRechargeDuration[spellName]}
+        end
+    end
+
+    return {savedata = savetable}
+end
+
+function GFSpellItem:OnLoad(data)
+    if data ~= nil and data.savedata ~= nil then 
+        local savedata = data.savedata
+        local currTime = GetTime()
+        for spellName, rech in pairs(savedata) do
+            self.spellsReadyTime[spellName] = rech.r + currTime
+            self.spellsRechargeDuration[spellName] = rech.t
+        end
+    end
+end
+
+
 function GFSpellItem:GetDebugString()
     local str = {}
     for k, v in pairs(self.spells) do

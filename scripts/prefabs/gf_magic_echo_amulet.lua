@@ -1,7 +1,6 @@
 local assets =
 {
-    Asset("ANIM", "anim/amulets.zip"),
-    Asset("ANIM", "anim/torso_amulets.zip"),
+    Asset("ANIM", "anim/swap_gf_amulet_echo.zip"),
 }
 
 local function ReplicateCast(inst, data)
@@ -27,7 +26,7 @@ local function OnOwnerCast(owner, data)
 end
 
 local function onequip(inst, owner)
-    owner.AnimState:OverrideSymbol("swap_body", "torso_amulets", "redamulet")
+    owner.AnimState:OverrideSymbol("swap_body", "swap_gf_amulet_echo", "swap_gf_amulet_echo")
     inst:ListenForEvent("gfspellcastsuccess", OnOwnerCast, owner)
 end
 
@@ -50,9 +49,9 @@ local function fn()
     inst.entity:AddSoundEmitter()
     inst.entity:AddNetwork()
 
-    inst.AnimState:SetBank("amulets")
-    inst.AnimState:SetBuild("amulets")
-    inst.AnimState:PlayAnimation("redamulet")
+    inst.AnimState:SetBank("swap_gf_amulet_echo")
+    inst.AnimState:SetBuild("swap_gf_amulet_echo")
+    inst.AnimState:PlayAnimation("idle")
 
     GFMakeInventoryCastingItem(inst, "amulet_magic_echo", "amulet_magic_echo")
 
@@ -62,8 +61,7 @@ local function fn()
 
     inst:AddComponent("inspectable")
     inst:AddComponent("inventoryitem")
-    inst.components.inventoryitem.imagename = "amulet"
-    inst.components.inventoryitem.atlasname = "images/inventoryimages.xml"
+    inst.components.inventoryitem.atlasname = "images/gfinventory.xml"
 
     inst:AddComponent("equippable")
     inst.components.equippable.equipslot = EQUIPSLOTS.BODY

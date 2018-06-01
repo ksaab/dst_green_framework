@@ -45,6 +45,55 @@ local function CanCastSpell(spell, inst, item)
 end
 
 --STATES--
+--drink
+local gfdodrink = State{
+	name = "gfdodrink",
+	tags = { "doing", "busy" },
+
+	onenter = function(inst)
+		local act = inst:GetBufferedAction()
+		if act then
+			local swap
+			--print(act.invobject, act.target)
+			if act.invobject and act.invobject.swapSymbol then
+				swap = act.invobject.swapSymbol
+			else
+				swap = "swap_gf_cute_bottle"
+			end
+			inst.components.locomotor:Stop()
+			inst.AnimState:PlayAnimation("horn")
+			inst.AnimState:OverrideSymbol("horn01", "swap_gf_cute_bottle", swap)
+			--inst.AnimState:OverrideSymbol("horn01", "swap_potion_gw", "swap_twirl_orange")
+			inst.AnimState:Show("ARM_normal")
+
+			return
+		end
+
+		inst.sg:GoToState("idle")
+	end,
+
+	onexit = function(inst)
+		if inst.replica.inventory:GetEquippedItem(EQUIPSLOTS.HANDS) then
+			inst.AnimState:Show("ARM_carry") 
+			inst.AnimState:Hide("ARM_normal")
+		end
+	end,
+
+	timeline =
+	{
+		TimeEvent(48 * FRAMES, function(inst)
+			inst:PerformBufferedAction()
+		end),
+	},
+
+	events =
+	{
+		EventHandler("animover", function(inst)
+			inst.sg:GoToState("idle")
+		end),
+	},
+}
+
 --cast with staff
 local gfcastwithstaff = State{
 	name = "gfcastwithstaff",
@@ -136,17 +185,21 @@ local gfgroundslam = State{
 	}
 }
 
---Add states block--------------
+--Add states--------------
+AddStategraphState("wilson", gfdodrink)
 AddStategraphState("wilson", gfcastwithstaff)
 AddStategraphState("wilson", gfgroundslam)
 
---Add events block--------------
+
+--Add events--------------
 AddStategraphEvent("wilson", EventHandler("gfforcemove", function(inst, data)
 	--hack for non-static spell range
 	inst.components.locomotor:PushAction(data.act, true, true)
 end))
 
---Add actions handlers block----
+--Add actions handlers----
+AddStategraphActionHandler("wilson", ActionHandler(ACTIONS.GFDRINKIT, "gfdodrink"))
+
 AddStategraphActionHandler("wilson", ActionHandler(ACTIONS.GFCASTPELL, function(inst)
     local act = inst:GetBufferedAction()
     local item = act.invobject

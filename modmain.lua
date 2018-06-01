@@ -11,7 +11,11 @@ PrefabFiles =
     "gf_dummies",
     --"gf_lightningfx_2",
     "gf_magic_echo_amulet",
-    "gf_effects_fx"
+    "gf_lightning_spear",
+    "gf_effects_fx",
+    "gf_potion_metabolism",
+    "gf_reticules",
+    "gf_tentacle_staff",
 }
 
 Assets = 
@@ -20,6 +24,8 @@ Assets =
     Asset("ANIM", "anim/swap_gf_lightning_spear.zip"),
     Asset("IMAGE", "images/gfdefaulticons.tex"),
     Asset("ATLAS", "images/gfdefaulticons.xml"),
+    Asset("IMAGE", "images/gfinventory.tex"),
+    Asset("ATLAS", "images/gfinventory.xml"),
 }
 
 local gfFunctions = require "gf_global_functions"
@@ -36,6 +42,7 @@ local isPVPEnabled = gfFunctions.GFGetPVPEnabled()
 modimport "scripts/gf_strings.lua"
 modimport "scripts/gf_spell_list.lua"
 modimport "scripts/gf_effect_list.lua"
+modimport "scripts/gf_affix_list.lua"
 modimport "scripts/gf_actions.lua"
 modimport "scripts/gf_player_states_server.lua"
 modimport "scripts/gf_player_states_client.lua"
@@ -46,6 +53,27 @@ modimport "scripts/gf_widgets.lua"
 AddReplicableComponent("gfspellcaster")
 AddReplicableComponent("gfspellitem")
 AddReplicableComponent("gfeffectable")
+
+AddComponentPostInit("eater", function(self)
+    self.canDrink = false
+    self.onDrink = nil
+
+	function self:Drink(brew, feeder) 
+        if brew.components.gfdrinkable ~= nil then
+            brew.components.gfdrinkable:OnDrunk(self.inst)
+
+            if self.onDrink ~= nil then
+                self:onDrink(brew)
+            end
+
+            self.inst:PushEvent("ondrink", { brew = brew, feeder = feeder })
+        else
+            return false
+        end
+
+		return true
+	end
+end)
 
 AddComponentPostInit("combat", function(self)
     local _oldGetAttacked = self.GetAttacked
@@ -79,7 +107,6 @@ AddPrefabPostInit("world", function(world)
         if player == nil or player ~= GLOBAL.ThePlayer then return end
         print("adding gfrechargewatcher")
         player:AddComponent("gfrechargewatcher")
-        --player:PushEvent("gfsc_updaterechargesdirty")
     end)
 end)
 
@@ -90,6 +117,7 @@ local function PlayerFFCheck(self, target)
 end
 
 AddPlayerPostInit(function(player)
+    player:AddTag("gfcandrink")
     gfFunctions.GFMakePlayerCaster(player)
     if gfFunctions.GFGetIsMasterSim() then
         player.components.gfspellcaster:SetIsTargetFriendlyFn(PlayerFFCheck)
@@ -143,6 +171,14 @@ AddPrefabPostInit("pickaxe", function(inst)
     gfFunctions.GFMakeInventoryCastingItem(inst, {"equip_chainlightning", "equip_crushlightning"})
 end)
 
+AddPrefabPostInit("gf_lightning_spear", function(inst)
+    gfFunctions.GFMakeInventoryCastingItem(inst, {"equip_chainlightning", "equip_crushlightning"})
+end)
+
+AddPrefabPostInit("gf_tentacle_staff", function(inst)
+    gfFunctions.GFMakeInventoryCastingItem(inst, {"apply_lesser_rejuvenation", "apply_slow"})
+end)
+
 AddPrefabPostInit("hammer", function(inst)
     gfFunctions.GFMakeInventoryCastingItem(inst, "equip_groundslam")
 end)
@@ -166,11 +202,17 @@ AddPrefabPostInit("pigman", function(inst)
     if gfFunctions.GFGetIsMasterSim() then
         inst:AddComponent("gfeffectable")
         inst.components.gfspellcaster:SetIsTargetFriendlyFn(PigmanFFCheck)
-        inst.components.gfeffectable:ApplyEffect("affix_shaman")
+        --inst.components.gfeffectable:ApplyEffect("affix_shaman")
     end
 
     --
     --inst:AddComponent("gfrechargableitem")
+end)
+
+AddPrefabPostInit("spider", function(inst)
+    if gfFunctions.GFGetIsMasterSim() then
+        inst:AddComponent("gfeffectable")
+    end
 end)
 
 --[[ AddPrefabPostInitAny(function(inst) 

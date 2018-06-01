@@ -14,7 +14,7 @@ local function DoCast(self, doer, target, pos, spellData)
     --local impactPt = Vector3(x + math.cos(doerAngle) , y, z - math.sin(doerAngle) )
 
     --math for spell
-    local radius = self.range
+    local radius = params.radius
     local sector = params.sector
     local angleDelta = params.sector * 0.5 * DEGREES
     local halfpi = PI * 0.5
@@ -115,6 +115,7 @@ local Spell = Class(GFSpell, function(self, name)
     self.instant = false
     self.playerState = "gfcastwithstaff"
     self.pointer = nil
+    self.range = math.huge
 
     self.tags = {
         magic = true,
@@ -136,6 +137,7 @@ local Spell = Class(GFSpell, function(self, name)
     self.spellParams =
     {
         damage = 50,
+        radius = 12,
         sector = 90,
     }
     
