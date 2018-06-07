@@ -1,9 +1,11 @@
 local require = GLOBAL.require
+local TheInput = GLOBAL.TheInput
+local ACTIONS = GLOBAL.ACTIONS
 
 --icons for effects
 AddClassPostConstruct( "widgets/controls", function(self)
 	GLOBAL.TheWorld:ListenForEvent( "playerentered", function( inst, ownr )
-        if ownr == nil or ownr ~= GLOBAL.ThePlayer then return end
+        if ownr == nil or ownr ~= GLOBAL.GFGetPlayer() then return end
         --positive effects panel
 		local BuffPanel = require "widgets/buffpanel"
 		self.buffPanel = self.bottom_root:AddChild( BuffPanel(ownr) )
@@ -133,3 +135,61 @@ end
 
 --titles for effects and spells
 AddClassPostConstruct("widgets/hoverer", PostHoverer)
+
+local function PostControls(self)
+	local _oldOnUpdate = self.OnUpdate
+	
+	function self:OnUpdate(dt)
+		_oldOnUpdate(self, dt)
+		if TheInput:ControllerAttached() 
+			and self.owner.components.gfspellpointer 
+			and not (self.inv.open or self.crafttabs.controllercraftingopen) 
+			and self.owner:IsActionsVisible()
+		then
+			local controller_id = TheInput:GetControllerID()
+			if self.owner.components.playercontroller 
+				and self.owner.components.playercontroller.gfSpellPointerEnabled
+			then
+				local pointer = self.owner.components.gfspellpointer.pointer
+				if pointer == nil then 
+					self.groundactionhint:Hide()
+					self.playeractionhint:Hide()
+					return 
+				end
+				local actTarget = self.owner
+				local offset = -40
+
+				if not pointer.isArrow then
+					if pointer.pointer then
+						actTarget = pointer.pointer
+					elseif pointer.targetEntity ~= nil then
+						actTarget = pointer.targetEntity
+						offset = 0
+					end
+				end
+
+				local lmb = self.owner.components.playeractionpicker:GetLeftClickActions(pointer.entity, pointer.position)[1]
+				local rmb = self.owner.components.playeractionpicker:GetRightClickActions(pointer.entity, pointer.position)[1]
+				if lmb and lmb.action == ACTIONS.GFCASTSPELL then
+					self.playeractionhint:Show()
+					self.playeractionhint:SetTarget(actTarget)
+					self.playeractionhint:SetScreenOffset(0, offset)
+					self.playeractionhint.text:SetString(TheInput:GetLocalizedControl(controller_id, GLOBAL.CONTROL_CONTROLLER_ACTION) 
+						.. " "
+						.. (lmb and lmb:GetActionString() or "Cast"))
+				end
+
+				if lmb and rmb.action == ACTIONS.GFSTOPSPELLTARGETING then
+					self.groundactionhint:Show()
+					self.groundactionhint:SetTarget(self.owner)
+					self.groundactionhint.text:SetString(TheInput:GetLocalizedControl(controller_id, GLOBAL.CONTROL_CONTROLLER_ALTACTION) 
+						.. " "
+						.. (rmb and rmb:GetActionString() or "Cancel"))
+				end
+				
+			end
+		end
+	end
+end
+
+AddClassPostConstruct("widgets/controls", PostControls)

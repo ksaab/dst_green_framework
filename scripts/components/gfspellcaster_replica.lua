@@ -63,14 +63,14 @@ local GFSpellCaster = Class(function(self, inst)
 
     self._forceUpdateRecharges = net_event(inst.GUID, "gfsc_updaterechargesdirty")
 
-    if not TheWorld.ismastersim and inst == ThePlayer then 
+    if not TheWorld.ismastersim and inst == GFGetPlayer() then 
         inst:ListenForEvent("gfsc_setspells", SliceSpellString)
         --inst:ListenForEvent("gfsc_setactivespells", SliceActiveSpellString)
         inst:ListenForEvent("gfsc_setspellrechargesdirty", SetRechargesDirty)
         --inst:ListenForEvent("gfsc_updaterechargesdirty", function(inst) inst:PushEvent("gfforcerechargewatcher") end)
     end
 
-    if not GFGetDedicatedNet() and inst == ThePlayer then 
+    if not GFGetDedicatedNet() and inst == GFGetPlayer() then 
         --inst:PushEvent("gfsc_updaterechargesdirty")
     end
 end)

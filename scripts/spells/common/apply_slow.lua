@@ -10,7 +10,8 @@ local Spell = Class(SpellArchetype, function(self)
     SpellArchetype._ctor(self, "apply_slow") --inheritance
     self.title = "Slow"
     self.playerState = "gfcastwithstaff"
-    self.instant = false
+    self.instant = true
+    self.needTarget = false
 
     if not GFGetIsMasterSim() then return end
 

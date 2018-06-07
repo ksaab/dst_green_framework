@@ -27,9 +27,9 @@ local function SetItemSpellDirty(inst)
         GFDebugPrint(inst, self.itemSpell)
 
         --set pointer on server-side
-        if self.inst.components.gfspellpointer then
-            self.inst.components.gfspellpointer:SetPointer(spellList[spellName].pointer)
-        end
+        --if self.inst.components.gfspellpointer then
+        --    self.inst.components.gfspellpointer:SetPointer(spellList[spellName].pointer)
+        --end
     end
 end
 
@@ -92,9 +92,9 @@ function GFSpellItem:SetItemSpell(spellname)
     self._itemSpell:set(spellNamesToID[spellname])
 
     --set pointer on server-side
-    if self.inst.components.gfspellpointer then
-        self.inst.components.gfspellpointer:SetPointer(spellList[spellname].pointer)
-    end
+    --if self.inst.components.gfspellpointer then
+    --    self.inst.components.gfspellpointer:SetPointer(spellList[spellname].pointer)
+    --end
 end
 
 function GFSpellItem:SetSpellRecharges()

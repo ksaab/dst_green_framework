@@ -32,7 +32,7 @@ local function CheckSpells(inst)
 	if splcstr then
 		local spellData = splcstr:GetValidAiSpell()
 		if spellData then
-			local act = BufferedAction(inst, inst, ACTIONS.GFCASTPELL)
+			local act = BufferedAction(inst, inst, ACTIONS.GFCASTSPELL)
 			act.target = spellData.target
 			act.distance = spellData.distance or 12
 			act.pos = spellData.pos

@@ -3,7 +3,14 @@ local SpellArchetype = require("spells/archetypes/crushlightning_archetype")
 local Spell = Class(SpellArchetype, function(self)
     SpellArchetype._ctor(self, "equip_crushlightning") --inheritance
     self.title = STRINGS.GF.SPELLS.EQUIP_CRUSHLIGHTNING.TITLE
-    self.pointer = require("pointers/conus_lightning90")
+    self.pointer = 
+    {
+        isArrow = true,
+        pointerPrefab = "gf_reticule_crackles",
+        validColour = { 75 / 255, 200 / 255, 255 / 255, .3 },
+        range = self.range,
+        prefersTarget = false,
+    }
 
     if not GFGetIsMasterSim() then 
         return 

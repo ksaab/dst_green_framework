@@ -1,6 +1,6 @@
 local function ReticuleTargetFn()
     --Cast range is 8, leave room for error (6.5 lunge)
-    return Vector3(ThePlayer.entity:LocalToWorldSpace(6.5, 0, 0))
+    return Vector3(GFGetPlayer().entity:LocalToWorldSpace(6.5, 0, 0))
 end
 
 local function ReticuleMouseTargetFn(inst, mousepos)

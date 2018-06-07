@@ -65,11 +65,11 @@ local function SliceEffectsString(inst)
         if effect == nil then
             effect = effectList[effectName]()
             self.effects[effectName] = effect
-            if effect.hudonapplyfn  and inst == ThePlayer then
+            if effect.hudonapplyfn  and inst == GFGetPlayer() then
                 effect:hudonapplyfn(inst)
             end
         else
-            if effect.hudonrefreshfn and inst == ThePlayer --[[and effect.stacks ~= effectStacks]] then
+            if effect.hudonrefreshfn and inst == GFGetPlayer() --[[and effect.stacks ~= effectStacks]] then
                 effect:hudonrefreshfn(inst)
             end
         end
@@ -80,7 +80,7 @@ local function SliceEffectsString(inst)
     for effName, effect in pairs(self.effects) do
         --removing nonexistent effects
         if not newEffects[effName] then
-            if effect.hudonremovefn and inst == ThePlayer then
+            if effect.hudonremovefn and inst == GFGetPlayer() then
                 effect:hudonremovefn(inst)
             end
             self.effects[effName] = nil

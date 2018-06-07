@@ -33,7 +33,7 @@ end
 function GFSpellCaster:ForceUpdateReplicaHUD()
     if self.onClient then
         self.inst.replica.gfspellcaster._forceUpdateRecharges:push()
-        if not GFGetDedicatedNet() and self.inst == ThePlayer then
+        if not GFGetDedicatedNet() and self.inst == GFGetPlayer() then
             self.inst:PushEvent("gfforcerechargewatcher")
         end
     end
@@ -116,7 +116,7 @@ function GFSpellCaster:CastSpell(spellname, target, pos, item, noRecharge)
 
     if self.onClient then
         self.inst.replica.gfspellcaster._forceUpdateRecharges:push()
-        if GFGetDedicatedNet() and self.inst == ThePlayer then
+        if GFGetDedicatedNet() and self.inst == GFGetPlayer() then
             self.inst:PushEvent("gfforcerechargewatcher")
         end
     end

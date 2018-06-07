@@ -224,7 +224,7 @@ function GFEffectable:ApplyEffect(effectName, effectParam)
             self.inst.replica.gfeffectable:UpdateEffectsList()
 
             --update user interface for host, clients call this from the replica 
-            if self.inst == ThePlayer and effect.hudonrefreshfn then
+            if self.inst == GFGetPlayer() and effect.hudonrefreshfn then
                 effect:hudonrefreshfn(self.inst)
             end
 
@@ -269,7 +269,7 @@ function GFEffectable:ApplyEffect(effectName, effectParam)
             end
 
             --update user interface for host, clients call this from the replica 
-            if self.inst == ThePlayer and effect.hudonapplyfn then
+            if self.inst == GFGetPlayer() and effect.hudonapplyfn then
                 effect:hudonapplyfn(self.inst)
             end
 
@@ -313,7 +313,7 @@ function GFEffectable:RemoveEffect(effectName, reason)
     self.inst.replica.gfeffectable:UpdateEffectsList()
 
     --update user interface for host, clients call this from the replica 
-    if self.inst == ThePlayer and effect.hudonremovefn then
+    if self.inst == GFGetPlayer() and effect.hudonremovefn then
         effect:hudonremovefn(self.inst)
     end
 

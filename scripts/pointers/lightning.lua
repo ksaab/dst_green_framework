@@ -1,5 +1,5 @@
 local function ReticuleTargetFn()
-    local player = ThePlayer
+    local player = GFGetPlayer()
     local ground = TheWorld.Map
     local pos = Vector3()
     for r = 8, 0, -.25 do

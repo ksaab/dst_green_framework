@@ -28,4 +28,4 @@ local pigmanCastSpell = State{
 }
 
 AddStategraphState("pig", pigmanCastSpell)
-AddStategraphActionHandler("pig", ActionHandler(ACTIONS.GFCASTPELL, "castspell"))
+AddStategraphActionHandler("pig", ActionHandler(ACTIONS.GFCASTSPELL, "castspell"))

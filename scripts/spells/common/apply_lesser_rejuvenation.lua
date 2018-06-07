@@ -12,6 +12,7 @@ local Spell = Class(SpellArchetype, function(self)
     self.title = "Lesser rejuvenation"
     self.playerState = "gfcastwithstaff"
     self.pointer = require("pointers/nature")
+    self.instant = true
 
     if not GFGetIsMasterSim() then return end
 

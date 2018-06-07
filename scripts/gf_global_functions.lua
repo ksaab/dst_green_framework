@@ -37,6 +37,15 @@ function GFGetWorld()
     return TheWorld and TheWorld or GetWorld()
 end
 
+function GFGetPlayer()
+    --TheWorld is not declared in single player DS
+    if TheWorld then
+        return ThePlayer or nil
+    else
+        return GetPlayer()
+    end
+end
+
 function GFDebugPrint(...)
     if GFDev then
         print(...)
@@ -71,6 +80,7 @@ function GFMakePlayerCaster(inst, allSpells)
     if not inst:HasTag("gfmodified") then
         inst:AddTag("gfmodified")
         inst:AddTag("gfscclientside")
+        --inst:AddComponent("gfspellpointer")
         if GFGetIsMasterSim() then
             inst:AddComponent("gfspellcaster")
             if allSpells ~= nil then
@@ -95,7 +105,6 @@ function GFMakeInventoryCastingItem(inst, allSpells)
         inst:AddTag("gfmodified")
         inst:AddTag("gfscclientside")
         inst:AddTag("rechargeable")
-        inst:AddComponent("gfspellpointer")
         if GFGetIsMasterSim() then
             inst:AddComponent("gfspellitem")
             if allSpells ~= nil then
@@ -254,6 +263,32 @@ function GFPumpkinTest(entity)
     end
 end
 
+--GFSpellTest("equip_crushlightning") GFSpellTest("equip_groundslam")
+--GFSpellTest("equip_chainlightning") GFSpellTest("equip_groundslam")
+function GFSpellTest(spellName, player) 
+    player = player or AllPlayers[1]
+    if player and spellName and GFSpellList[spellName] and player.components.gfspellpointer then
+        print("spell", spellName)
+        local spell = GFSpellList[spellName]
+        if spell.instant and player.components.locomotor then
+            local x, y, z = player.Transform:GetWorldPosition()
+            local action = BufferedAction(player, player, ACTIONS.GFCASTSPELL, nil, Vector3(x, y, z))
+            player.components.gfspellpointer.current = spellName
+            player.components.locomotor:PushAction(action, true)
+        else
+            print("enabling")
+            player.components.gfspellpointer:Enable(spellName)
+        end
+    end
+    --local x, y, z = player.Transform:GetWorldPosition()
+    --local pt = GFGetValidSpawnPosition(x, y, z, 10)
+    --[[ local action = BufferedAction(player, nil, ACTIONS.GFCASTSPELL, nil, pt)
+    action.spell = "equip_crushlightning"]]
+    --local action = BufferedAction(player, nil, ACTIONS.GFSTARTSPELLTARGETING, nil, Vector3(0, 0, 0))
+    
+    --player.components.locomotor:PushAction(action, true, true)
+end
+
 return
 {
     GFSoftColorChange = GFSoftColorChange,
@@ -273,4 +308,6 @@ return
     GFPumpkinTest = GFPumpkinTest,
     GFAddCustomEffect = GFAddCustomEffect,
     GFAddCustomSpell = GFAddCustomSpell,
+    GFGetPlayer =  GFGetPlayer,
+    GFSpellTest = GFSpellTest,
 }

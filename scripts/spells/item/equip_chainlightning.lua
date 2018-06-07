@@ -3,6 +3,12 @@ local SpellArchetype = require("spells/archetypes/chainlightning_archetype")
 local Spell = Class(SpellArchetype, function(self)
     SpellArchetype._ctor(self, "equip_chainlightning") --inheritance
     self.title = STRINGS.GF.SPELLS.EQUIP_CHAINLIGHTNING.TITLE
+    self.pointer = 
+    {
+        pointerPrefab = "gf_reticule_nature_triangle",
+        validColour = { 1, 1, 1, .3 },
+        range = self.range,
+    }
 
     if not GFGetIsMasterSim() then 
         return 
