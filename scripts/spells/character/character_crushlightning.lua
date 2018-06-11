@@ -1,15 +1,16 @@
 local SpellArchetype = require("spells/archetypes/crushlightning_archetype")
 
 local Spell = Class(SpellArchetype, function(self)
-    SpellArchetype._ctor(self, "equip_crushlightning") --inheritance
+    SpellArchetype._ctor(self, "character_crushlightning") --inheritance
     self.title = STRINGS.GF.SPELLS.EQUIP_CRUSHLIGHTNING.TITLE
     self.iconAtlas = "images/gficons.xml"
     self.icon = "crushlightning.tex"
+    self.playerState = "gfcustomcast"
     self.pointer = 
     {
         isArrow = true,
         pointerPrefab = "gf_reticule_crackles",
-        validColour = { 75 / 255, 200 / 255, 255 / 255, .3 },
+        validColour = { 230 / 255, 200 / 255, 75 / 255, .3 },
         range = self.range,
         prefersTarget = false,
     }
@@ -18,15 +19,15 @@ local Spell = Class(SpellArchetype, function(self)
         return 
     end
 
-    self.itemRecharge = 10
-    self.doerRecharge = 5
+    self.itemRecharge = 0
+    self.doerRecharge = 10
 
     self.spellParams.damage = 50
-    self.spellParams.sector = 120
+    self.spellParams.sector = 60
     
     --visual
-    --self.spellVisuals.lightningDrawerColour = 5 --lightning colour
-    self.spellVisuals.requiredEffects = 4 --num of lightnings 
+    self.spellVisuals.lightningDrawerColour = 2 --lightning colour
+    self.spellVisuals.requiredEffects = 3 --num of lightnings 
     self.spellVisuals.castSound = "dontstarve/common/whip_small"
     self.spellVisuals.impactFx = "shock_fx"
 

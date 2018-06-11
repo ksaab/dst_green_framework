@@ -6,21 +6,23 @@ end
 
 local GFSpellCaster = Class(function(self, inst)
     self.inst = inst
-    self.spells = {} --full spell list
-    --self.activeSpells = {}
+    --full spell list, all non-passive spells will be added to the player's panel
+    --and will be checked with creatures brain (if creature is setted as caster)
+    self.spells = {} 
 
     self.spellsReadyTime = {}
     self.spellsRechargeDuration = {}
 
-    self.onClient = inst:HasTag("gfscclientside")
+    self.onClient = inst:HasTag("gfscclientside") --don't need to network things if the inst isn't a player
 
     self.baseSpellPower = 1
     self.baseRecharge = 1
 
-    self.flags = {}
+    self.modifiers = {} --has no handle for now, but can be used to modify spell power
     self.friendlyFireCheckFn = nil
 
-    self.rechargeExternal = SourceModifierList(self.inst)
+    --set up custom sp and recharge modifiers
+    self.rechargeExternal = SourceModifierList(self.inst) 
     self.spellPowerExternal = SourceModifierList(self.inst)
 end)
 
@@ -30,6 +32,7 @@ function GFSpellCaster:ForceUpdateReplicaSpells()
     end
 end
 
+--this function updates HUD when the weapon spell is changed
 function GFSpellCaster:ForceUpdateReplicaHUD()
     if self.onClient then
         self.inst.replica.gfspellcaster._forceUpdateRecharges:push()
@@ -39,9 +42,11 @@ function GFSpellCaster:ForceUpdateReplicaHUD()
     end
 end
 
+--use this function to add spells to the entity
+--AddSpell("spellname") or AddSpell({"spellname1, spellname2, ..."})
 function GFSpellCaster:AddSpell(spellStr)
     if spellStr == nil then 
-        print("GFSpellCaster: spell string or array is not valid")
+        print("GFSpellCaster: spell params are nil...")
         return false 
     end
 
@@ -70,6 +75,10 @@ function GFSpellCaster:AddSpell(spellStr)
     return true
 end
 
+--use this function to remove spells from the entity
+--nonUpdateReplica should be setted if couple of spell are removed
+--to prevent multiple replica updates (but the replica need to be updated on the last removed spell or 
+--with the ForceUpdateReplicaSpells function)
 function GFSpellCaster:RemoveSpell(spellName, nonUpdateReplica)
     if spellName then
         self.spells[spellName] = nil
@@ -125,6 +134,8 @@ function GFSpellCaster:CastSpell(spellname, target, pos, item, noRecharge)
     return true
 end
 
+--the main problem for spells is to find a correct target to prevent injuring a friend
+--(ex: pigman-shaman shouldn't hit other pigman or player-leader with the lightning spell)
 function GFSpellCaster:SetIsTargetFriendlyFn(fn)
     self.isTargetFriendlyfn = fn
 end
@@ -135,6 +146,12 @@ function GFSpellCaster:IsTargetFriendly(target)
     end
 
     return false
+end
+
+--this fn checks casts from the player's spell panel
+function GFSpellCaster:IsSpellValidForCaster(spellName)
+    return self.spells[spellName] ~= nil
+        and self:CanCastSpell(spellName)
 end
 
 function GFSpellCaster:CanCastSpell(spellname)
@@ -162,10 +179,12 @@ function GFSpellCaster:GetSpellCount()
     return GetTableSize(self.spells)
 end
 
+--you can get character's spell power to modify a damage for your spell 
 function GFSpellCaster:GetSpellPower()
     return math.max(0, self.baseSpellPower * self.spellPowerExternal:Get())
 end
 
+--pick a spell for creatures 
 function GFSpellCaster:GetValidAiSpell()
     for spellName, spell in pairs(self.spells) do
         if self:CanCastSpell(spellName) then
@@ -177,7 +196,9 @@ function GFSpellCaster:GetValidAiSpell()
         end
     end
 
-    if self.inst.components.inventory then
+    --creatures usually doesn't carry a weapon, but this allow to check it
+    --not used now... commented
+    --[[if self.inst.components.inventory then
         local item = self.inst.components.inventory:GetEquippedItem(EQUIPSLOTS.HANDS)
         if item and item.components.gfspellitem then
             itemSpell = item.components.gfspellitem:GetItemSpellName()
@@ -190,12 +211,32 @@ function GFSpellCaster:GetValidAiSpell()
                 end
             end
         end
-    end
+    end]]
 
     return false
 end
 
-function GFSpellCaster:OnUpdate(dt)
+function GFSpellCaster:HandleIconClick(spellName)
+    local inst = self.inst
+    if spellName 
+        and spellList[spellName] 
+        and not (inst:HasTag("playerghost") or inst:HasTag("corpse"))
+        and self:IsSpellValidForCaster(spellName)
+    then
+        if spellList[spellName].instant then
+            local act = BufferedAction(inst, inst, ACTIONS.GFCASTSPELL)
+            act.spell = spellName
+            inst:ClearBufferedAction()
+            --inst:PushBufferedAction(act)
+            inst.components.locomotor:PushAction(act, true, true)
+        elseif inst.components.gfspellpointer then
+            inst.components.gfspellpointer:Enable(spellName)
+        end
+    end
+end
+
+--don't need to update the component now...
+--[[ function GFSpellCaster:OnUpdate(dt)
     local str = {}
     for k, v in pairs(self.spellsReadyTime) do
         local cooldown = v - GetTime()
@@ -204,16 +245,16 @@ function GFSpellCaster:OnUpdate(dt)
         end
     end
     if #str > 0 then
-        GFDebugPrint(table.concat(str))
+        print(table.concat(str))
     end
-end
+end ]]
 
 function GFSpellCaster:OnSave(data)
     local savetable = {}
     local currTime = GetTime()
     for spellName, val in pairs(self.spellsReadyTime) do
         local rech = val - currTime
-        if rech > 10 then
+        if rech > 30 then --don't need to save short coodlwns
             savetable[spellName] = {r = rech, t = self.spellsRechargeDuration[spellName]}
         end
     end
@@ -238,11 +279,11 @@ end
 
 function GFSpellCaster:GetDebugString()
     local str = {}
+    local currTime = GetTime()
     for k, v in pairs(self.spells) do
-        table.insert(str, k)
-    end
-    if self.itemSpell ~= nil then
-        table.insert(str, ("active:%s"):format(self.itemSpell))
+        local cd = self.spellsReadyTime[k] ~= nil and self.spellsReadyTime[k] - currTime or -1
+        cd = cd > 0 and string.format("%.2f/%.2f", cd, self.spellsRechargeDuration[k]) or "ready"
+        table.insert(str, string.format("[%s %s]", k, cd))
     end
 
     return #str > 0 and table.concat(str, ", ") or "none"

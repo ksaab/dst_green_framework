@@ -120,7 +120,7 @@ function GFSpellItem:RemoveSpell(spellName, nonUpdateReplica)
     end
 end
 
-function GFSpellItem:SetItemSpell(spellname, removeOld)
+function GFSpellItem:SetItemSpell(spellname)
     if not GetSpell(spellname) then
         print(("GFSpellItem: spell %s is not valid"):format(spellname or "none"))
         return

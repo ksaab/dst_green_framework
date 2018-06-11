@@ -8,9 +8,14 @@ local function SliceSpellString(inst)
     local spells = self._spellString:value():split(';')
     self.spells = {}
     for _, v in pairs(spells) do
-        spellName = spellIDToNames[tonumber(v)]
+        local spellName = spellIDToNames[tonumber(v)]
         self.spells[spellName] = spellList[spellName]
     end
+    for k, v in pairs(self.spells) do
+        print(k, v)
+    end
+
+    self.inst:PushEvent("gfsc_updatespelllist")
 end
 
 --local function SliceActiveSpellString(inst)
@@ -80,11 +85,14 @@ function GFSpellCaster:SetSpells()
 
     local splstr = {}
     self._spellString:set_local("")
+    self.spells = {}
     for k, v in pairs(self.inst.components.gfspellcaster.spells) do
         self.spells[k] = spellList[k]
         table.insert(splstr, spellNamesToID[k])
     end
     self._spellString:set(table.concat(splstr, ';'))
+
+    self.inst:PushEvent("gfsc_updatespelllist")
 end
 
 function GFSpellCaster:SetSpellRecharges()
@@ -100,6 +108,11 @@ function GFSpellCaster:SetSpellRecharges()
         table.insert(splstr, ("%s,%.2f,%.2f"):format(spellNamesToID[k], v - GetTime(), totals[k]))
     end
     self._spellRecharges:set(table.concat(splstr, ';'))
+end
+
+function GFSpellCaster:IsSpellValidForCaster(spellName)
+    return self.spells[spellName] ~= nil
+        and self:CanCastSpell(spellName)
 end
 
 function GFSpellCaster:CanCastSpell(spellname)
@@ -125,6 +138,23 @@ end
 
 function GFSpellCaster:GetSpellCount()
     return GetTableSize(self.spells)
+end
+
+function GFSpellCaster:HandleIconClick(spellName)
+    local inst = self.inst
+    if spellName 
+        and spellList[spellName] 
+        and not (inst:HasTag("playerghost") or inst:HasTag("corpse"))
+        and self:IsSpellValidForCaster(spellName)
+    then
+        SendModRPCToServer(MOD_RPC["Green Framework"]["GFCLICKSPELLBUTTON"], spellName)
+        --[[ if spellList[spellName].instant then
+            local act = BufferedAction(inst, inst, ACTIONS.GFCASTSPELL)
+            act.spell = spellName
+            inst:ClearBufferedAction()
+            inst.components.locomotor:PreviewAction(act, true, true)
+        end ]]
+    end
 end
 
 

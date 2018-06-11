@@ -13,10 +13,24 @@ local function DestroyPointer(self)
     inst:DoTaskInTime(0.3, inst.Remove)
 end
 
+local defaults = 
+{
+    pointerPrefab = "reticuleaoe",
+    isArrow = false,
+    needTarget = false,
+    prefersTarget = true,
+    range = 8,
+    maxRange = 8,
+    validColour = { 204 / 255, 131 / 255, 57 / 255, .3 },
+    invalidColour = { 1, 0, 0, .3 },
+    noTargetColour = { 1, 0, 0, .3 },
+}
+
 local GFPointer = Class(function(self, inst)
     self.inst = inst
     self.map = TheWorld.Map
     self.pointer = nil
+    self.pvpenabled = GFGetPVPEnabled()
     
     self.targetPosition = nil
     self.targetEntity = nil
@@ -25,14 +39,14 @@ local GFPointer = Class(function(self, inst)
 
     self.range = 8
     self.maxRange = 8
-
-    self.pvpenabled = GFGetPVPEnabled()
+    
     self.needTarget = false
     self.isArrow = false 
     
-    self.pointerPrefab = "reticuleline" --"gf_reticule_nature_triangle"
+    self.pointerPrefab = "reticuleaoe" --"gf_reticule_nature_triangle"
     self.validColour = { 204 / 255, 131 / 255, 57 / 255, .3 }
     self.invalidColour = { 1, 0, 0, .3 }
+    self.noTargetColour = self.invalidColour
 
     self.smoothing = 6.66
 
@@ -49,12 +63,17 @@ function GFPointer:Create(pointer)
     end
 
     if pointer ~= nil then
+        --reset
+        for k, v in pairs(defaults) do
+            self[k] = v
+        end
         for k, v in pairs(pointer) do
             self[k] = v
-            self.pointer = SpawnPrefab(self.pointerPrefab)
         end
     end
-    
+
+    self.pointer = SpawnPrefab(self.pointerPrefab)
+    print("creating a pointer", self.pointer)
     TheCamera:AddListener(self, self._oncameraupdate)
 
     if self.pointer == nil then
@@ -71,6 +90,7 @@ end
 
 function GFPointer:Destroy()
     if self.pointer ~= nil then
+        print("removing a pointer", self.pointer)
         DestroyPointer(self)
         --self.pointer:Remove()
         self.pointer = nil
@@ -94,7 +114,7 @@ end
 
 function GFPointer:UpdateColour()
     if self.positionValid then
-        local colour = self.validColour
+        local colour = (self.needTarget and not self.targetEntity) and self.noTargetColour or self.validColour 
         self.pointer.AnimState:SetMultColour(colour[1], colour[2], colour[3], colour[4])
     else
         local colour = self.invalidColour

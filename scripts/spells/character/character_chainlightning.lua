@@ -1,7 +1,7 @@
 local SpellArchetype = require("spells/archetypes/chainlightning_archetype")
 
 local Spell = Class(SpellArchetype, function(self)
-    SpellArchetype._ctor(self, "equip_chainlightning") --inheritance
+    SpellArchetype._ctor(self, "character_chainlightning") --inheritance
     self.title = STRINGS.GF.SPELLS.EQUIP_CHAINLIGHTNING.TITLE
     self.iconAtlas = "images/gficons.xml"
     self.icon = "chainlightning.tex"
@@ -9,7 +9,7 @@ local Spell = Class(SpellArchetype, function(self)
     self.pointer = 
     {
         pointerPrefab = "gf_reticule_nature_triangle",
-        validColour = { 1, 1, 1, .3 },
+        validColour = { 230 / 255, 200 / 255, 75 / 255, .3 },
         range = self.range,
     }
 
@@ -17,16 +17,18 @@ local Spell = Class(SpellArchetype, function(self)
         return 
     end
 
-    self.itemRecharge = 2
-    self.doerRecharge = 2
-    
+    self.itemRecharge = 0
+    self.doerRecharge = 10
+
+    self.castTime = 1.8
+
     --params
     self.spellParams.burnChance = 0
     self.spellParams.damage = 35
-    self.spellParams.jumpCount = 2
+    self.spellParams.jumpCount = 4
     
     --visual
-    --self.spellVisuals.lightningDrawerColour = 1
+    self.spellVisuals.lightningDrawerColour = 2
     self.spellVisuals.impactFx = "shock_fx"
     self.spellVisuals.impactSound = nil
 

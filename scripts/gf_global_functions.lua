@@ -53,7 +53,7 @@ function GFDebugPrint(...)
 end
 
 function GFAddCustomSpell(name, route, id)
-    id = (id and type(id) == "number") and id or #GFSpellIDToName
+    id = (id and type(id) == "number") and id or #GFSpellIDToName + 1
     if GFSpellIDToName[id] ~= nil then
         error(("Spell with id %i already exists"):format(id), 3)
     end
@@ -65,7 +65,7 @@ function GFAddCustomSpell(name, route, id)
 end
 
 function GFAddCustomEffect(name, route, id)
-    id = (id and type(id) == "number") and id or #GFEffectIDToName
+    id = (id and type(id) == "number") and id or #GFEffectIDToName + 1
     if GFEffectIDToName[id] ~= nil then
         error(("Effect with id %i already exists"):format(id), 3)
     end
@@ -76,33 +76,57 @@ function GFAddCustomEffect(name, route, id)
     GFEffectIDToName[id] = name
 end
 
+function GFSetUpCharacterSpells(prefab, spells)
+    if prefab == nil or #spells == 0 then return end
+    local GfCharacterSpells = _G.GfCharacterSpells
+    if GfCharacterSpells[prefab] == nil then
+        GfCharacterSpells[prefab] = {}
+    end
+
+    if type(spells) == "table" then
+        for k, spellName in pairs(spells) do
+            table.insert(GfCharacterSpells[prefab], spellName)
+        end
+    else
+        table.insert(GfCharacterSpells[prefab], spells)
+    end
+
+    print(("spells setted for %s"):format(prefab))
+end
+
 function GFMakePlayerCaster(inst, allSpells)
-    if not inst:HasTag("gfmodified") then
-        inst:AddTag("gfmodified")
+    if not inst.gfmodified then
+        inst.gfmodified = true
         inst:AddTag("gfscclientside")
-        --inst:AddComponent("gfspellpointer")
         if GFGetIsMasterSim() then
             inst:AddComponent("gfspellcaster")
+            if GfCharacterSpells[inst.prefab] ~= nil then
+                inst.components.gfspellcaster:AddSpell(GfCharacterSpells[inst.prefab])
+            end
             if allSpells ~= nil then
                 inst.components.gfspellcaster:AddSpell(allSpells)
             end
         end
+    else
+        GFDebugPrint(string.format("GF: %s was already initiated ", tostring(inst)))
     end
 end
 
 function GFMakeCaster(inst, allSpells)
-    if GFGetIsMasterSim() and not inst:HasTag("gfmodified") then
-        inst:AddTag("gfmodified")
+    if GFGetIsMasterSim() and not inst.gfmodified then
+        inst.gfmodified = true
         inst:AddComponent("gfspellcaster")
         if allSpells ~= nil then
             inst.components.gfspellcaster:AddSpell(allSpells)
         end
+    else
+        GFDebugPrint(string.format("GF: %s was already initiated ", tostring(inst)))
     end
 end
 
 function GFMakeInventoryCastingItem(inst, allSpells)
-    if not inst:HasTag("gfmodified") then
-        inst:AddTag("gfmodified")
+    if not inst.gfmodified then
+        inst.gfmodified = true
         inst:AddTag("gfscclientside")
         inst:AddTag("rechargeable")
         if GFGetIsMasterSim() then
@@ -116,6 +140,8 @@ function GFMakeInventoryCastingItem(inst, allSpells)
                 end
             end
         end
+    else
+        GFDebugPrint(string.format("GF: %s was already initiated ", tostring(inst)))
     end
 end
 
@@ -304,6 +330,7 @@ return
     GFGetPVPEnabled = GFGetPVPEnabled,
     GFMakeInventoryCastingItem = GFMakeInventoryCastingItem,
     GFMakeCaster = GFMakeCaster,
+    GFSetUpCharacterSpells = GFSetUpCharacterSpells,
     GFMakePlayerCaster = GFMakePlayerCaster,
     GFPumpkinTest = GFPumpkinTest,
     GFAddCustomEffect = GFAddCustomEffect,

@@ -15,6 +15,14 @@ local BufferedAction = GLOBAL.BufferedAction
 
 local spellList = GLOBAL.GFSpellList
 
+local function GetSpellCastTime(spellName)
+	if spellName and spellList[spellName] then 
+		return spellList[spellName].castTime or 0
+	end
+
+	return 0
+end
+
 local function ToggleOffPhysics(inst)
     inst.sg.statemem.isphysicstoggle = true
     inst.Physics:ClearCollisionMask()
@@ -91,6 +99,92 @@ local gfdodrink = State{
 		EventHandler("animover", function(inst)
 			inst.sg:GoToState("idle")
 		end),
+
+		EventHandler("unequip", function(inst) 
+			inst.sg:GoToState("idle") 
+		end),
+	},
+}
+
+--custom anim cast
+local gfcustomcast = State
+{
+	name = "gfcustomcast",
+	tags = { "doing", "casting", "busy", "nodangle" },
+
+	onenter = function(inst)
+		inst.components.locomotor:Stop()
+
+		local act = inst:GetBufferedAction()
+		if act and act.spell then
+			local castTime = math.max(0.75, GetSpellCastTime(act.spell))
+			if act.pos then
+				inst:ForceFacePoint(act.pos.x, 0, act.pos.z)
+			end
+			
+			inst.AnimState:PlayAnimation("gf_fast_cast_pre")
+			inst.AnimState:PushAnimation("gf_fast_cast_loop", true)
+
+			inst.sg:SetTimeout(castTime)
+			return
+		end
+
+		inst.sg:GoToState("idle")
+	end,
+
+	ontimeout = function(inst)
+		inst:PerformBufferedAction()
+		inst.AnimState:PlayAnimation("gf_fast_cast_pst")
+	end,
+
+	events =
+	{
+		EventHandler("animqueueover", function(inst)
+			if inst.AnimState:AnimDone() then
+				inst.sg:GoToState("idle")
+			end
+		end),
+	},
+}
+
+--cast with hand
+local gfchannelcast = State
+{
+	name = "gfchannelcast",
+	tags = { "doing", "casting", "busy", "nodangle" },
+
+	onenter = function(inst)
+		inst.components.locomotor:Stop()
+
+		local act = inst:GetBufferedAction()
+		if act and act.spell then
+			local castTime = math.max(1, GetSpellCastTime(act.spell))
+			if act.pos then
+				inst:ForceFacePoint(act.pos.x, 0, act.pos.z)
+			end
+			
+			inst.AnimState:PlayAnimation("channel_pre")
+			inst.AnimState:PushAnimation("channel_loop", true)
+
+			inst.sg:SetTimeout(castTime)
+			return
+		end
+
+		inst.sg:GoToState("idle")
+	end,
+
+	ontimeout = function(inst)
+		inst:PerformBufferedAction()
+		inst.AnimState:PlayAnimation("channel_pst")
+	end,
+
+	events =
+	{
+		EventHandler("animqueueover", function(inst)
+			if inst.AnimState:AnimDone() then
+				inst.sg:GoToState("idle")
+			end
+		end),
 	},
 }
 
@@ -101,20 +195,39 @@ local gfcastwithstaff = State{
 
 	onenter = function(inst)
 		inst.components.locomotor:Stop()
-		local item = inst.replica.inventory:GetEquippedItem(EQUIPSLOTS.HANDS)
 
-        inst.AnimState:PlayAnimation("staff_pre")
-        inst.AnimState:PushAnimation("staff", false)
+		local act = inst:GetBufferedAction()
+		if act and act.spell then
+			if act.pos then
+				inst:ForceFacePoint(act.pos.x, 0, act.pos.z)
+			end
+			
+			inst.AnimState:PlayAnimation("staff_pre")
+			inst.AnimState:PushAnimation("staff", false)
+			
+			local visuals = spellList[act.spell].stateVisuals
+			if visuals ~= nil then
+				if visuals.sound ~= nil then
+					inst.SoundEmitter:PlaySound(visuals.sound)
+				end
+				if visuals.lightColour ~= nil then
+					inst.sg.statemem.stafflight = SpawnPrefab("staff_castinglight")
+        			inst.sg.statemem.stafflight.Transform:SetPosition(inst.Transform:GetWorldPosition())
+        			inst.sg.statemem.stafflight:SetUp(visuals.lightColour, 1.9, .33)
+				end
+				if visuals.fxColour ~= nil then
+					inst.sg.statemem.stafffx = SpawnPrefab(inst.components.rider:IsRiding() and "staffcastfx_mount" or "staffcastfx")
+					inst.sg.statemem.stafffx.entity:SetParent(inst.entity)
+					inst.sg.statemem.stafffx.Transform:SetRotation(inst.Transform:GetRotation())
+					inst.sg.statemem.stafffx:SetUp(visuals.fxColour)
+				end
+			end
 
-        inst.SoundEmitter:PlaySound("dontstarve/common/rebirth_amulet_raise")
-        inst.sg.statemem.stafflight = SpawnPrefab("staff_castinglight")
-        inst.sg.statemem.stafflight.Transform:SetPosition(inst.Transform:GetWorldPosition())
-        inst.sg.statemem.stafflight:SetUp({ 1, 1, 1 }, 1.9, .33)
+			inst.sg:SetTimeout(castTime)
+			return
+		end
 
-        inst.sg.statemem.stafffx = SpawnPrefab(inst.components.rider:IsRiding() and "staffcastfx_mount" or "staffcastfx")
-        inst.sg.statemem.stafffx.entity:SetParent(inst.entity)
-        inst.sg.statemem.stafffx.Transform:SetRotation(inst.Transform:GetRotation())
-        inst.sg.statemem.stafffx:SetUp({ 1, 1, 1 })
+		inst.sg:GoToState("idle")
 	end,
 
 	onexit = function(inst) 
@@ -155,8 +268,20 @@ local gfgroundslam = State{
 	onenter = function(inst)
 		inst.components.locomotor:Stop()
 
-        inst.AnimState:PlayAnimation("atk_leap_pre")
-        inst.AnimState:PushAnimation("atk_leap", false)
+		local act = inst:GetBufferedAction()
+		if act and act.spell then
+			if act.pos then
+				inst:ForceFacePoint(act.pos.x, 0, act.pos.z)
+			end
+			
+			inst.AnimState:PlayAnimation("atk_leap_pre")
+        	inst.AnimState:PushAnimation("atk_leap", false)
+
+			inst.sg:SetTimeout(castTime)
+			return
+		end
+
+		inst.sg:GoToState("idle")
 	end,
 
 	onexit = function(inst) 
@@ -189,7 +314,8 @@ local gfgroundslam = State{
 AddStategraphState("wilson", gfdodrink)
 AddStategraphState("wilson", gfcastwithstaff)
 AddStategraphState("wilson", gfgroundslam)
-
+AddStategraphState("wilson", gfchannelcast)
+AddStategraphState("wilson", gfcustomcast)
 
 --Add events--------------
 AddStategraphEvent("wilson", EventHandler("gfforcemove", function(inst, data)

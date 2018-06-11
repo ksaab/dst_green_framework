@@ -9,6 +9,9 @@ local Spell = Class(function(self, name)
     --both side
     self.name = name --spell name
     self.title = STRINGS.GF.SPELLS.INVALID_TITLE --a title for the hoverer widget
+    self.description = STRINGS.GF.SPELLS.INVALID_TITLE
+    self.iconAtals = nil
+    self.icon = nil
 
     self.range = 12 --cast range
     self.instant = false --can be casted by one right-click or not
@@ -16,7 +19,7 @@ local Spell = Class(function(self, name)
     self.passive = false --if true, spell can not be casted by players or creatures, but can be casted with gfspellcaster:CastSpell()
 
     self.pointer = nil --spell pointer
-    self.playerState = "gfcastwithstaff" --player goes to this state when he try to cast the spell
+    self.playerState = "gfcustomcast" --player goes to this state when he try to cast the spell
 
     --spell checks, work for players only, AI doesn't check this
     self.spellCheckFn = nil --custon check for spells (check for the day time or caster's sanity pool)
@@ -33,6 +36,7 @@ local Spell = Class(function(self, name)
     --server side
     self.spellParams = {}
     self.spellVisuals = {}
+    self.stateVisuals = {}
     
     self.itemRecharge = 0 --can't cast the spell with item
     self.doerRecharge = 0 --caster can't cast the spell (even if he equips an another item with the same spell)

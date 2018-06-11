@@ -1,5 +1,18 @@
 local GFSpell = require("gf_spell")
 
+--pointer params:
+--[[-------------------------
+pointerPrefab = "reticuleaoe", --prefab
+isArrow = false, --if false follows the cursor, if true is bound to the caster and turns to the cursor
+needTarget = false, --set to true if the spell that requires a target
+prefersTarget = true, --if true targets entity under cursor (mouse) or search for a target in front of the player (gamepad)
+range = 8, --range for a gamepad, do not change it without need
+maxRange = 8, --range for a gamepad, do not change it without need
+validColour = { 0, 1, 0.3, 0.3 },
+invalidColour = { 1, 0, 0, 0.3 },
+noTargetColour = { 1, 0, 0, 0.3 },
+]]---------------------------
+
 local function EmptySpell(self)
     print(("Spell: spell %s has no cast function..."):format(self.name))
 end
@@ -9,9 +22,12 @@ local Spell = Class(GFSpell, function(self)
                                             --real spell name will math the file name
     --both side
     self.title = STRINGS.GF.SPELLS.INVALID_TITLE --a title for the hoverer widget
+    self.description = STRINGS.GF.SPELLS.INVALID_TITLE
+    self.iconAtals = nil
+    self.icon = nil
 
     self.range = 12 --cast range
-    self.instant = true --can be casted by one right-click or not
+    self.instant = true --can be casted by one click or not
     self.passive = false --if true, spell can not be casted by players or creatures, but can be casted with gfspellcaster:CastSpell()
 
     self.pointer = nil --spell pointer

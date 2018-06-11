@@ -1,6 +1,7 @@
 local require = GLOBAL.require
 local TheInput = GLOBAL.TheInput
 local ACTIONS = GLOBAL.ACTIONS
+local spellList = GLOBAL.GFSpellList
 
 --icons for effects
 AddClassPostConstruct( "widgets/controls", function(self)
@@ -13,8 +14,10 @@ AddClassPostConstruct( "widgets/controls", function(self)
         --negative effects panel
         local DebuffPanel = require "widgets/debuffpanel"
 		self.debuffPanel = self.bottom_root:AddChild( DebuffPanel(ownr) )
-        self.debuffPanel:SetPosition(450, 150, 0)
-
+		self.debuffPanel:SetPosition(450, 150, 0)
+		--spellbuttons
+		local SpellPanel = require "widgets/spellpanel"
+		self.spellPanel = self.bottom_root:AddChild( SpellPanel(ownr) )
 		--need to update all effect-hud functions
 		if ownr.replica.gfeffectable then
 			for k, v in pairs(ownr.replica.gfeffectable.effects) do
@@ -23,12 +26,22 @@ AddClassPostConstruct( "widgets/controls", function(self)
 				end
 			end
 		end
-		--[[ if GLOBAL.GFGetIsMasterSim() then
-			if ownr.components.gfspellcaster then
-				ownr.components.gfspellcaster:ForceUpdateReplicaHUD()
+
+		local _oldShowCraftingAndInventory = self.ShowCraftingAndInventory
+		function self:ShowCraftingAndInventory()
+			_oldShowCraftingAndInventory(self)
+			if self.spellPanel ~= nil and self.spellPanel.spellCount > 0 then
+				self.spellPanel:Show()
 			end
-		end ]]
-		
+		end
+
+		local _oldHideCraftingAndInventory = self.HideCraftingAndInventory
+		function self:HideCraftingAndInventory()
+			_oldHideCraftingAndInventory(self)
+			if self.spellPanel ~= nil then
+				self.spellPanel:Hide()
+			end
+		end
 	end)
 end)
 

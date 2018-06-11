@@ -3,13 +3,15 @@ local SpellArchetype = require("spells/archetypes/groundslam_archetype")
 local Spell = Class(SpellArchetype, function(self)
     SpellArchetype._ctor(self, "equip_groundslam") --inheritance
     self.title = STRINGS.GF.SPELLS.EQUIP_GROUND_SLAM.TITLE
-    self.pointer = nil
-    --[[ {
+    self.iconAtlas = "images/gficons.xml"
+    self.icon = "groundslam.tex"
+    self.pointer = 
+    {
         isArrow = true,
         pointerPrefab = "gf_reticule_crackles",
         validColour = { 75 / 255, 200 / 255, 255 / 255, .3 },
         range = self.range,
-    } ]]
+    }
 
     if not GFGetIsMasterSim() then 
         return 

@@ -10,6 +10,7 @@ local function DisablePointerOnUnequipped(inst)
 end
 
 local function OnDirty(inst)
+    print("On dirty")
     if inst ~= ThePlayer then return end
 
     local self = inst.components.gfspellpointer
@@ -21,37 +22,6 @@ local function OnDirty(inst)
         self:StopTargeting()
     end
 end
-
---[[ local function OverrideLeftMouseActions(inst, target, position)
-    --print("OverrideLeftMouseActions")
-    --print(target, position)
-    local self = inst.components.gfspellpointer
-    local ispassable = self.map:IsPassableAtPoint(position:Get())
-    local spellName = self.currentSpell
-
-    if spellName == nil or not ispassable then return end
-
-    local spell = spellList[spellName]
-    local item
-    local equipitem = self.inst.replica.inventory:GetEquippedItem(EQUIPSLOTS.HANDS)
-    
-    if equipitem 
-        and equipitem.components.gfspellitem 
-        and equipitem.components.gfspellitem.spells[spellName] ~= nil
-    then
-        item = equipitem
-    end
-
-    if inst.replica.gfspellcaster:CanCastSpell(spellName)
-        and not (item and not item.replica.gfspellitem:CanCastSpell(spellName)) 
-    then
-        if target then
-            return inst.components.playeractionpicker:SortActionList({ ACTIONS.GFCASTSPELL }, target, item)
-        else
-            return inst.components.playeractionpicker:SortActionList({ ACTIONS.GFCASTSPELL }, position, item)
-        end 
-    end
-end ]]
 
 local function OverrideLeftMouseActions(inst, target, position)
     local self = inst.components.gfspellpointer
@@ -76,15 +46,17 @@ local function OverrideLeftMouseActions(inst, target, position)
 
     --this part is pretty wierd, but I can't find the better way to deal with item/non-item casts
     ----------------------------------------
-    local equipitem = self.inst.replica.inventory:GetEquippedItem(EQUIPSLOTS.HANDS)
+    --[[ local equipitem = self.inst.replica.inventory:GetEquippedItem(EQUIPSLOTS.HANDS)
 
     local item = (equipitem 
         and equipitem.components.gfspellitem 
         and equipitem.components.gfspellitem.spells[spellName] ~= nil)
     and equipitem
-    or nil
+    or nil ]]
     ----------------------------------------
     ----------------------------------------
+
+    local item = self.withItem and self.inst.replica.inventory:GetEquippedItem(EQUIPSLOTS.HANDS) or nil
 
     --check  for recharges, may be it should be removed (can't start targeting while spell is recharging,
     --the action also will check it to prevent any abuses
@@ -178,6 +150,7 @@ local GFSpellPointer = Class(function(self, inst)
     self.map = TheWorld.Map
     self.currentSpell = nil
     self.pointer = nil
+    self.withItem = false
 
     self._currentSpell = net_int(inst.GUID, "GFSpellPointer._currentSpell", "gfspellpointerdirty")
     self._currentSpell:set_local(0)
@@ -186,12 +159,22 @@ local GFSpellPointer = Class(function(self, inst)
         inst:ListenForEvent("unequip", DisablePointerOnUnequipped)
         inst:ListenForEvent("death", DisablePointerOnDeath)
     end
-    if not GFGetDedicatedNet() then
+    --[[ if inst.components.gfpointer then
+        self.pointer = self.inst.components.gfpointer
         inst:ListenForEvent("gfspellpointerdirty", OnDirty)
-        self.inst:AddComponent("gfpointer")
+    end ]]
+    if not GFGetDedicatedNet() and inst == ThePlayer then
+        inst:ListenForEvent("gfspellpointerdirty", OnDirty)
+        inst:AddComponent("gfpointer")
         self.pointer = self.inst.components.gfpointer
     end
 end)
+
+function GFSpellPointer:SetOnClient()
+    self.inst:ListenForEvent("gfspellpointerdirty", OnDirty)
+    self.inst:AddComponent("gfpointer")
+    self.pointer = self.inst.components.gfpointer
+end
 
 function GFSpellPointer:IsEnabled()
     return self.currentSpell ~= nil
@@ -218,6 +201,7 @@ function GFSpellPointer:Disable()
         GFDebugPrint(string.format("GFSpellPointer: DISABLE pointer (server) for %s", tostring(self.inst)))
         self._currentSpell:set(0)
         self.currentSpell = nil
+        self.withItem = false
         --DisableSpellTargetingActions(self.inst)
         if self.inst.components.playercontroller then
             self.inst.components.playercontroller.gfSpellPointerEnabled = false

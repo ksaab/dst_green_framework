@@ -15,7 +15,7 @@ end
 
 --call draw on client
 local function OnLightningDirty(inst)
-    print("recieved", inst.components.gflightningdrawer._dolightning:value())
+    --print("recieved", inst.components.gflightningdrawer._dolightning:value())
     local strArr = inst.components.gflightningdrawer._dolightning:value():split(';')
     local points = {}
     for k, po in pairs(strArr) do
@@ -146,7 +146,7 @@ function GFLightningDrawer:DrowLightning(points)
         for k, v in pairs(inst.components.gflightningdrawer.fxs) do
             v:Remove()
         end
-        inst:Remove()
+        --inst:Remove()
     end)
 end
 

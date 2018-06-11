@@ -10,9 +10,16 @@ end
 local Spell = Class(SpellArchetype, function(self)
     SpellArchetype._ctor(self, "apply_lesser_rejuvenation") --inheritance
     self.title = "Lesser rejuvenation"
+    self.iconAtlas = "images/gficons.xml"
+    self.icon = "lesser_rejuvenation.tex"
     self.playerState = "gfcastwithstaff"
-    self.pointer = require("pointers/nature")
-    self.instant = true
+    self.pointer = 
+    {
+        pointerPrefab = "gf_reticule_nature_triangle",
+        validColour = { 0, 1, 0.1, .3 },
+        range = self.range,
+    }
+    --self.instant = true
 
     if not GFGetIsMasterSim() then return end
 

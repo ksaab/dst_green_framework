@@ -1,13 +1,14 @@
 local assets =
 {
     Asset("ANIM", "anim/swap_gf_amulet_echo.zip"),
+    Asset("ANIM", "anim/gf_amulet_echo.zip"),
 }
 
 local function ReplicateCast(inst, data)
     local owner = data.owner
     if owner 
         and owner:IsValid() 
-        and not owner:HasTag("playerghost") 
+        --and not owner:HasTag("corpse") 
         and not (data.target and not data.target:IsValid())
         and not (inst.components.gfspellitem:GetSpellRecharge("amulet_magic_echo") > 0)
     then
@@ -49,10 +50,13 @@ local function fn()
     inst.entity:AddSoundEmitter()
     inst.entity:AddNetwork()
 
-    inst.AnimState:SetBank("swap_gf_amulet_echo")
-    inst.AnimState:SetBuild("swap_gf_amulet_echo")
+    inst.Transform:SetScale(0.75, 0.75, 0.75)
+
+    inst.AnimState:SetBank("gf_amulet_echo")
+    inst.AnimState:SetBuild("gf_amulet_echo")
     inst.AnimState:PlayAnimation("idle")
 
+    MakeInventoryPhysics(inst)
     GFMakeInventoryCastingItem(inst, "amulet_magic_echo", "amulet_magic_echo")
 
     if not TheWorld.ismastersim then

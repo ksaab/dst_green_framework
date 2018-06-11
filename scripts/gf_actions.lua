@@ -81,6 +81,7 @@ AddAction("GFSTARTSPELLTARGETING", "Target", function(act)
             local itemSpell = item.components.gfspellitem:GetItemSpellName()
             if item.components.gfspellitem:CanCastSpell(itemSpell) then
                 print("turn on")
+                doer.components.gfspellpointer.withItem = true
                 doer.components.gfspellpointer:Enable(itemSpell)
                 return true
             end
@@ -93,7 +94,7 @@ end)
 ACTIONS.GFSTARTSPELLTARGETING.distance = math.huge
 ACTIONS.GFSTARTSPELLTARGETING.rmb = true
 ACTIONS.GFSTARTSPELLTARGETING.instant = true
-ACTIONS.GFSTARTSPELLTARGETING.priority = 12
+--ACTIONS.GFSTARTSPELLTARGETING.priority = 10
 
 --[[ AddAction("GFSTOPSPELLTARGETING", "Cancel", function(act)
 	local item = act.invobject--doer.replica.inventory:GetEquippedItem(GLOBAL.EQUIPSLOTS.HANDS)

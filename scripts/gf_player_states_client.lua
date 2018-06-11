@@ -15,6 +15,14 @@ local BufferedAction = GLOBAL.BufferedAction
 
 local spellList = GLOBAL.GFSpellList
 
+local function GetSpellCastTime(spellName)
+	if spellName and spellList[spellName] then 
+		return spellList[spellName].castTime or 0
+	end
+
+	return 0
+end
+
 local function CanCastSpell(spell, inst, item)
     local itemValid = true
     --check item if exists
@@ -28,6 +36,104 @@ local function CanCastSpell(spell, inst, item)
 	return instValid and itemValid
 end
 
+--custom  anim cast
+local gfcustomcast = State
+{
+	name = "gfcustomcast",
+	tags = { "doing", "casting", "busy", "nodangle" },
+
+	onenter = function(inst)
+		inst.components.locomotor:Stop()
+
+		local act = inst:GetBufferedAction()
+		if act and act.spell then
+			if act.pos then
+				inst:ForceFacePoint(act.pos.x, 0, act.pos.z)
+			end
+			inst.AnimState:PlayAnimation("gf_fast_cast_pre")
+			inst.AnimState:PushAnimation("gf_fast_cast_loop", true)
+
+			inst:PerformPreviewBufferedAction()
+			inst.sg:SetTimeout(2)
+			
+			return
+		end
+
+		inst.sg:GoToState("idle")
+	end,
+
+	ontimeout = function(inst)
+		inst:ClearBufferedAction()
+		inst.sg:GoToState("idle")
+	end,
+
+	onupdate = function(inst)
+		if inst:HasTag("doing") then
+			if inst.entity:FlattenMovementPrediction() then
+				inst.sg:GoToState("idle", "noanim")
+			end
+		elseif inst.bufferedaction == nil then
+			inst.sg:GoToState("idle")
+		end
+	end,
+
+	events =
+	{
+		EventHandler("unequip", function(inst) 
+			inst.sg:GoToState("idle") 
+		end),
+	},
+}
+
+--cast with hand
+local gfchannelcast = State
+{
+	name = "gfchannelcast",
+	tags = { "doing", "casting", "busy", "nodangle" },
+
+	onenter = function(inst)
+		inst.components.locomotor:Stop()
+
+		local act = inst:GetBufferedAction()
+		if act and act.spell then
+			if act.pos then
+				inst:ForceFacePoint(act.pos.x, 0, act.pos.z)
+			end
+			inst.AnimState:PlayAnimation("channel_pre")
+			inst.AnimState:PushAnimation("channel_loop", true)
+
+			inst:PerformPreviewBufferedAction()
+			inst.sg:SetTimeout(2)
+			
+			return
+		end
+
+		inst.sg:GoToState("idle")
+	end,
+
+	ontimeout = function(inst)
+		inst:ClearBufferedAction()
+		inst.sg:GoToState("idle")
+	end,
+
+	onupdate = function(inst)
+		if inst:HasTag("doing") then
+			if inst.entity:FlattenMovementPrediction() then
+				inst.sg:GoToState("idle", "noanim")
+			end
+		elseif inst.bufferedaction == nil then
+			inst.sg:GoToState("idle")
+		end
+	end,
+
+	events =
+	{
+		EventHandler("unequip", function(inst) 
+			inst.sg:GoToState("idle") 
+		end),
+	},
+}
+
 --STATES--
 local gfcastwithstaff = State{
 	name = "gfcastwithstaff",
@@ -35,12 +141,21 @@ local gfcastwithstaff = State{
 
 	onenter = function(inst)
 		inst.components.locomotor:Stop()
+		local act = inst:GetBufferedAction()
+		if act and act.spell then
+			if act.pos then
+				inst:ForceFacePoint(act.pos.x, 0, act.pos.z)
+			end
+			inst.AnimState:PlayAnimation("staff_pre")
+        	inst.AnimState:PushAnimation("staff", false)
 
-        inst.AnimState:PlayAnimation("staff_pre")
-        inst.AnimState:PushAnimation("staff", false)
+			inst:PerformPreviewBufferedAction()
+			inst.sg:SetTimeout(2)
+			
+			return
+		end
 
-        inst:PerformPreviewBufferedAction()
-		inst.sg:SetTimeout(2)
+		inst.sg:GoToState("idle")
 	end,
     
     ontimeout = function(inst)
@@ -74,11 +189,22 @@ local gfgroundslam = State{
 	onenter = function(inst)
 		inst.components.locomotor:Stop()
 
-        inst.AnimState:PlayAnimation("atk_leap_pre")
-        inst.AnimState:PushAnimation("atk_leap_lag", false)
+		inst.components.locomotor:Stop()
+		local act = inst:GetBufferedAction()
+		if act and act.spell then
+			if act.pos then
+				inst:ForceFacePoint(act.pos.x, 0, act.pos.z)
+			end
+			inst.AnimState:PlayAnimation("atk_leap_pre")
+        	inst.AnimState:PushAnimation("atk_leap_lag", false)
 
-        inst:PerformPreviewBufferedAction()
-		inst.sg:SetTimeout(2)
+			inst:PerformPreviewBufferedAction()
+			inst.sg:SetTimeout(2)
+			
+			return
+		end
+
+		inst.sg:GoToState("idle")
 	end,
 
 	ontimeout = function(inst)
@@ -107,6 +233,8 @@ local gfgroundslam = State{
 --Add states block--------------
 AddStategraphState("wilson_client", gfcastwithstaff)
 AddStategraphState("wilson_client", gfgroundslam)
+AddStategraphState("wilson_client", gfchannelcast)
+AddStategraphState("wilson_client", gfcustomcast)
 
 --Add events block--------------
 AddStategraphEvent("wilson_client", EventHandler("gfforcemove", function(inst, data)

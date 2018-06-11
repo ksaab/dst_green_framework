@@ -16,7 +16,7 @@ end
 
 --call draw on client
 local function OnCracklesDirty(inst)
-    print("recieved", inst.components.gfcrackledrawer._docrackles:value())
+    --print("recieved", inst.components.gfcrackledrawer._docrackles:value())
     local strArr = inst.components.gfcrackledrawer._docrackles:value():split(';')
     local points = {}
     for k, po in pairs(strArr) do
@@ -151,7 +151,7 @@ function GFCrackleDrawer:DrowCrackles(points)
         for k, v in pairs(inst.components.gfcrackledrawer.fxs) do
             v.obj:Remove()
         end
-        inst:Remove()
+        --inst:Remove()
     end)
 
     --[[ self.inst._crackTask = self.inst:DoPeriodicTask(1, function(inst) 

@@ -14,6 +14,10 @@ if not rawget(GLOBAL, "GFSpellIDToName") then
     rawset(GLOBAL, "GFSpellIDToName", {})
 end
 
+if not GfCharacterSpells then
+    rawset(GLOBAL, "GfCharacterSpells", {})
+end
+
 local GFSpellList = GLOBAL.GFSpellList
 local GFSpellNameToID = GLOBAL.GFSpellNameToID
 local GFSpellIDToName = GLOBAL.GFSpellIDToName
@@ -25,6 +29,9 @@ local spellArray =
     [3] = { name = "equip_chainlightning", folder = "item/"},
     [4] = { name = "equip_crushlightning", folder = "item/"},
     [5] = { name = "equip_groundslam", folder = "item/"},
+
+    [10] = { name = "character_chainlightning", folder = "character/"},
+    [11] = { name = "character_crushlightning", folder = "character/"},
 
     [100] = {name = "amulet_magic_echo"},
     [101] = {name = "apply_lesser_rejuvenation"},

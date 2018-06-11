@@ -10,8 +10,15 @@ local Spell = Class(SpellArchetype, function(self)
     SpellArchetype._ctor(self, "apply_slow") --inheritance
     self.title = "Slow"
     self.playerState = "gfcastwithstaff"
-    self.instant = true
-    self.needTarget = false
+    self.instant = false
+    self.needTarget = true
+    self.pointer = 
+    {
+        pointerPrefab = "gf_reticule_nature_triangle",
+        validColour = { 0.6, 0.1, 0.8, .3 },
+        range = self.range,
+        needTarget = true,
+    }
 
     if not GFGetIsMasterSim() then return end
 
