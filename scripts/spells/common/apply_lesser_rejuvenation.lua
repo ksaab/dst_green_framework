@@ -9,10 +9,9 @@ end
 
 local Spell = Class(SpellArchetype, function(self)
     SpellArchetype._ctor(self, "apply_lesser_rejuvenation") --inheritance
-    self.title = "Lesser rejuvenation"
+    self.title = STRINGS.GF.SPELLS.LESSER_REJUVENATION.TITLE
     self.iconAtlas = "images/gficons.xml"
     self.icon = "lesser_rejuvenation.tex"
-    self.playerState = "gfcastwithstaff"
     self.pointer = 
     {
         pointerPrefab = "gf_reticule_nature_triangle",

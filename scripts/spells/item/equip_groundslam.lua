@@ -2,7 +2,6 @@ local SpellArchetype = require("spells/archetypes/groundslam_archetype")
 
 local Spell = Class(SpellArchetype, function(self)
     SpellArchetype._ctor(self, "equip_groundslam") --inheritance
-    self.title = STRINGS.GF.SPELLS.EQUIP_GROUND_SLAM.TITLE
     self.iconAtlas = "images/gficons.xml"
     self.icon = "groundslam.tex"
     self.pointer = 

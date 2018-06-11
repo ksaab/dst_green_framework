@@ -24,8 +24,6 @@ local GFSpellIDToName = GLOBAL.GFSpellIDToName
 
 local spellArray = 
 {
-    [1] = { name = "create_flower" },
-    [2] = { name = "create_goldnugget"},
     [3] = { name = "equip_chainlightning", folder = "item/"},
     [4] = { name = "equip_crushlightning", folder = "item/"},
     [5] = { name = "equip_groundslam", folder = "item/"},

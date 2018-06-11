@@ -112,8 +112,8 @@ end
 local Spell = Class(GFSpell, function(self, name)
     GFSpell._ctor(self, name) --inheritance
 
+    self.title = STRINGS.GF.SPELLS.CRUSH_LIGHTNING.TITLE
     self.instant = false
-    self.playerState = "gfcastwithstaff"
     self.pointer = nil
     self.range = math.huge
 

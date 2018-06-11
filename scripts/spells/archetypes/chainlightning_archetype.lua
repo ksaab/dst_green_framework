@@ -170,7 +170,7 @@ end
 local Spell = Class(GFSpell, function(self, name)
     GFSpell._ctor(self, name) --inheritance
 
-    self.playerState = "gfcastwithstaff"
+    self.title = STRINGS.GF.SPELLS.CHAIN_LIGHTNING.TITLE
     self.pointer = nil
     self.instant = false
 

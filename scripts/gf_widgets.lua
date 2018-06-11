@@ -2,6 +2,10 @@ local require = GLOBAL.require
 local TheInput = GLOBAL.TheInput
 local ACTIONS = GLOBAL.ACTIONS
 local spellList = GLOBAL.GFSpellList
+local STRINGS = GLOBAL.STRINGS
+
+local defaultLMBAction = STRINGS.GF.DEFAULTACTIONACTION
+local defaultRMBAction = STRINGS.GF.DEFAULTALTACTIONACTION
 
 --icons for effects
 AddClassPostConstruct( "widgets/controls", function(self)
@@ -189,15 +193,15 @@ local function PostControls(self)
 					self.playeractionhint:SetScreenOffset(0, offset)
 					self.playeractionhint.text:SetString(TheInput:GetLocalizedControl(controller_id, GLOBAL.CONTROL_CONTROLLER_ACTION) 
 						.. " "
-						.. (lmb and lmb:GetActionString() or "Cast"))
+						.. (lmb and lmb:GetActionString() or defaultLMBAction))
 				end
 
-				if lmb and rmb.action == ACTIONS.GFSTOPSPELLTARGETING then
+				if rmb and rmb.action == ACTIONS.GFSTOPSPELLTARGETING then
 					self.groundactionhint:Show()
 					self.groundactionhint:SetTarget(self.owner)
 					self.groundactionhint.text:SetString(TheInput:GetLocalizedControl(controller_id, GLOBAL.CONTROL_CONTROLLER_ALTACTION) 
 						.. " "
-						.. (rmb and rmb:GetActionString() or "Cancel"))
+						.. (rmb and rmb:GetActionString() or defaultRMBAction))
 				end
 				
 			end

@@ -8,10 +8,11 @@ end
 local Spell = Class(function(self, name)
     --both side
     self.name = name --spell name
-    self.title = STRINGS.GF.SPELLS.INVALID_TITLE --a title for the hoverer widget
-    self.description = STRINGS.GF.SPELLS.INVALID_TITLE
+    self.title = nil --a title for the hoverer widget
+    --self.description = nil --not used
     self.iconAtals = nil
     self.icon = nil
+    self.actionFlag = nil
 
     self.range = 12 --cast range
     self.instant = false --can be casted by one right-click or not

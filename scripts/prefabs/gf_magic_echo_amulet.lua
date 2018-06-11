@@ -19,7 +19,7 @@ local function ReplicateCast(inst, data)
 end
 
 local function OnOwnerCast(owner, data)
-    local inst = owner.components.inventory:GetEquippedItem(EQUIPSLOTS.BODY)
+    local inst = owner.components.inventory:GetEquippedItem(EQUIPSLOTS.NECK or EQUIPSLOTS.BODY)
     if inst._task == nil and data.spell:HasSpellTag("replicateable") then
         data.owner = owner
         inst._task = inst:DoTaskInTime(2, ReplicateCast, data)
@@ -68,7 +68,7 @@ local function fn()
     inst.components.inventoryitem.atlasname = "images/gfinventory.xml"
 
     inst:AddComponent("equippable")
-    inst.components.equippable.equipslot = EQUIPSLOTS.BODY
+    inst.components.equippable.equipslot = EQUIPSLOTS.NECK or EQUIPSLOTS.BODY
     inst.components.equippable:SetOnEquip(onequip)
     inst.components.equippable:SetOnUnequip(onunequip)
 

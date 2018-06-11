@@ -2,10 +2,8 @@ local SpellArchetype = require("spells/archetypes/chainlightning_archetype")
 
 local Spell = Class(SpellArchetype, function(self)
     SpellArchetype._ctor(self, "equip_chainlightning") --inheritance
-    self.title = STRINGS.GF.SPELLS.EQUIP_CHAINLIGHTNING.TITLE
     self.iconAtlas = "images/gficons.xml"
     self.icon = "chainlightning.tex"
-    self.playerState = "gfcustomcast"
     self.pointer = 
     {
         pointerPrefab = "gf_reticule_nature_triangle",

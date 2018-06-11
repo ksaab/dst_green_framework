@@ -8,8 +8,7 @@ end
 
 local Spell = Class(SpellArchetype, function(self)
     SpellArchetype._ctor(self, "apply_slow") --inheritance
-    self.title = "Slow"
-    self.playerState = "gfcastwithstaff"
+    self.title = STRINGS.GF.SPELLS.LESSER_SLOW.TITLE
     self.instant = false
     self.needTarget = true
     self.pointer = 

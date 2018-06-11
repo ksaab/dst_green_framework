@@ -2,7 +2,6 @@ local SpellArchetype = require("spells/archetypes/crushlightning_archetype")
 
 local Spell = Class(SpellArchetype, function(self)
     SpellArchetype._ctor(self, "equip_crushlightning") --inheritance
-    self.title = STRINGS.GF.SPELLS.EQUIP_CRUSHLIGHTNING.TITLE
     self.iconAtlas = "images/gficons.xml"
     self.icon = "crushlightning.tex"
     self.pointer = 

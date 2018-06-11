@@ -112,6 +112,7 @@ end
 local Spell = Class(GFSpell, function(self, name)
     GFSpell._ctor(self, name) --inheritance
 
+    self.title = STRINGS.GF.SPELLS.GROUND_SLAM.TITLE
     self.instant = false
     self.playerState = "gfgroundslam"
     self.pointer = nil

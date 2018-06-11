@@ -65,8 +65,6 @@ end
 local Spell = Class(GFSpell, function(self, name)
     GFSpell._ctor(self, name) --inheritance
 
-    --self.instant = true
-    self.playerState = "gfcastwithstaff"
     self.pointer = nil
     self.needTarget = true
 

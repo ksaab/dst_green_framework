@@ -2,10 +2,11 @@ local Widget = require "widgets/widget"
 local Image = require "widgets/image"
 local Text = require "widgets/text"
 
-local invalidText = "<NO INFO>"
+local invalidText = STRINGS.GF.INVALID_TITLE
+local munitesLetter = STRINGS.GF.MINUTES_LETTER
+
 local defaultAtlas = "images/gfdefaulticons.xml"
 local defaultImage = "defaultpositive.tex"
-local munitesLetter = "m"
 
 local function ConvertTimeToText(val)
     if val >= 60 then

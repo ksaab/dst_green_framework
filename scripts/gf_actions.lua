@@ -31,7 +31,7 @@ local spellList = GLOBAL.GFSpellList
 	return false
 end) ]]
 
-AddAction("GFCASTSPELL", "Cast", function(act)
+AddAction("GFCASTSPELL", STRINGS.ACTIONS.GFCASTSPELL.GENERIC, function(act)
     local doer = act.doer
     local spellName = act.spell
     local item = act.invobject
@@ -73,7 +73,7 @@ ACTIONS.GFCASTSPELL.instant = false
 	end
 end) ]]
 
-AddAction("GFSTARTSPELLTARGETING", "Target", function(act)
+AddAction("GFSTARTSPELLTARGETING", STRINGS.ACTIONS.GFSTARTSPELLTARGETING, function(act)
     local doer = act.doer--doer.replica.inventory:GetEquippedItem(GLOBAL.EQUIPSLOTS.HANDS)
     local item = act.invobject
     if doer and doer.components.gfspellpointer then
@@ -104,7 +104,7 @@ ACTIONS.GFSTARTSPELLTARGETING.instant = true
 	end
 end) ]]
 
-AddAction("GFSTOPSPELLTARGETING", "Cancel", function(act)
+AddAction("GFSTOPSPELLTARGETING", STRINGS.ACTIONS.GFSTOPSPELLTARGETING, function(act)
 	local doer = act.doer--doer.replica.inventory:GetEquippedItem(GLOBAL.EQUIPSLOTS.HANDS)
     if doer and doer.components.gfspellpointer then
         print("turn off")
@@ -118,7 +118,7 @@ ACTIONS.GFSTOPSPELLTARGETING.rmb = true
 ACTIONS.GFSTOPSPELLTARGETING.instant = true
 ACTIONS.GFSTOPSPELLTARGETING.priority = 12
 
-AddAction("GFCHANGEITEMSPELL", "Change Spell", function(act)
+AddAction("GFCHANGEITEMSPELL", STRINGS.ACTIONS.GFCHANGEITEMSPELL, function(act)
     if act.invobject ~= nil
         and act.invobject.components.gfspellitem ~= nil
     then
@@ -139,7 +139,7 @@ end)
 ACTIONS.GFCHANGEITEMSPELL.instant = true
 ACTIONS.GFCHANGEITEMSPELL.priority = -2
 
-AddAction("GFDRINKIT", "Drink", function(act)
+AddAction("GFDRINKIT", STRINGS.ACTIONS.GFDRINKIT, function(act)
 	local obj = act.target or act.invobject
 	if obj ~= nil 
 		and obj.components.gfdrinkable ~= nil 
