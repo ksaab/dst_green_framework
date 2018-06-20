@@ -6,7 +6,6 @@ local spellList = GFSpellList
 local invalidText = STRINGS.GF.INVALID_TITLE
 
 local function OnClick(self)
-    --print("clicked", self.spell)
     if self == nil then return end
     local spellName = self.spell
 

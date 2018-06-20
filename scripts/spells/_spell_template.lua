@@ -27,7 +27,7 @@ local Spell = Class(GFSpell, function(self)
     self.icon = nil
 
     self.range = 12 --cast range
-    self.instant = true --can be casted by one click or not
+    self.instant = false --can be casted by one click or not
     self.passive = false --if true, spell can not be casted by players or creatures, but can be casted with gfspellcaster:CastSpell()
 
     self.pointer = nil --spell pointer
@@ -40,12 +40,11 @@ local Spell = Class(GFSpell, function(self)
     self.forbiddenTag = nil --fail cast if caster HAS this tag
 
     self.tags = {} --not sure should this be server only or not
-    
-    if not GFGetIsMasterSim() then 
-        GFDebugPrint(("Spell: spell %s created"):format(self.name))
-        return 
-    end
-    --server side
+
+    self.spellParams = {}
+    self.spellVisuals = {}
+    self.stateVisuals = {}
+
     self.itemRecharge = 0 --can't cast the spell with item
     self.doerRecharge = 0 --caster can't cast the spell (even if he equips an another item with the same spell)
 

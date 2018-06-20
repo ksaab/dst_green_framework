@@ -1,4 +1,4 @@
-local gfFunctions = GLOBAL.require "gf_global_functions"
+local _G = GLOBAL
 
 AddReplicableComponent("gfspellcaster")
 AddReplicableComponent("gfspellitem")

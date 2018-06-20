@@ -11,10 +11,6 @@ local Spell = Class(SpellArchetype, function(self)
         range = self.range,
     }
 
-    if not GFGetIsMasterSim() then 
-        return 
-    end
-
     self.itemRecharge = 2
     self.doerRecharge = 2
     

@@ -1,5 +1,5 @@
 local Widget = require "widgets/widget"
-local SpellButton = require "widgets/spellbutton"
+local SpellButton = require "widgets/gf_spellbutton"
 local Image = require "widgets/image"
 local Text = require "widgets/text"
 

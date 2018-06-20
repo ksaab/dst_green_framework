@@ -20,8 +20,6 @@ local Spell = Class(SpellArchetype, function(self)
     }
     --self.instant = true
 
-    if not GFGetIsMasterSim() then return end
-
     self.spellParams.isPositive = true
     self.spellParams.effect = "lesser_rejuvenation"
     self.spellParams.stacks = nil

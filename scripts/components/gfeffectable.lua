@@ -66,16 +66,12 @@ end
 local function TryAddAffix(inst)
     local self = inst.components.gfeffectable
     if self and self.isNew then
-        print("new creature, try to add affix")
+        --print("new creature, try to add affix")
         if math.random() < (self.affixes.chance or 1) * self.eliteChanceMult then
-            --print("elite")
-            --[[ if TUNING.CCW.ELITE_HEALTH_MULTIPLIER > 1 then
-                self:ApplyEffect("elite_healthbonus")
-            end ]]
             self:ApplyEffect(self.affixes.list[math.random(#(self.affixes.list))])
         end
-    else
-        print("old creature, refusing")
+    --else
+        --print("old creature, refusing")
     end
 end
 
@@ -101,7 +97,7 @@ local GFEffectable = Class(function(self, inst)
 
     inst:ListenForEvent("death", RemoveEffectsOnDeath)
 
-    if not inst.components.equippable then
+    if inst.components.combat then
         SetFollowSymbol(self)
     end
     if self.eliteEnabled and self.affixes ~= nil then
@@ -112,7 +108,7 @@ end)
 
 function GFEffectable:ChangeResist(resist, value)
     if resist == nil or value == nil then 
-        GFDebugPrint("GFEffectable: can't add resist, data is wrong")
+        --GFDebugPrint("GFEffectable: can't add resist, data is wrong")
         return 
     end
     local res = self.resists[resist]
@@ -125,7 +121,7 @@ end
 
 function GFEffectable:CheckResists(effect)
     if effect.checkfn and not effect:checkfn(self.inst) then  --effect check (maybe the target doesn't have the required component)
-        GFDebugPrint(("GFEffectable: effects %s can not be applied to %s"):format(effect.name, tostring(self.inst)))
+        --GFDebugPrint(("GFEffectable: effects %s can not be applied to %s"):format(effect.name, tostring(self.inst)))
         return false
     end
     
@@ -133,7 +129,7 @@ function GFEffectable:CheckResists(effect)
         for tag, value in pairs(effect.tags) do
             if self.resists[tag] and self.resists[tag] ~= 0 then
                 if math.random() < self.resists[tag] then
-                    GFDebugPrint(("GFEffectable: effects %s was resisted by %s"):format(effect.name, tostring(self.inst)))
+                    --GFDebugPrint(("GFEffectable: effects %s was resisted by %s"):format(effect.name, tostring(self.inst)))
                     self.inst:PushEvent("gfeffectresisted", {effect = effect})
                     return false
                 end
@@ -148,7 +144,7 @@ function GFEffectable:ApplyEffect(effectName, effectParam)
     local effectLink = effectList[effectName]
     if effectLink == nil then 
         --effect isn't valid
-        print(("GFEffectable: effect with name %s not found"):format(effectName))
+        --GFDebugPrint(("GFEffectable: effect with name %s not found"):format(effectName))
         return false
     end
 

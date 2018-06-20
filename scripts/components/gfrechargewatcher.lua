@@ -1,9 +1,15 @@
 local function UpdateRechareable(inst)
-    GFDebugPrint("GFRechargeWatcher updated")
+    --GFDebugPrint("GFRechargeWatcher updated")
     inst:DoTaskInTime(0, function(inst)
         local self = inst.components.gfrechargewatcher
         self:UpdateRechareableList()
     end)
+end
+
+local function CheckItemBeforeUpdate(inst, data)
+    if data and data.item and data.item.replica.gfspellitem then
+        UpdateRechareable(inst)
+    end
 end
 
 local GFRechargeWatcher = Class(function(self, inst)
@@ -14,8 +20,7 @@ local GFRechargeWatcher = Class(function(self, inst)
     UpdateRechareable(inst)
 
     inst:StartUpdatingComponent(self)
-    inst:ListenForEvent("itemget", UpdateRechareable)
-    --inst:ListenForEvent("itemlose", UpdateRechareable)
+    inst:ListenForEvent("itemget", CheckItemBeforeUpdate)
     inst:ListenForEvent("gfsc_updaterechargesdirty", UpdateRechareable)
     inst:ListenForEvent("gfsc_updatespelllist", UpdateRechareable)
 end)
@@ -31,8 +36,8 @@ function GFRechargeWatcher:UpdateRechareableList()
                 if remain > 0 then
                     icon:RechargeStarted()
                     table.insert(self.iconList, {icon = icon, remain = remain, total = total})
-                    GFDebugPrint(("GFRechargeWatcher: %s adding %s [%.2f/%.2f] to recharge list."):format(tostring(inst),
-                        tostring(icon), remain, total))
+                    --GFDebugPrint(("GFRechargeWatcher: %s adding %s [%.2f/%.2f] to recharge list."):format(tostring(inst),
+                        --tostring(icon), remain, total))
                 end
             end
         end
@@ -43,19 +48,6 @@ function GFRechargeWatcher:UpdateRechareableList()
             local scr = item.replica.gfspellitem
             if scr then
                 item:PushEvent("rechargechange", { percent = 1 })
-                --[[ local spell = item.replica.gfspellitem:GetItemSpellName()
-                if spell
-                    and (not item.replica.gfspellitem:CanCastSpell(spell)
-                        or not self.inst.replica.gfspellcaster:CanCastSpell(spell))
-                then
-                    local remain, total = item.replica.gfspellitem:GetSpellRecharge(spell)
-                    local oremain, ototal = inst.replica.gfspellcaster:GetSpellRecharge(spell)
-                    remain = remain >= oremain and remain or oremain 
-                    total = total >= ototal and total or ototal 
-                    table.insert(self.itemList, {item = item, remain = remain, total = total})
-                    GFDebugPrint(("GFRechargeWatcher: %s adding %s [%.2f/%.2f] to recharge list."):format(tostring(inst),
-                        tostring(item), remain, total))
-                end ]]
                 local spell = item.replica.gfspellitem:GetItemSpellName()
                 if spell then
                     local remain, total = item.replica.gfspellitem:GetSpellRecharge(spell)
@@ -64,8 +56,8 @@ function GFRechargeWatcher:UpdateRechareableList()
                         remain = remain >= oremain and remain or oremain 
                         total = total >= ototal and total or ototal 
                         table.insert(self.itemList, {item = item, remain = remain, total = total})
-                        GFDebugPrint(("GFRechargeWatcher: %s adding %s [%.2f/%.2f] to recharge list."):format(tostring(inst),
-                            tostring(item), remain, total))
+                        --GFDebugPrint(("GFRechargeWatcher: %s adding %s [%.2f/%.2f] to recharge list."):format(tostring(inst),
+                            --tostring(item), remain, total))
                     end
                 end
             end
@@ -94,12 +86,14 @@ function GFRechargeWatcher:OnUpdate(dt)
                 line.item:PushEvent("rechargechange", { percent = percent })
                 if percent >= 1 then
                     table.remove(self.itemList, k)
-                    GFDebugPrint(("GFRechargeWatcher: removing %s from list."):format(tostring(line.item)))
+                    --GFDebugPrint(("GFRechargeWatcher: removing %s from list."):format(tostring(line.item)))
                 end
             else
                 table.remove(self.itemList, k)
             end
         end
+    else
+        self.itemList = {}
     end
 
     if inst.HUD and inst.HUD.controls then
@@ -111,9 +105,11 @@ function GFRechargeWatcher:OnUpdate(dt)
             else
                 table.remove(self.iconList, k)
                 line.icon:RechargeDone()
-                GFDebugPrint(("GFRechargeWatcher: removing %s from list."):format(tostring(line.icon)))
+                --GFDebugPrint(("GFRechargeWatcher: removing %s from list."):format(tostring(line.icon)))
             end
         end
+    else
+        self.iconList = {}
     end
 end
 

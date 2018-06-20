@@ -11,10 +11,6 @@ local Spell = Class(SpellArchetype, function(self)
         validColour = { 75 / 255, 200 / 255, 255 / 255, .3 },
         range = self.range,
     }
-
-    if not GFGetIsMasterSim() then 
-        return 
-    end
     
     self.itemRecharge = 5
     self.doerRecharge = 5

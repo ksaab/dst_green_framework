@@ -40,7 +40,6 @@ local DebuffPanel = Class(Widget, function(self, owner)
 end)
 
 function DebuffPanel:Update()
-    print("buffpanelupdate")
     local posEffects = self.owner.replica.gfeffectable.hudInfo.negative
     local exists = {}
 
@@ -75,7 +74,7 @@ function DebuffPanel:Update()
     local all = {}
     for k, v in pairs(self.debuffs) do
         table.insert(all , k)
-        v:SetPosition(counter * 65, 0, 0)
+        v:SetPosition(-counter * 65, 0, 0)
         counter = 1 + counter
     end
 

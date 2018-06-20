@@ -57,8 +57,6 @@ local Effect = Class(GFEffect, function(self, name)
     self.hudonrefreshfn = HudOnRefresh --effect refreshed
     self.hudonremovefn = HudOnRemove --effect removed
 
-    if not GFGetIsMasterSim() then return end
-    --[[SERVER ONLY]]
     --flags
     self.nonRefreshable = false --can effect be refreshed or not
     self.updateDurationOnRefresh = true

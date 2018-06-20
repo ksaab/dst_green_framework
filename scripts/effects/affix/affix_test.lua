@@ -1,12 +1,10 @@
 local GFEffect = require("gf_effect")
 
 local function OnApply(self, inst, effectParam)
-    print(("Effect %s applied to %s"):format(self.name, tostring(inst)))
     inst.components.locomotor:SetExternalSpeedMultiplier(inst, "affix_test", 2) 
 end
 
 local function OnRemove(self, inst)
-    print(("Effect %s removed from %s"):format(self.name, tostring(inst)))
     inst.components.locomotor:RemoveExternalSpeedMultiplier(inst, "affix_haste") 
 end
 
@@ -23,8 +21,6 @@ local Effect = Class(GFEffect, function(self, name)
     --flags
     self.wantsHover = true
 
-    if not GFGetIsMasterSim() then return end
-
     self.savable = true
 
     --effect data
@@ -37,8 +33,6 @@ local Effect = Class(GFEffect, function(self, name)
     self.checkfn = DoCheck
     self.onapplyfn = OnApply
     self.onremovefn = OnRemove
-
-    GFDebugPrint(("Effect: effect %s created"):format(self.name))
 end)
 
 

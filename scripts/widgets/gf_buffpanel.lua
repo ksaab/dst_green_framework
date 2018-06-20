@@ -40,7 +40,6 @@ local BuffPanel = Class(Widget, function(self, owner)
 end)
 
 function BuffPanel:Update()
-    print("buffpanelupdate")
     local posEffects = self.owner.replica.gfeffectable.hudInfo.positive
     local exists = {}
 

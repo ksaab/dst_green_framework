@@ -19,30 +19,29 @@ local Reaction = Class(function(self, name, data)
     
     if data.reactParams ~= nil then
         for param, paramValue in pairs(data.reactParams) do
-            print(param, paramValue)
             self.reactParams[param] = paramValue
         end
     end
 
-    GFDebugPrint(("Reaction created: %s, event %s"):format(tostring(self.name), self.event))
+    --GFDebugPrint(("Reaction created: %s, event %s"):format(tostring(self.name), self.event))
 end)
 
 function Reaction:React(reactor, initiator, eventData)
     local inst = reactor
     if not reactor:IsValid() then 
-        GFDebugPrint(("Reaction: reaction %s failed - reactor %s isn't valid"):format(self.name, tostring(reactor)))
+        --GFDebugPrint(("Reaction: reaction %s failed - reactor %s isn't valid"):format(self.name, tostring(reactor)))
         return 
     end
 
     if self.checkfn and not self:checkfn(reactor, initiator, eventData) then
-        GFDebugPrint(("Reaction: reaction %s check failed"):format(tostring(self.name)))
+        --GFDebugPrint(("Reaction: reaction %s check failed"):format(tostring(self.name)))
         return
     end
 
     if GetTime() - self.lastReactTime > self.recharge and math.random() < self.chance then
         if self.swapParticipant  then
             if not initiator or not initiator:IsValid() then
-                GFDebugPrint(("Reaction: reaction %s swap failed - initiator %s isn't valid"):format(self.name, tostring(initiator)))
+                --GFDebugPrint(("Reaction: reaction %s swap failed - initiator %s isn't valid"):format(self.name, tostring(initiator)))
                 return 
             end
             local tmp = reactor
@@ -54,7 +53,7 @@ function Reaction:React(reactor, initiator, eventData)
         if initiator or initiator:IsValid() then
             self:reactfn(reactor, initiator, eventData)
         else
-            GFDebugPrint(("Reaction: reaction %s failed - initiator %s isn't valid"):format(self.name, tostring(initiator)))
+            --GFDebugPrint(("Reaction: reaction %s failed - initiator %s isn't valid"):format(self.name, tostring(initiator)))
             return 
         end
 

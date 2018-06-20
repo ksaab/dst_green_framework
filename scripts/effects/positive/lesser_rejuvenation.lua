@@ -34,8 +34,6 @@ local Effect = Class(GFEffect, function(self, inst)
     --self.hudonrefreshfn = HudOnRefresh --effect refreshed
     --self.hudonremovefn = HudOnRemove --effect removed
 
-    if not GFGetIsMasterSim() then return end
-
     self.updateable = true
     self.static = false
 

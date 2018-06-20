@@ -179,11 +179,7 @@ local Spell = Class(GFSpell, function(self, name)
         lightning = true,
         replicateable = true,
     }
-
-    if not GFGetIsMasterSim() then 
-        return 
-    end
-
+    
     --cooldowns
     self.itemRecharge = 0
     self.doerRecharge = 0

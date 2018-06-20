@@ -23,20 +23,16 @@ local function DoCast(self, doer, target, pos, spellData)
     local maxAngle = trAngle + angleDelta
 
     local damage = doer.components.gfspellcaster:GetSpellPower() * params.damage
-    print("CR: Damage", damage)
-
-    print("minAngle and maxAngle", minAngle / DEGREES, maxAngle / DEGREES)
 
     local dAngle = sector == 360 
         and math.floor(sector / visuals.requiredEffects)  * DEGREES
         or math.floor(sector / (visuals.requiredEffects - 1))  * DEGREES
         
-    print(("GS: required effects: %i, angle between effects: %i"):format(visuals.requiredEffects, dAngle / DEGREES))
+    --print(("GS: required effects: %i, angle between effects: %i"):format(visuals.requiredEffects, dAngle / DEGREES))
 
     local lpos = {}
     for i = 0, visuals.requiredEffects - 1 do
         local _a = i * dAngle + minAngle
-        print(_a / DEGREES)
         table.insert(lpos,
             {
                 start = {x = x, z = z},
@@ -122,10 +118,6 @@ local Spell = Class(GFSpell, function(self, name)
         lightning = true,
         replicateable = true,
     }
-
-    if not GFGetIsMasterSim() then 
-        return 
-    end
 
     --cooldowns
     self.itemRecharge = 0

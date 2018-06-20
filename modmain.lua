@@ -1,23 +1,19 @@
-local require = GLOBAL.require
-local rawget = GLOBAL.rawget
-local rawset = GLOBAL.rawset
-local ACTIONS = GLOBAL.ACTIONS
-local BufferedAction = GLOBAL.BufferedAction
+local _G = GLOBAL
+local require = _G.require
+local rawget = _G.rawget
+local rawset = _G.rawset
+local ACTIONS = _G.ACTIONS
+local BufferedAction = _G.BufferedAction
 
-rawset(GLOBAL, "GFDev", true)
+rawset(_G, "GFDev", true)
 
 PrefabFiles = 
 {
     "gf_lightningfx",
     "gf_cracklefx",
     "gf_dummies",
-    --"gf_lightningfx_2",
-    "gf_magic_echo_amulet",
-    "gf_lightning_spear",
-    "gf_effects_fx",
-    "gf_potion_metabolism",
     "gf_reticules",
-    "gf_tentacle_staff",
+    "gf_hone",
 }
 
 Assets = 
@@ -31,17 +27,19 @@ Assets =
     Asset("IMAGE", "images/gficons.tex"),
     Asset("ATLAS", "images/gficons.xml"),
 
-    Asset("ANIM", "anim/gf_fast_cast.zip")
+    Asset("ANIM", "anim/gf_player_fast_cast.zip"),
+    Asset("ANIM", "anim/gf_player_read_scroll.zip"),
 }
 
-local gfFunctions = require "gf_global_functions"
-if type(gfFunctions) == "table" then
-    for k, v in pairs(gfFunctions) do
-        if not rawget(GLOBAL, k) then
-            rawset(GLOBAL, k, v)
-        end
-    end
+if rawget(_G, "GFEntitiesBaseSpells") == nil then
+    rawset(_G, "GFEntitiesBaseSpells", {})
 end
+
+if rawget(_G, "GFCasterCreatures") == nil then
+    rawset(_G, "GFCasterCreatures", {})
+end
+
+require "gf_global_functions"
 
 modimport "scripts/gf_strings.lua"
 modimport "scripts/gf_spell_list.lua"
@@ -54,8 +52,8 @@ modimport "scripts/gf_creatures_states.lua"
 modimport "scripts/gf_creatures_brains.lua"
 modimport "scripts/gf_widgets.lua"
 modimport "scripts/gf_init_controls.lua"
-modimport "scripts/gf_init_prefabs.lua"
 modimport "scripts/gf_init_components.lua"
+modimport "scripts/gf_init_prefabs.lua"
 
 AddModRPCHandler("Green Framework", "GFDISABLEPOINTER", function(inst)
     if inst.components.gfspellpointer then
@@ -68,3 +66,5 @@ AddModRPCHandler("Green Framework", "GFCLICKSPELLBUTTON", function(inst, spellNa
         inst.components.gfspellcaster:HandleIconClick(spellName)
     end
 end)
+
+_G.GFAddBaseSpellsToEntity("gf_lightning_spear", "equip_chainlightning", "equip_crushlightning")

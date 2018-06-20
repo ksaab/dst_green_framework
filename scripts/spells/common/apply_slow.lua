@@ -19,8 +19,6 @@ local Spell = Class(SpellArchetype, function(self)
         needTarget = true,
     }
 
-    if not GFGetIsMasterSim() then return end
-
     self.spellParams = 
     {
         isPositive = false,

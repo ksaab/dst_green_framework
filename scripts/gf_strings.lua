@@ -8,7 +8,7 @@ STRINGS.GF.DEFAULTALTACTIONACTION = "Cancel"
 STRINGS.GF.INVALID_TITLE = "<NONE>"
 STRINGS.GF.MINUTES_LETTER = "m"
 
-STRINGS.ACTIONS.GFCASTSPELL =
+STRINGS.ACTIONS._GFCASTSPELL =
 {
     GENERIC = "Cast",
     JUMP = "Jump",
@@ -16,11 +16,12 @@ STRINGS.ACTIONS.GFCASTSPELL =
     LUNGE = "Lunge",
     SHOOT = "Shoot",
 }
+STRINGS.ACTIONS.GFCASTSPELL = "Cast"
 STRINGS.ACTIONS.GFSTARTSPELLTARGETING = "Target"
 STRINGS.ACTIONS.GFSTOPSPELLTARGETING = "Cancel"
 STRINGS.ACTIONS.GFCHANGEITEMSPELL = "Change Spell"
 STRINGS.ACTIONS.GFDRINKIT = "Drink"
-STRINGS.ACTIONS.GFENCHANTITEM = "Enchant Item"
+STRINGS.ACTIONS.GFENHANCEITEM = "Enhance Item"
 
 STRINGS.GF.SPELLS = {
     CRUSH_LIGHTNING = 
@@ -47,6 +48,25 @@ STRINGS.GF.SPELLS = {
     {
         TITLE = "Magic Echo",
     },
+    SHOOT = 
+    {
+        TITLE = "Shoot"
+    },
+}
+
+STRINGS.CHARACTERS.GENERIC.CAST_FAILED = 
+{
+    GENERIC = "Nothing happens.",
+}
+
+STRINGS.CHARACTERS.GENERIC.PRECAST_FAILED = 
+{
+    GENERIC = "Nothing will come of it.",
+    NOAMMO = "I need more ammo!",
+    NOITEM = "I need more required items!",
+    HEALTH_FAIL = "I  need more resources",
+    SANITY_FAIL = "I  need more resources",
+    HUNGER_FAIL = "I  need more resources",
 }
 
 STRINGS.NAMES.GF_LIGHTNING_SPEAR = "Spear of lightning"

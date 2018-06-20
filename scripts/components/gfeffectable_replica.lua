@@ -47,7 +47,7 @@ end
 
 local function SliceEffectsString(inst)
     local self = inst.replica.gfeffectable
-    GFDebugPrint("GFEffectable Replica: effects string: ", self._effectsList:value())
+    --GFDebugPrint("GFEffectable Replica: effects string: ", self._effectsList:value())
     --if GFGetIsMasterSim() then return end
     local effectsArray = self._effectsList:value():split(';')
     local newEffects = {}
@@ -106,7 +106,7 @@ local GFEffectable = Class(function(self, inst)
     self._effectsList = net_string(inst.GUID, "GFEffectable._effectsList", "gfeffectsupdated")
     if not GFGetIsMasterSim() then
         inst:ListenForEvent("gfeffectsupdated", SliceEffectsString)
-    elseif not GFGetDedicatedNet() then
+    elseif not GFGetIsDedicatedNet() then
         inst:ListenForEvent("gfeffectsupdated", GenerateHudInfo)
     end
 end)

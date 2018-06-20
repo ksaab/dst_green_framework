@@ -1,4 +1,4 @@
-local gfFunctions = GLOBAL.require "gf_global_functions"
+local _G = GLOBAL
 
 AddComponentPostInit("playeractionpicker", function(self)
     local _oldGetLeftClickActions = self.GetLeftClickActions
@@ -55,14 +55,6 @@ AddComponentPostInit("playercontroller", function(self)
         then
             local position = self.inst.components.gfspellpointer.pointer.targetPosition or Vector3(0, 0, 0)
             local act = self.inst.components.playeractionpicker:SortActionList({ ACTIONS.GFSTOPSPELLTARGETING }, position, nil)[1]
-            --local act 
-            --for _, action in pairs(self.inst.components.playeractionpicker:SortActionList({ ACTIONS.GFSTOPSPELLTARGETING }, position, nil)) do
-                --if act.action == ACTIONS.GFSTOPSPELLTARGETING then
-                    --act = action
-                    --break
-                --end
-            --end
-            print(position, act)
             if act ~= nil then
                 if not self.ismastersim then
                     act.preview_cb = function()
@@ -120,7 +112,7 @@ AddComponentPostInit("playercontroller", function(self)
         _oldDoControllerActionButton(self)
     end
 
-    if gfFunctions.GFGetIsMasterSim then return end
+    if _G.GFGetIsMasterSim() then return end
     --[[client only changes for the player controller]]
     --need to hook OnLeftClick, if we want to push the calculated position and target
     --host will work correctly without this

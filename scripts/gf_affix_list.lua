@@ -9,7 +9,7 @@ local GFAffixList = GLOBAL.GFAffixList
 
 local affixArray = 
 {
-    pigman = 
+    --[[ pigman = 
     {
         chance = 1,
         list = 
@@ -24,7 +24,7 @@ local affixArray =
         {
             "affix_test",
         },
-    },
+    }, ]]
 }
 
 for prefab, affixes in pairs (affixArray) do

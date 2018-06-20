@@ -12,6 +12,7 @@ local ShakeAllCameras = GLOBAL.ShakeAllCameras
 local CAMERASHAKE = GLOBAL.CAMERASHAKE
 local Vector3 = GLOBAL.Vector3
 local BufferedAction = GLOBAL.BufferedAction
+local distsq = GLOBAL.distsq
 
 local spellList = GLOBAL.GFSpellList
 
@@ -22,6 +23,29 @@ local function GetSpellCastTime(spellName)
 
 	return 0
 end
+
+local function FindValidGround(inst, range)
+	range = (range ~= nil and range ~= math.huge) and range or 20
+	local pos = Vector3()
+	for i = range, 0, -1 do
+		pos.x, pos.y, pos.z = inst.entity:LocalToWorldSpace(i, 0, 0)
+		if GLOBAL.TheWorld.Map:IsPassableAtPoint(pos:Get()) and not GLOBAL.TheWorld.Map:IsGroundTargetBlocked(pos) then
+			return pos
+		end
+	end
+
+	return false
+end
+
+local function IsValidGround(pos)
+	return GLOBAL.TheWorld.Map:IsPassableAtPoint(pos:Get()) and not GLOBAL.TheWorld.Map:IsGroundTargetBlocked(pos)
+end
+
+--[[ local function GetSpellPostCast(spellName)
+	if spellName and spellList[spellName] then 
+		return spellList[spellName]:HasPostCast()
+	end
+end ]]
 
 local function ToggleOffPhysics(inst)
     inst.sg.statemem.isphysicstoggle = true
@@ -42,14 +66,14 @@ end
 local function CanCastSpell(spell, inst, item)
     local itemValid = true
     --check item if exists
-    if item and item.replica.gfspellitem then 
-        itemValid = item.replica.gfspellitem:CanCastSpell(spell)
+    if item and item.components.gfspellitem then 
+        itemValid = item.components.gfspellitem:CanCastSpell(spell)
     end
-
     --check doer
-    local instValid = inst.replica.gfspellcaster and inst.replica.gfspellcaster:CanCastSpell(spell)
+	local instValid = inst.components.gfspellcaster and inst.components.gfspellcaster:CanCastSpell(spell)
+	local precastCheck = inst.components.gfspellcaster:PreCastCheck(spell)
 
-	return instValid and itemValid
+	return instValid and itemValid and precastCheck
 end
 
 --STATES--
@@ -59,6 +83,7 @@ local gfdodrink = State{
 	tags = { "doing", "busy" },
 
 	onenter = function(inst)
+		inst.components.locomotor:Stop()
 		local act = inst:GetBufferedAction()
 		if act then
 			local swap
@@ -69,7 +94,8 @@ local gfdodrink = State{
 				swap = "swap_gf_cute_bottle"
 			end
 			inst.components.locomotor:Stop()
-			inst.AnimState:PlayAnimation("horn")
+			inst.AnimState:PlayAnimation("action_uniqueitem_pre")
+            inst.AnimState:PushAnimation("horn", false)
 			inst.AnimState:OverrideSymbol("horn01", "swap_gf_cute_bottle", swap)
 			--inst.AnimState:OverrideSymbol("horn01", "swap_potion_gw", "swap_twirl_orange")
 			inst.AnimState:Show("ARM_normal")
@@ -96,12 +122,8 @@ local gfdodrink = State{
 
 	events =
 	{
-		EventHandler("animover", function(inst)
+		EventHandler("animqueueover", function(inst)
 			inst.sg:GoToState("idle")
-		end),
-
-		EventHandler("unequip", function(inst) 
-			inst.sg:GoToState("idle") 
 		end),
 	},
 }
@@ -133,6 +155,8 @@ local gfcustomcast = State
 	end,
 
 	ontimeout = function(inst)
+		inst.sg:RemoveStateTag("casting")
+		inst.sg:RemoveStateTag("busy")
 		inst:PerformBufferedAction()
 		inst.AnimState:PlayAnimation("gf_fast_cast_pst")
 	end,
@@ -144,6 +168,12 @@ local gfcustomcast = State
 				inst.sg:GoToState("idle")
 			end
 		end),
+
+		EventHandler("unequip", function(inst) 
+			if inst.sg:HasStateTag("casting")  then
+				inst.sg:GoToState("idle") 
+			end
+		end), 
 	},
 }
 
@@ -174,6 +204,8 @@ local gfchannelcast = State
 	end,
 
 	ontimeout = function(inst)
+		inst.sg:RemoveStateTag("casting")
+		inst.sg:RemoveStateTag("busy")
 		inst:PerformBufferedAction()
 		inst.AnimState:PlayAnimation("channel_pst")
 	end,
@@ -185,6 +217,12 @@ local gfchannelcast = State
 				inst.sg:GoToState("idle")
 			end
 		end),
+
+		EventHandler("unequip", function(inst) 
+			if inst.sg:HasStateTag("casting")  then
+				inst.sg:GoToState("idle") 
+			end
+		end), 
 	},
 }
 
@@ -223,7 +261,7 @@ local gfcastwithstaff = State{
 				end
 			end
 
-			inst.sg:SetTimeout(castTime)
+			--inst.sg:SetTimeout(castTime)
 			return
 		end
 
@@ -247,8 +285,10 @@ local gfcastwithstaff = State{
 			end
 		end),
 		EventHandler("unequip", function(inst) 
-			inst.sg:GoToState("idle") 
-		end),
+			if inst.sg:HasStateTag("casting")  then
+				inst.sg:GoToState("idle") 
+			end
+		end), 
 	},
 
 	timeline =
@@ -256,6 +296,8 @@ local gfcastwithstaff = State{
 		TimeEvent(58 * FRAMES, function(inst)
 			local sm = inst.sg.statemem
 			inst:PerformBufferedAction()
+			inst.sg:RemoveStateTag("busy")
+			inst.sg:RemoveStateTag("casting")
 		end),
 	}
 }
@@ -284,8 +326,75 @@ local gfgroundslam = State{
 		inst.sg:GoToState("idle")
 	end,
 
-	onexit = function(inst) 
+	events =
+	{
+		EventHandler("animqueueover", function(inst)
+			if inst.AnimState:AnimDone() then
+				inst.sg:GoToState("idle")
+			end
+		end),
+		EventHandler("unequip", function(inst) 
+			if inst.sg:HasStateTag("casting")  then
+				inst.sg:GoToState("idle") 
+			end
+		end), 
+	},
 
+	timeline =
+	{
+		TimeEvent(26 * FRAMES, function(inst)
+			if inst.AnimState:IsCurrentAnimation("atk_leap") then
+				inst.sg:RemoveStateTag("casting")
+				inst.sg:RemoveStateTag("busy")
+				inst:PerformBufferedAction()
+            end
+		end),
+	}
+}
+
+local gfreadscroll = State
+{
+	name = "gfreadscroll",
+	tags = {"doing", "casting", "busy", "nodangle"},
+
+	onenter = function(inst)
+		inst.components.locomotor:Stop()
+
+		local act = inst:GetBufferedAction()
+		if act and act.spell then
+			local castTime = math.max(0.75, GetSpellCastTime(act.spell))
+			if act.pos then
+				inst:ForceFacePoint(act.pos.x, 0, act.pos.z)
+			end
+
+			local item = inst.replica.inventory:GetEquippedItem(GLOBAL.EQUIPSLOTS.HANDS)
+
+			inst.AnimState:PlayAnimation("scroll_open", false) 
+			inst.AnimState:PushAnimation("scroll_loop", true) 
+			--inst.AnimState:OverrideSymbol("book", "scroll", (item and item.symboloverride) and item.symboloverride or "read")
+			inst.AnimState:Hide("ARM_carry") 
+			inst.AnimState:Show("ARM_normal")
+			inst.SoundEmitter:PlaySound("dontstarve/common/use_book") 
+
+			inst.sg:SetTimeout(castTime)
+			return
+		end
+
+		inst.sg:GoToState("idle")
+	end,
+
+	ontimeout = function(inst)
+		inst.sg:RemoveStateTag("casting")
+		inst.sg:RemoveStateTag("busy")
+		inst:PerformBufferedAction()
+		inst.AnimState:PlayAnimation("scroll_pst", false)
+	end,
+
+	onexit = function(inst)
+		if inst.components.inventory:GetEquippedItem(EQUIPSLOTS.HANDS) then
+			inst.AnimState:Show("ARM_carry") 
+			inst.AnimState:Hide("ARM_normal")
+		end
 	end,
 
 	events =
@@ -295,19 +404,503 @@ local gfgroundslam = State{
 				inst.sg:GoToState("idle")
 			end
 		end),
+
 		EventHandler("unequip", function(inst) 
-			inst.sg:GoToState("idle") 
-		end),
+			if inst.sg:HasStateTag("casting") then
+				inst.sg:GoToState("idle") 
+			end
+		end), 
 	},
+}
+
+local gftwirlcast = State
+{
+	name = "gftwirlcast",
+	tags = {"doing", "casting", "busy", "nodangle"},
+
+	onenter = function(inst)
+		inst.components.locomotor:Stop()
+
+		local act = inst:GetBufferedAction()
+		if act and act.spell then
+			if act.pos then
+				inst:ForceFacePoint(act.pos.x, 0, act.pos.z)
+			end
+			inst.AnimState:PlayAnimation("lunge_pre")
+			inst.AnimState:PushAnimation("lunge_pst", false)
+
+			return
+		end
+
+		inst.sg:GoToState("idle")
+	end,
+
+	onexit = function(inst)
+		inst.components.colouradder:PopColour("lunge")
+	end,
+
+	onupdate = function(inst)
+		if inst.sg.statemem.flash ~= nil and inst.sg.statemem.flash > 0 then
+			inst.sg.statemem.flash = math.max(0, inst.sg.statemem.flash - .1)
+			inst.components.colouradder:PushColour("lunge", inst.sg.statemem.flash, inst.sg.statemem.flash, 0, 0)
+		end
+	end,
 
 	timeline =
 	{
-		TimeEvent(26 * FRAMES, function(inst)
-			if inst.AnimState:IsCurrentAnimation("atk_leap") then
-                inst:PerformBufferedAction()
-            end
+		TimeEvent(4 * FRAMES, function(inst)
+			inst.SoundEmitter:PlaySound("dontstarve/common/twirl", nil, nil, true)
 		end),
-	}
+	},
+
+	events =
+	{
+		EventHandler("animover", function(inst)
+			if not inst.AnimState:AnimDone() then
+				if inst.AnimState:IsCurrentAnimation("lunge_pst") then
+					inst.sg:RemoveStateTag("casting")
+					inst:PerformBufferedAction()
+					inst.SoundEmitter:PlaySound("dontstarve/wilson/attack_weapon")
+					inst.SoundEmitter:PlaySound("dontstarve/common/lava_arena/fireball")
+					inst.sg.statemem.flash = 1
+				end
+			else
+				inst.sg:GoToState("idle")
+			end
+		end),
+
+		EventHandler("unequip", function(inst) 
+			if inst.sg:HasStateTag("casting") then
+				inst.sg:GoToState("idle") 
+			end
+		end), 
+	},
+}
+
+local gfbookcast = State
+{
+	name = "gfbookcast",
+	tags = {"doing", "casting", "busy", "nodangle"},
+
+	onenter = function(inst)
+		inst.components.locomotor:Stop()
+
+		local act = inst:GetBufferedAction()
+		if act and act.spell then
+			if act.pos then
+				inst:ForceFacePoint(act.pos.x, 0, act.pos.z)
+			end
+
+			local item = act.invobject
+			local swapBuild = (item and item.swapBuild) and item.swapBuild or "player_actions_uniqueitem"
+
+			inst.AnimState:OverrideSymbol("book_open", swapBuild, "book_open")
+            inst.AnimState:OverrideSymbol("book_closed", swapBuild, "book_closed")
+			inst.AnimState:OverrideSymbol("book_open_pages", swapBuild, "book_open_pages")
+
+			inst.AnimState:PlayAnimation("action_uniqueitem_pre")
+			inst.AnimState:PushAnimation("book", false)
+
+			inst.SoundEmitter:PlaySound("dontstarve/common/use_book") 
+
+			return
+		end
+
+		inst.sg:GoToState("idle")
+	end,
+
+	--[[ onexit = function(inst)
+
+	end, ]]
+
+	timeline =
+	{
+		TimeEvent(58 * FRAMES, function(inst)
+			inst.sg:RemoveStateTag("casting")
+			inst.sg:RemoveStateTag("busy")
+			inst:PerformBufferedAction()
+		end),
+	},
+
+	events =
+	{
+		EventHandler("animqueueover", function(inst)
+			if inst.AnimState:AnimDone() then
+				inst.sg:GoToState("idle")
+			end
+		end),
+
+		EventHandler("unequip", function(inst) 
+			if inst.sg:HasStateTag("casting") then
+				inst.sg:GoToState("idle") 
+			end
+		end), 
+	},
+}
+
+local gfhighleap = State{
+	name = "gfhighleap",
+	tags = { "doing", "busy", "casting", "nopredict", "nomorph" },
+
+	onenter = function(inst)
+		inst.components.locomotor:Stop()
+
+		local act = inst:GetBufferedAction()
+		if act and act.spell and act.pos and IsValidGround(act.pos) then
+			inst:ForceFacePoint(act.pos:Get())
+			local castTime = math.max(0.75, GetSpellCastTime(spell))
+
+			inst.AnimState:PlayAnimation("superjump_pre")
+			inst.AnimState:PushAnimation("superjump", false)
+
+			inst.sg.statemem.targetPos = act.pos
+			inst.sg:SetTimeout(math.max(0.8, castTime))
+
+			return
+		end
+
+		inst.sg:GoToState("idle")
+	end,
+
+	ontimeout = function(inst)
+		inst.sg:GoToState("gfhighleapdone", inst.sg.statemem.targetPos)--, inst.sg.statemem.buffact)
+	end,
+
+	onexit = function(inst)
+		inst.DynamicShadow:Enable(true)
+		inst.components.colouradder:PopColour("superjump")
+		inst.components.health:SetInvincible(false)
+	end,
+
+	timeline =
+	{
+		TimeEvent(FRAMES, function(inst)
+			if inst.sg.statemem.jumping then
+				inst.components.colouradder:PushColour("superjump", .3, .3, .2, 0)
+			end
+		end),
+		
+		TimeEvent(2 * FRAMES, function(inst)
+			if inst.sg.statemem.jumping then
+				inst.components.colouradder:PushColour("superjump", .6, .6, .4, 0)
+			end
+		end),
+	},
+
+	events =
+	{
+		EventHandler("animover", function(inst)
+			if not inst.AnimState:AnimDone() then
+				if inst.AnimState:IsCurrentAnimation("superjump") then
+					inst.sg:AddStateTag("nointerrupt")
+					inst.components.health:SetInvincible(true)
+					inst.DynamicShadow:Enable(false)
+				end
+			end
+		end),
+
+		EventHandler("unequip", function(inst) 
+			if inst.sg:HasStateTag("casting") then
+				inst.sg:GoToState("idle") 
+			end
+		end), 
+	},
+}
+
+local gfhighleapdone = State{
+	name = "gfhighleapdone",
+	tags = { "doing", "busy", "casting", "nopredict", "nomorph", "nointerrupt" },
+
+	onenter = function(inst, pos)
+		if pos ~= nil then
+			inst.Transform:SetPosition(pos:Get())
+			inst.AnimState:PlayAnimation("superjump_land")
+			inst.DynamicShadow:Enable(false)
+			inst.components.health:SetInvincible(true)
+			inst.sg.statemem.flash = 0
+			return
+		end
+
+		inst.sg:GoToState("idle") 
+	end,
+
+	onupdate = function(inst)
+		if inst.sg.statemem.flash > 0 then
+			inst.sg.statemem.flash = math.max(0, inst.sg.statemem.flash - .1)
+			local c = math.min(1, inst.sg.statemem.flash)
+			inst.components.colouradder:PushColour("superjump", c, c, 0, 0)
+		end
+	end,
+
+	onexit = function(inst)
+		inst.DynamicShadow:Enable(true)
+		inst.components.colouradder:PopColour("superjump")
+		inst.components.health:SetInvincible(false)
+	end,
+
+	timeline =
+	{
+		TimeEvent(FRAMES, function(inst)
+			inst.SoundEmitter:PlaySound("dontstarve/wilson/attack_weapon")
+			inst.components.colouradder:PushColour("superjump", .1, .1, 0, 0)
+		end),
+
+		TimeEvent(2 * FRAMES, function(inst)
+			inst.components.colouradder:PushColour("superjump", .2, .2, 0, 0)
+		end),
+
+		TimeEvent(3 * FRAMES, function(inst)
+			inst.components.colouradder:PushColour("superjump", .4, .4, 0, 0)
+			inst.DynamicShadow:Enable(true)
+		end),
+
+		TimeEvent(4 * FRAMES, function(inst)
+			inst.components.colouradder:PushColour("superjump", 1, 1, 0, 0)
+			inst.components.bloomer:PushBloom("superjump", "shaders/anim.ksh", -2)
+			inst.sg.statemem.flash = 1.3
+			ShakeAllCameras(CAMERASHAKE.VERTICAL, .7, .015, .2, inst, 5)
+			local fx = SpawnPrefab("superjump_debris")
+			if fx then fx.Transform:SetPosition(inst.Transform:GetWorldPosition()) end
+			inst:PerformBufferedAction()
+		end),
+
+		TimeEvent(8 * FRAMES, function(inst)
+			inst.components.bloomer:PopBloom("superjump")
+			local act = inst.sg.statemem.buffact
+			if act ~= nil and act.action == ACTIONS.GFCASTSPELL and act.spell and spellList[act.spell] then
+				spellList[act.spell]:DoPostCast(inst, act.target, act.pos)
+			end
+			inst.components.health:SetInvincible(false)
+			inst.sg:RemoveStateTag("nointerrupt")
+			inst.sg:RemoveStateTag("busy")
+		end),
+	},
+
+	events =
+	{
+		EventHandler("animover", function(inst)
+			inst.sg:GoToState("idle") 
+		end),
+
+		EventHandler("unequip", function(inst) 
+			if inst.sg:HasStateTag("casting") then
+				inst.sg:GoToState("idle") 
+			end
+		end), 
+	},
+}
+
+local gftdartshoot = State
+{
+	name = "gftdartshoot",
+	tags = {"doing", "casting", "busy", "nodangle"},
+
+	onenter = function(inst)
+		inst.components.locomotor:Stop()
+
+		local act = inst:GetBufferedAction()
+		if act and act.spell then
+			if act.pos then
+				inst:ForceFacePoint(act.pos.x, 0, act.pos.z)
+			end
+			inst.AnimState:PlayAnimation("dart_pre")
+			inst.AnimState:PushAnimation("dart_long", false)
+
+			return
+		end
+
+		inst.sg:GoToState("idle")
+	end,
+
+	timeline =
+	{
+		TimeEvent(13 * FRAMES, function(inst)
+			inst.SoundEmitter:PlaySound("dontstarve/wilson/blowdart_shoot")
+		end),
+		TimeEvent(14 * FRAMES, function(inst)
+			inst:PerformBufferedAction()
+			inst.sg:RemoveStateTag("casting")
+			inst.sg:RemoveStateTag("busy")
+		end),
+	},
+
+	events =
+	{
+		EventHandler("animqueueover", function(inst)
+			if inst.AnimState:AnimDone() then
+				inst.sg:GoToState("idle")
+			end
+		end),
+
+		EventHandler("unequip", function(inst) 
+			if inst.sg:HasStateTag("casting") then
+				inst.sg:GoToState("idle") 
+			end
+		end), 
+	},
+}
+
+local gfleap = State{
+	name = "gfleap",
+	tags = { "doing", "busy", "casting", "nomorph" },
+
+	onenter = function(inst)
+		inst.components.locomotor:Stop()
+
+		local act = inst:GetBufferedAction()
+		if act and act.spell and act.pos and IsValidGround(act.pos) then
+			inst:ForceFacePoint(act.pos:Get())
+			inst.AnimState:PlayAnimation("atk_leap_pre")
+			inst.sg.statemem.targetPos = act.pos
+
+			return
+		end
+
+		inst.sg:GoToState("idle")
+	end,
+
+	events =
+	{
+		EventHandler("animover", function(inst)
+			inst.sg:GoToState("gfleapdone", inst.sg.statemem.targetPos)
+		end),
+
+		EventHandler("unequip", function(inst) 
+			inst.sg:GoToState("idle") 
+		end), 
+	},
+}
+
+local gfleapdone = State{
+	name = "gfleapdone",
+	tags = { "doing", "busy", "casting", "nopredict", "nomorph", "nointerrupt" },
+
+	onenter = function(inst, pos)
+		if pos ~= nil then
+			ToggleOffPhysics(inst)
+			inst.AnimState:PlayAnimation("atk_leap")
+			inst.SoundEmitter:PlaySound("dontstarve/common/deathpoof")
+			local spos = inst:GetPosition()
+			if spos.x ~= pos.x or spos.z ~= pos.z then
+				inst:ForceFacePoint(pos:Get())
+				inst.Physics:SetMotorVel(math.sqrt(distsq(spos.x, spos.z, pos.x, pos.z)) / (12 * FRAMES), 0 ,0)
+			end
+
+			inst.sg.statemem.spos = spos
+			inst.sg.statemem.tpos = pos
+
+			return
+		end
+
+		inst.sg:GoToState("idle") 
+	end,
+
+	--[[ onupdate = function(inst)
+		if inst.sg.statemem.flash > 0 then
+			inst.sg.statemem.flash = math.max(0, inst.sg.statemem.flash - .1)
+			local c = math.min(1, inst.sg.statemem.flash)
+			inst.components.colouradder:PushColour("superjump", c, c, 0, 0)
+		end
+	end,]]
+
+	onexit = function(inst)
+		if inst.sg.statemem.isphysicstoggle then
+			ToggleOnPhysics(inst)
+			inst.Physics:Stop()
+			inst.Physics:SetMotorVel(0, 0, 0)
+			local x, y, z = inst.Transform:GetWorldPosition()
+			if IsValidGround(Vector3(x, 0, z)) then
+				inst.Physics:Teleport(x, 0, z)
+			else
+				inst.Physics:Teleport(inst.sg.statemem.tpos.x, 0, inst.sg.statemem.tpos.z)
+			end
+		end
+	end,
+
+	timeline =
+	{
+		TimeEvent(12 * FRAMES, function(inst)
+			ToggleOnPhysics(inst)
+			inst.Physics:Stop()
+			inst.Physics:SetMotorVel(0, 0, 0)
+			inst.Physics:Teleport(inst.sg.statemem.tpos.x, 0, inst.sg.statemem.tpos.z)
+		end),
+		TimeEvent(13 * FRAMES, function(inst)
+			ShakeAllCameras(CAMERASHAKE.VERTICAL, .7, .015, .8, inst, 20)
+			inst:PerformBufferedAction()
+			inst.sg:RemoveStateTag("nointerrupt")
+		end),
+	},
+
+	events =
+	{
+		EventHandler("animover", function(inst)
+			inst.sg:GoToState("idle") 
+		end),
+
+		EventHandler("unequip", function(inst) 
+			inst.sg:GoToState("idle") 
+		end), 
+	},
+}
+
+local gfflurry = State
+{
+	name = "gfflurry",
+	tags = {"doing", "casting", "busy", "nodangle"},
+
+	onenter = function(inst)
+		inst.components.locomotor:Stop()
+
+		local act = inst:GetBufferedAction()
+		if act and act.spell then
+			if act.pos then
+				inst:ForceFacePoint(act.pos.x, 0, act.pos.z)
+			end
+			inst.AnimState:PlayAnimation("multithrust_yell")
+			inst.AnimState:PushAnimation("multithrust", false)
+
+			return
+		end
+
+		inst.sg:GoToState("idle")
+	end,
+
+	onexit = function(inst)
+		inst.Transform:SetFourFaced()
+	end,
+
+	timeline =
+	{
+		TimeEvent(18 * FRAMES, function(inst)
+			inst.SoundEmitter:PlaySound("dontstarve/wilson/attack_weapon")
+		end),
+		TimeEvent(22 * FRAMES, function(inst)
+			inst.SoundEmitter:PlaySound("dontstarve/wilson/attack_weapon")
+			inst:PerformBufferedAction()
+			inst.sg:RemoveStateTag("casting")
+			inst.sg:RemoveStateTag("busy")
+		end),
+	},
+
+	events =
+	{
+		EventHandler("animover", function(inst)
+			if not inst.AnimState:AnimDone() then
+				if inst.AnimState:IsCurrentAnimation("multithrust") then
+					inst.Transform:SetEightFaced()
+				end
+			else
+				inst.sg:GoToState("idle")
+			end
+		end),
+
+		EventHandler("unequip", function(inst) 
+			if inst.sg:HasStateTag("casting") then
+				inst.sg:GoToState("idle") 
+			end
+		end), 
+	},
 }
 
 --Add states--------------
@@ -316,6 +909,15 @@ AddStategraphState("wilson", gfcastwithstaff)
 AddStategraphState("wilson", gfgroundslam)
 AddStategraphState("wilson", gfchannelcast)
 AddStategraphState("wilson", gfcustomcast)
+AddStategraphState("wilson", gfreadscroll)
+AddStategraphState("wilson", gftwirlcast)
+AddStategraphState("wilson", gfbookcast)
+AddStategraphState("wilson", gfhighleap)
+AddStategraphState("wilson", gfhighleapdone)
+AddStategraphState("wilson", gftdartshoot)
+AddStategraphState("wilson", gfleap)
+AddStategraphState("wilson", gfleapdone)
+AddStategraphState("wilson", gfflurry)
 
 --Add events--------------
 AddStategraphEvent("wilson", EventHandler("gfforcemove", function(inst, data)
@@ -325,6 +927,7 @@ end))
 
 --Add actions handlers----
 AddStategraphActionHandler("wilson", ActionHandler(ACTIONS.GFDRINKIT, "gfdodrink"))
+AddStategraphActionHandler("wilson", ActionHandler(ACTIONS.GFENHANCEITEM, "dolongaction"))
 
 AddStategraphActionHandler("wilson", ActionHandler(ACTIONS.GFCASTSPELL, function(inst)
     local act = inst:GetBufferedAction()
@@ -333,7 +936,7 @@ AddStategraphActionHandler("wilson", ActionHandler(ACTIONS.GFCASTSPELL, function
 	local spell
 	local spellName
     
-	if gfsp == nil or (act.pos == nil and act.target == nil) then return print("failed data isn't valid") "idle" end
+	if gfsp == nil or (act.pos == nil and act.target == nil) then return "idle" end
 
 	if act.spell ~= nil then
 		spellName = act.spell
@@ -344,7 +947,7 @@ AddStategraphActionHandler("wilson", ActionHandler(ACTIONS.GFCASTSPELL, function
 		spellName = item.replica.gfspellitem:GetItemSpellName()	
 	end
 
-	if spellName == nil or spellList[spellName] == nil then print("failed spell name isn't valid") return "idle" end --invalid spell name
+	if spellName == nil or spellList[spellName] == nil then return "idle" end --invalid spell name
 
 	--gfsp:Disable()
 	spell = spellList[spellName]
@@ -366,7 +969,7 @@ AddStategraphActionHandler("wilson", ActionHandler(ACTIONS.GFCASTSPELL, function
 			--print("close enough")
 			--if distance is valid and item is not recharging
 			--then go to item spell state
-			if CanCastSpell(spellName, inst, item) then
+			if CanCastSpell(spellName, inst, item) == true then
 				act.spell = spellName
 				return spell:GetPlayerState()
 			end
@@ -374,6 +977,5 @@ AddStategraphActionHandler("wilson", ActionHandler(ACTIONS.GFCASTSPELL, function
 	end
 
     --action data is not valid for spell cast
-    print("failed spell isn't valid")
 	return "idle"
 end))

@@ -36,7 +36,7 @@ end
 function GFSpellCaster:ForceUpdateReplicaHUD()
     if self.onClient then
         self.inst.replica.gfspellcaster._forceUpdateRecharges:push()
-        if not GFGetDedicatedNet() and self.inst == GFGetPlayer() then
+        if not GFGetIsDedicatedNet() and self.inst == GFGetPlayer() then
             self.inst:PushEvent("gfforcerechargewatcher")
         end
     end
@@ -90,7 +90,7 @@ function GFSpellCaster:RemoveSpell(spellName, nonUpdateReplica)
 end
 
 function GFSpellCaster:PushRecharge(spellname, recharge)
-    GFDebugPrint(("GFSpellCaster: spell %s recharge started on %s, duration %.2f"):format(spellname, tostring(self.inst), recharge))
+    --GFDebugPrint(("GFSpellCaster: spell %s recharge started on %s, duration %.2f"):format(spellname, tostring(self.inst), recharge))
     self.spellsReadyTime[spellname] = GetTime() + recharge
     self.spellsRechargeDuration[spellname] = recharge
     if self.onClient then
@@ -100,15 +100,15 @@ function GFSpellCaster:PushRecharge(spellname, recharge)
     self.inst:PushEvent("gfrechargestarted", {spell = spellname})
 end
 
-function GFSpellCaster:CastSpell(spellname, target, pos, item, noRecharge)
+function GFSpellCaster:CastSpell(spellname, target, pos, item, spellParams, noRecharge)
     local spell = GetSpell(spellname)
     if spell == nil then
-        print(("GFSpellCaster: attemp to cast invalid spell %s"):format(spellname or "none"))
+        GFDebugPrint(("GFSpellCaster: attemp to cast invalid spell %s"):format(spellname or "none"))
         return false
     end
 
-    if not spell:DoCastSpell(self.inst, target, pos, item) then
-        print(("GFSpellCaster: spell %s cast failed"):format(spellname))
+    if not spell:DoCastSpell(self.inst, target, pos, item, spellParams) then
+        GFDebugPrint(("GFSpellCaster: spell %s cast failed"):format(spellname))
         return false
     end
 
@@ -125,14 +125,23 @@ function GFSpellCaster:CastSpell(spellname, target, pos, item, noRecharge)
 
     if self.onClient then
         self.inst.replica.gfspellcaster._forceUpdateRecharges:push()
-        if GFGetDedicatedNet() and self.inst == GFGetPlayer() then
+        if GFGetIsDedicatedNet() and self.inst == GFGetPlayer() then
             self.inst:PushEvent("gfforcerechargewatcher")
         end
     end
 
     self.inst:PushEvent("gfspellcastsuccess", {spell = spell, target = target, pos = pos})
+
     return true
 end
+
+--[[ function GFSpellCaster:DoPostCast(data)
+    if data.spell and spellList[data.spell] and spellList[data.spell]:HasPostCast() then
+        if spellList[data.spell]:DoPostCast(self.inst, data.target, data.pos, data.invobject) then
+            self.inst:PushEvent("gfpostcastsuccess", {spell = data.spell, target = data.target, pos = data.pos})
+        end
+    end
+end ]]
 
 --the main problem for spells is to find a correct target to prevent injuring a friend
 --(ex: pigman-shaman shouldn't hit other pigman or player-leader with the lightning spell)
@@ -216,12 +225,29 @@ function GFSpellCaster:GetValidAiSpell()
     return false
 end
 
+function GFSpellCaster:PreCastCheck(spellName)
+    if spellName and spellList[spellName] then
+        local preCheck = spellList[spellName]:PreCastCheck(self.inst)
+        if not preCheck or type(preCheck) == "string" then
+            --if STRINGS.CHARACTERS.GENERIC[preCheck] then
+            if self.inst.components.talker then
+                self.inst.components.talker:Say(GetString(self.inst, "PRECAST_FAILED", preCheck), 2.5, false, true, false)
+            end
+
+            return false
+        end
+
+        return true
+    end
+end
+
 function GFSpellCaster:HandleIconClick(spellName)
     local inst = self.inst
     if spellName 
         and spellList[spellName] 
         and not (inst:HasTag("playerghost") or inst:HasTag("corpse"))
         and self:IsSpellValidForCaster(spellName)
+        and self:PreCastCheck(spellName)
     then
         if spellList[spellName].instant then
             local act = BufferedAction(inst, inst, ACTIONS.GFCASTSPELL)

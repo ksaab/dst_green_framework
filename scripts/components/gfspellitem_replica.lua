@@ -4,7 +4,7 @@ local spellIDToNames = GFSpellIDToName
 
 local function SliceSpellString(inst)
     local self = inst.replica.gfspellitem
-    GFDebugPrint(inst, self._spellString:value())
+    --GFDebugPrint(inst, self._spellString:value())
     local spells = self._spellString:value():split(';')
     self.spells = {}
     for _, v in pairs(spells) do
@@ -24,7 +24,7 @@ local function SetItemSpellDirty(inst)
     else
         local spellName = spellIDToNames[tonumber(val)]
         self.itemSpell = spellList[spellName]
-        GFDebugPrint(inst, self.itemSpell)
+        --GFDebugPrint(inst, self.itemSpell)
 
         --set pointer on server-side
         --if self.inst.components.gfspellpointer then
@@ -35,7 +35,7 @@ end
 
 local function SetRechargesDirty(inst)
     local self = inst.replica.gfspellitem
-    GFDebugPrint("GFSpellItemReplica: recharge", inst, self._spellRecharges:value())
+    --GFDebugPrint("GFSpellItemReplica: recharge", inst, self._spellRecharges:value())
     local spellArray = self._spellRecharges:value():split(';')
     for k, v in pairs(spellArray) do
         local recharges = v:split(',')
@@ -67,9 +67,11 @@ local GFSpellItem = Class(function(self, inst)
         inst:ListenForEvent("gfsi_setspellrechargesdirty", SetRechargesDirty)
     end
 
-    if not GFGetDedicatedNet() then 
+    if not GFGetIsDedicatedNet() then 
         inst:ListenForEvent("gfsi_updaterechargesdirty", function(inst) inst:PushEvent("gfforcerechargewatcher") end)
     end
+
+    inst:AddTag("rechargeable")
 end)
 
 function GFSpellItem:SetSpells()

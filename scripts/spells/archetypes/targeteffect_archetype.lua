@@ -72,10 +72,6 @@ local Spell = Class(GFSpell, function(self, name)
         magic = true,
     }
 
-    if not GFGetIsMasterSim() then 
-        return 
-    end
-    
     --spell cooldowns
     self.itemRecharge = 0
     self.doerRecharge = 20

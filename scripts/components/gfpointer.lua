@@ -73,7 +73,7 @@ function GFPointer:Create(pointer)
     end
 
     self.pointer = SpawnPrefab(self.pointerPrefab)
-    print("creating a pointer", self.pointer)
+    --print("creating a pointer", self.pointer)
     TheCamera:AddListener(self, self._oncameraupdate)
 
     if self.pointer == nil then
@@ -90,7 +90,7 @@ end
 
 function GFPointer:Destroy()
     if self.pointer ~= nil then
-        print("removing a pointer", self.pointer)
+        --print("removing a pointer", self.pointer)
         DestroyPointer(self)
         --self.pointer:Remove()
         self.pointer = nil

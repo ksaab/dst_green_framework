@@ -10,12 +10,11 @@ local function DisablePointerOnUnequipped(inst)
 end
 
 local function OnDirty(inst)
-    print("On dirty")
     if inst ~= ThePlayer then return end
 
     local self = inst.components.gfspellpointer
     local spellID = self._currentSpell:value()
-    GFDebugPrint(string.format("GFSpellPointer: dirty (client/host) for %s, spell id %s", tostring(self.inst), spellID))
+    --GFDebugPrint(string.format("GFSpellPointer: dirty (client/host) for %s, spell id %s", tostring(self.inst), spellID))
     if spellID ~= 0 then
         self:StartTargeting(spellIDToNames[spellID])
     else
@@ -163,7 +162,7 @@ local GFSpellPointer = Class(function(self, inst)
         self.pointer = self.inst.components.gfpointer
         inst:ListenForEvent("gfspellpointerdirty", OnDirty)
     end ]]
-    if not GFGetDedicatedNet() and inst == ThePlayer then
+    if not GFGetIsDedicatedNet() and inst == ThePlayer then
         inst:ListenForEvent("gfspellpointerdirty", OnDirty)
         inst:AddComponent("gfpointer")
         self.pointer = self.inst.components.gfpointer
@@ -188,7 +187,7 @@ function GFSpellPointer:Enable(spellName)
         and GFGetIsMasterSim()
         and pc and pc:IsEnabled() --check controller, we don't need to target if it's not valid
     then 
-        GFDebugPrint(string.format("GFSpellPointer: ENABLE pointer (server) for %s, spell %s", tostring(self.inst), spellName))
+        --GFDebugPrint(string.format("GFSpellPointer: ENABLE pointer (server) for %s, spell %s", tostring(self.inst), spellName))
         self._currentSpell:set(spellNamesToID[spellName])
         self.currentSpell = spellName
         --EnableSpellTargetingActions(self.inst)
@@ -198,7 +197,7 @@ end
 
 function GFSpellPointer:Disable()
     if GFGetIsMasterSim() then
-        GFDebugPrint(string.format("GFSpellPointer: DISABLE pointer (server) for %s", tostring(self.inst)))
+        --GFDebugPrint(string.format("GFSpellPointer: DISABLE pointer (server) for %s", tostring(self.inst)))
         self._currentSpell:set(0)
         self.currentSpell = nil
         self.withItem = false
@@ -219,7 +218,7 @@ function GFSpellPointer:StartTargeting(spellName)
         return 
     end
 
-    GFDebugPrint(string.format("GFSpellPointer: Start Targeting (client/host) for %s, spell %s", tostring(self.inst), spellName))
+    --GFDebugPrint(string.format("GFSpellPointer: Start Targeting (client/host) for %s, spell %s", tostring(self.inst), spellName))
     if not GFGetIsMasterSim() then
         --the host toggled these params when ran the Enable function
         --EnableSpellTargetingActions(self.inst)
@@ -231,15 +230,15 @@ function GFSpellPointer:StartTargeting(spellName)
         self.pointer:Destroy()
         --self.inst:RemoveComponent("gfpointer")
         --self.pointer = nil
-        GFDebugPrint(string.format("GFSpellPointer: Dummy — disable pointer for %s, reason: spell changed",  tostring(self.inst)))
+        --GFDebugPrint(string.format("GFSpellPointer: Dummy — disable pointer for %s, reason: spell changed",  tostring(self.inst)))
     end
 
     self.pointer:Create(spellList[spellName].pointer)
-    GFDebugPrint(string.format("GFSpellPointer: Dummy — enable pointer for %s",  tostring(self.inst)))
+    --GFDebugPrint(string.format("GFSpellPointer: Dummy — enable pointer for %s",  tostring(self.inst)))
 end
 
 function GFSpellPointer:StopTargeting()
-    GFDebugPrint(string.format("GFSpellPointer: Stop Targeting (client/host) for %s", tostring(self.inst)))
+    --GFDebugPrint(string.format("GFSpellPointer: Stop Targeting (client/host) for %s", tostring(self.inst)))
     if not GFGetIsMasterSim() then
         --DisableSpellTargetingActions(self.inst)
         self.currentSpell = nil
@@ -254,7 +253,7 @@ function GFSpellPointer:StopTargeting()
         --self.inst:RemoveComponent("gfpointer")
     end
 
-    print(string.format("GFSpellPointer: Dummy — disable pointer for %s, reason: canceled",  tostring(self.inst)))
+    --print(string.format("GFSpellPointer: Dummy — disable pointer for %s, reason: canceled",  tostring(self.inst)))
 end
 
 function GFSpellPointer:GetControllerPointActions(position)
@@ -280,7 +279,7 @@ function GFSpellPointer:OnRemoveFromEntity()
         self.inst:RemoveEventCallback("unequipped", DisablePointerOnUnequipped)
     end
 
-    if not GFGetDedicatedNet() then
+    if not GFGetIsDedicatedNet() then
         self.inst:RemoveEventCallback("gfspellpointerdirty", OnDirty)
     end
 end

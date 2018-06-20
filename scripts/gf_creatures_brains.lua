@@ -18,8 +18,8 @@ local function CheckSpells(inst)
 
 					return act
 				end
-			else
-				print(("Spell %s has no AI check function"):format(k))
+			--else
+				--print(("Spell %s has no AI check function"):format(k))
 			end
 		end
 	end

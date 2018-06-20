@@ -24,8 +24,6 @@ local Effect = Class(GFEffect, function(self, name)
     self.hoverText = "shaman"
     self.wantsHover = true
 
-    if not GFGetIsMasterSim() then return end
-
     self.savable = true
 
     --effect data
@@ -36,8 +34,6 @@ local Effect = Class(GFEffect, function(self, name)
     self.checkfn = DoCheck
     self.onapplyfn = OnApply
     self.onremovefn = OnRemove
-
-    GFDebugPrint(("Effect: effect %s created"):format(self.name))
 end)
 
 

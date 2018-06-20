@@ -24,8 +24,6 @@ local Effect = Class(GFEffect, function(self, inst)
     self.wantsIcon = true
     self.wantsHover = true
 
-    if not GFGetIsMasterSim() then return end
-
     self.static = false
 
     self.tags = 

@@ -12,8 +12,8 @@ local function ReplicateCast(inst, data)
         and not (data.target and not data.target:IsValid())
         and not (inst.components.gfspellitem:GetSpellRecharge("amulet_magic_echo") > 0)
     then
-        owner.components.gfspellcaster:CastSpell("amulet_magic_echo", owner, nil, inst)
-        owner.components.gfspellcaster:CastSpell(data.spell.name, data.target, data.pos, nil, true)
+        owner.components.gfspellcaster:CastSpell("amulet_magic_echo", data.target, data.pos, inst, {spellName = data.spell.name})
+        --owner.components.gfspellcaster:CastSpell(data.spell.name, data.target, data.pos, nil, {spellName = },true)
     end
     inst._task = nil
 end

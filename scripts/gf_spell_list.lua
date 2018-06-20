@@ -1,26 +1,27 @@
-local rawget = GLOBAL.rawget
-local rawset = GLOBAL.rawset
-local require = GLOBAL.require
+local _G = GLOBAL
+local rawget = _G.rawget
+local rawset = _G.rawset
+local require = _G.require
 
-if not rawget(GLOBAL, "GFSpellList") then
-    rawset(GLOBAL, "GFSpellList", {})
+if not rawget(_G, "GFSpellList") then
+    rawset(_G, "GFSpellList", {})
 end
 
-if not rawget(GLOBAL, "GFSpellNameToID") then
-    rawset(GLOBAL, "GFSpellNameToID", {})
+if not rawget(_G, "GFSpellNameToID") then
+    rawset(_G, "GFSpellNameToID", {})
 end
 
-if not rawget(GLOBAL, "GFSpellIDToName") then
-    rawset(GLOBAL, "GFSpellIDToName", {})
+if not rawget(_G, "GFSpellIDToName") then
+    rawset(_G, "GFSpellIDToName", {})
 end
 
 if not GfCharacterSpells then
-    rawset(GLOBAL, "GfCharacterSpells", {})
+    rawset(_G, "GfCharacterSpells", {})
 end
 
-local GFSpellList = GLOBAL.GFSpellList
-local GFSpellNameToID = GLOBAL.GFSpellNameToID
-local GFSpellIDToName = GLOBAL.GFSpellIDToName
+local GFSpellList = _G.GFSpellList
+local GFSpellNameToID = _G.GFSpellNameToID
+local GFSpellIDToName = _G.GFSpellIDToName
 
 local spellArray = 
 {
@@ -34,6 +35,8 @@ local spellArray =
     [100] = {name = "amulet_magic_echo"},
     [101] = {name = "apply_lesser_rejuvenation"},
     [102] = {name = "apply_slow"},
+
+    [105] = {name = "equip_shootsting", folder = "item/"}
 }
 
 local spellsFolder = "spells/"

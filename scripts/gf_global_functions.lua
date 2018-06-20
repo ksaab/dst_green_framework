@@ -1,50 +1,51 @@
-function GFIsTogether()
-    return TheWorld and true or false
+local GFIsTogether = _G.TheNet ~= nil and true or false
+rawset(_G, "GFIsTogether", GFIsTogether)
+print(("Green Framework: is together: %s"):format(tostring(GFIsTogether)))
+
+local function ReturnTrue()
+    return true
 end
 
-function GFGetIsMasterSim()
-    --TheWorld is not declared in single player DS
-    if TheWorld then
+local function ReturnFalse()
+    return false
+end
+
+local GFGetIsMasterSim
+local GFGetIsDedicatedNet
+local GFGetPVPEnabled
+local GFGetWorld
+local GFGetPlayer
+
+if not GFIsTogether then
+    GFGetIsMasterSim = ReturnTrue
+    GFGetIsDedicatedNet = ReturnTrue
+    GFGetPVPEnabled = ReturnTrue
+    GFGetWorld = GetWorld
+    GFGetPlayer = GetPlayer
+else
+    GFGetIsMasterSim = function()
         return TheWorld.ismastersim
     end
-
-    return true
-    --return TheWorld ~= nil and TheWorld.ismastersim true or true
-end
-
-function GFGetDedicatedNet()
-    --TheNet is not declared in single player DS
-    if TheNet then
+    GFGetIsDedicatedNet = function()
         return TheNet:IsDedicated()
     end
-
-    return true
-    --return TheNet and TheNet:IsDedicated() or true
-end
-
-function GFGetPVPEnabled()
-    --TheNet is not declared in single player DS
-    if TheNet then
+    GFGetPVPEnabled = function()
         return TheNet:GetPVPEnabled()
     end
-
-    return true
-    --return TheNet and TheNet:IsDedicated() or true
-end
-
-function GFGetWorld()
-    --TheWorld is not declared in single player DS
-    return TheWorld and TheWorld or GetWorld()
-end
-
-function GFGetPlayer()
-    --TheWorld is not declared in single player DS
-    if TheWorld then
-        return ThePlayer or nil
-    else
-        return GetPlayer()
+    GFGetWorld = function()
+        return TheWorld
+    end
+    GFGetPlayer = function()
+        return ThePlayer
     end
 end
+
+
+rawset(_G, "GFGetIsMasterSim", GFGetIsMasterSim)
+rawset(_G, "GFGetIsDedicatedNet", GFGetIsDedicatedNet)
+rawset(_G, "GFGetPVPEnabled", GFGetPVPEnabled)
+rawset(_G, "GFGetWorld", GFGetWorld)
+rawset(_G, "GFGetPlayer", GFGetPlayer)
 
 function GFDebugPrint(...)
     if GFDev then
@@ -57,7 +58,7 @@ function GFAddCustomSpell(name, route, id)
     if GFSpellIDToName[id] ~= nil then
         error(("Spell with id %i already exists"):format(id), 3)
     end
-    GFSpellList[name] = require(route)
+    GFSpellList[name] = require(route .. name)
     GFSpellList[name].name = name
     GFSpellList[name].id = id
     GFSpellNameToID[name] = id
@@ -69,42 +70,30 @@ function GFAddCustomEffect(name, route, id)
     if GFEffectIDToName[id] ~= nil then
         error(("Effect with id %i already exists"):format(id), 3)
     end
-    GFEffectList[name] = require(route)
+    GFEffectList[name] = require(route .. name)
     GFEffectList[name].name = name
     GFEffectList[name].id = id
     GFEffectNameToID[name] = id
     GFEffectIDToName[id] = name
 end
 
-function GFSetUpCharacterSpells(prefab, spells)
-    if prefab == nil or #spells == 0 then return end
-    local GfCharacterSpells = _G.GfCharacterSpells
-    if GfCharacterSpells[prefab] == nil then
-        GfCharacterSpells[prefab] = {}
+function GFAddBaseSpellsToEntity(prefab, ...)
+    if GFEntitiesBaseSpells[prefab] == nil then
+        GFEntitiesBaseSpells[prefab] = {}
     end
-
-    if type(spells) == "table" then
-        for k, spellName in pairs(spells) do
-            table.insert(GfCharacterSpells[prefab], spellName)
-        end
-    else
-        table.insert(GfCharacterSpells[prefab], spells)
+    for _, v in pairs(arg) do
+        table.insert(GFEntitiesBaseSpells[prefab], v)
     end
-
-    print(("spells setted for %s"):format(prefab))
 end
 
-function GFMakePlayerCaster(inst, allSpells)
+function GFMakePlayerCaster(inst, spells)
     if not inst.gfmodified then
         inst.gfmodified = true
         inst:AddTag("gfscclientside")
         if GFGetIsMasterSim() then
             inst:AddComponent("gfspellcaster")
-            if GfCharacterSpells[inst.prefab] ~= nil then
-                inst.components.gfspellcaster:AddSpell(GfCharacterSpells[inst.prefab])
-            end
-            if allSpells ~= nil then
-                inst.components.gfspellcaster:AddSpell(allSpells)
+            if spells ~= nil then
+                inst.components.gfspellcaster:AddSpell(spells)
             end
         end
     else
@@ -112,31 +101,31 @@ function GFMakePlayerCaster(inst, allSpells)
     end
 end
 
-function GFMakeCaster(inst, allSpells)
-    if GFGetIsMasterSim() and not inst.gfmodified then
-        inst.gfmodified = true
-        inst:AddComponent("gfspellcaster")
-        if allSpells ~= nil then
-            inst.components.gfspellcaster:AddSpell(allSpells)
-        end
-    else
-        GFDebugPrint(string.format("GF: %s was already initiated ", tostring(inst)))
-    end
-end
-
-function GFMakeInventoryCastingItem(inst, allSpells)
+function GFMakeCaster(inst, spells)
     if not inst.gfmodified then
         inst.gfmodified = true
-        inst:AddTag("gfscclientside")
-        inst:AddTag("rechargeable")
+        if GFGetIsMasterSim() then
+            inst:AddComponent("gfspellcaster")
+            if spells ~= nil then
+                inst.components.gfspellcaster:AddSpell(spells)
+            end
+        end
+    else
+        GFDebugPrint(string.format("GF: %s was already initiated ", tostring(inst)))
+    end
+end
+
+function GFMakeInventoryCastingItem(inst, spells)
+    if not inst.gfmodified then
+        inst.gfmodified = true
         if GFGetIsMasterSim() then
             inst:AddComponent("gfspellitem")
-            if allSpells ~= nil then
-                inst.components.gfspellitem:AddSpell(allSpells)
-                if type(allSpells) == "table" then
-                    inst.components.gfspellitem:SetItemSpell(allSpells[1])
+            if spells ~= nil then
+                inst.components.gfspellitem:AddSpell(spells)
+                if type(spells) == "table" then
+                    inst.components.gfspellitem:SetItemSpell(spells[1])
                 else
-                    inst.components.gfspellitem:SetItemSpell(allSpells)
+                    inst.components.gfspellitem:SetItemSpell(spells)
                 end
             end
         end
@@ -166,7 +155,7 @@ end
 
 function GFListenForEventOnce(inst, event, fn, source) --not mine, author simplex
     -- Currently, inst2 is the source, but I don't want to make that assumption.
-    local function gn(inst2, data)
+    function gn(inst2, data)
         inst:RemoveEventCallback(event, gn, source) --as you can see, it removes the event listener even before firing the function
         return fn(inst2, data)
     end
@@ -289,52 +278,12 @@ function GFPumpkinTest(entity)
     end
 end
 
---GFSpellTest("equip_crushlightning") GFSpellTest("equip_groundslam")
---GFSpellTest("equip_chainlightning") GFSpellTest("equip_groundslam")
-function GFSpellTest(spellName, player) 
-    player = player or AllPlayers[1]
-    if player and spellName and GFSpellList[spellName] and player.components.gfspellpointer then
-        print("spell", spellName)
-        local spell = GFSpellList[spellName]
-        if spell.instant and player.components.locomotor then
-            local x, y, z = player.Transform:GetWorldPosition()
-            local action = BufferedAction(player, player, ACTIONS.GFCASTSPELL, nil, Vector3(x, y, z))
-            player.components.gfspellpointer.current = spellName
-            player.components.locomotor:PushAction(action, true)
-        else
-            print("enabling")
-            player.components.gfspellpointer:Enable(spellName)
-        end
-    end
-    --local x, y, z = player.Transform:GetWorldPosition()
-    --local pt = GFGetValidSpawnPosition(x, y, z, 10)
-    --[[ local action = BufferedAction(player, nil, ACTIONS.GFCASTSPELL, nil, pt)
-    action.spell = "equip_crushlightning"]]
-    --local action = BufferedAction(player, nil, ACTIONS.GFSTARTSPELLTARGETING, nil, Vector3(0, 0, 0))
-    
-    --player.components.locomotor:PushAction(action, true, true)
+function GFTestGlobalFunctions()
+    print("GFGetIsMasterSim", GFGetIsMasterSim())
+    print("GFGetIsDedicatedNet", GFGetIsDedicatedNet())
+    print("GFGetPVPEnabled", GFGetPVPEnabled())
+    print("GFGetWorld", GFGetWorld())
+    print("GFGetPlayer", GFGetPlayer())
 end
 
-return
-{
-    GFSoftColorChange = GFSoftColorChange,
-    GFIsEntityInside = GFIsEntityInside,
-    GFIsEntityOnLine = GFIsEntityOnLine,
-    GFListenForEventOnce = GFListenForEventOnce,
-    GFGetValidSpawnPosition = GFGetValidSpawnPosition,
-    GFDebugPrint = GFDebugPrint,
-    GFGetWorld = GFGetWorld,
-    GFGetDedicatedNet = GFGetDedicatedNet,
-    GFGetIsMasterSim = GFGetIsMasterSim,
-    GFIsTogether = GFIsTogether,
-    GFGetPVPEnabled = GFGetPVPEnabled,
-    GFMakeInventoryCastingItem = GFMakeInventoryCastingItem,
-    GFMakeCaster = GFMakeCaster,
-    GFSetUpCharacterSpells = GFSetUpCharacterSpells,
-    GFMakePlayerCaster = GFMakePlayerCaster,
-    GFPumpkinTest = GFPumpkinTest,
-    GFAddCustomEffect = GFAddCustomEffect,
-    GFAddCustomSpell = GFAddCustomSpell,
-    GFGetPlayer =  GFGetPlayer,
-    GFSpellTest = GFSpellTest,
-}
+--rawset(_G, "GFTestGlobalFunctions", GFTestGlobalFunctions)

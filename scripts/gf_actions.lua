@@ -1,6 +1,7 @@
 local STRINGS = GLOBAL.STRINGS
 local ACTIONS = GLOBAL.ACTIONS
 local spellList = GLOBAL.GFSpellList
+local GetString = GLOBAL.GetString
 
 --[[ AddAction("GFCASTSPELL", "Cast", function(act)
     if act.doer.components.gfspellcaster then 
@@ -31,7 +32,7 @@ local spellList = GLOBAL.GFSpellList
 	return false
 end) ]]
 
-AddAction("GFCASTSPELL", STRINGS.ACTIONS.GFCASTSPELL.GENERIC, function(act)
+AddAction("GFCASTSPELL", STRINGS.ACTIONS.GFCASTSPELL, function(act)
     local doer = act.doer
     local spellName = act.spell
     local item = act.invobject
@@ -42,8 +43,11 @@ AddAction("GFCASTSPELL", STRINGS.ACTIONS.GFCASTSPELL.GENERIC, function(act)
             end
             if not spellList[spellName]:CanBeCastedBy(doer) then
                 if doer.components.talker then
-                    doer.components.talker:Say("Something wrong", 2.5)
+                    doer.components.talker:Say(GetString(doer, "CAST_FAILED"), 2.5)
                 end
+                return true
+            end
+            if not doer.components.gfspellcaster:PreCastCheck(spellName) then
                 return true
             end
             return doer.components.gfspellcaster:CanCastSpell(spellName)
@@ -64,6 +68,21 @@ ACTIONS.GFCASTSPELL.priority = 10
 ACTIONS.GFCASTSPELL.instant = false
 --ACTIONS.GFCASTSPELL.forced = true
 --ACTIONS.GFCASTSPELL.canforce = true
+STRINGS.ACTIONS.GFCASTSPELL = STRINGS.ACTIONS._GFCASTSPELL
+ACTIONS.GFCASTSPELL.strfn = function(act)
+    local spell = act.doer.components.gfspellpointer and act.doer.components.gfspellpointer.currentSpell or nil
+    if spell ~= nil then
+		return spellList[spell].actionFlag or "GENERIC"
+		--[[ local sn = item.spell.name
+		return (sn == "spearlunge" and "SPEARLUNGE") 
+			or (sn == "thorsjump" and "THORSJUMP") 
+			or (sn == "makealive" and "MAKEALIVE") 
+			or (sn == "throwlucien" and "THROW") 
+			or nil ]]
+	else
+		return "GENERIC"
+	end
+end
 
 --[[ AddAction("GFSTARTSPELLTARGETING", "Target", function(act)
 	local item = act.invobject--doer.replica.inventory:GetEquippedItem(GLOBAL.EQUIPSLOTS.HANDS)
@@ -76,11 +95,12 @@ end) ]]
 AddAction("GFSTARTSPELLTARGETING", STRINGS.ACTIONS.GFSTARTSPELLTARGETING, function(act)
     local doer = act.doer--doer.replica.inventory:GetEquippedItem(GLOBAL.EQUIPSLOTS.HANDS)
     local item = act.invobject
-    if doer and doer.components.gfspellpointer then
+    if doer and doer.components.gfspellpointer and doer.components.gfspellcaster then
         if item and item.components.gfspellitem then
             local itemSpell = item.components.gfspellitem:GetItemSpellName()
-            if item.components.gfspellitem:CanCastSpell(itemSpell) then
-                print("turn on")
+            if item.components.gfspellitem:CanCastSpell(itemSpell) 
+                and doer.components.gfspellcaster:PreCastCheck(itemSpell)
+            then
                 doer.components.gfspellpointer.withItem = true
                 doer.components.gfspellpointer:Enable(itemSpell)
                 return true
@@ -94,20 +114,10 @@ end)
 ACTIONS.GFSTARTSPELLTARGETING.distance = math.huge
 ACTIONS.GFSTARTSPELLTARGETING.rmb = true
 ACTIONS.GFSTARTSPELLTARGETING.instant = true
---ACTIONS.GFSTARTSPELLTARGETING.priority = 10
-
---[[ AddAction("GFSTOPSPELLTARGETING", "Cancel", function(act)
-	local item = act.invobject--doer.replica.inventory:GetEquippedItem(GLOBAL.EQUIPSLOTS.HANDS)
-	if item and item.components.gfspellpointer then
-		item.components.gfspellpointer:SetEnabled(false)
-		return true
-	end
-end) ]]
 
 AddAction("GFSTOPSPELLTARGETING", STRINGS.ACTIONS.GFSTOPSPELLTARGETING, function(act)
 	local doer = act.doer--doer.replica.inventory:GetEquippedItem(GLOBAL.EQUIPSLOTS.HANDS)
     if doer and doer.components.gfspellpointer then
-        print("turn off")
 		doer.components.gfspellpointer:Disable()
 		return true
 	end
@@ -123,7 +133,7 @@ AddAction("GFCHANGEITEMSPELL", STRINGS.ACTIONS.GFCHANGEITEMSPELL, function(act)
         and act.invobject.components.gfspellitem ~= nil
     then
         if act.invobject.components.gfspellitem:ChangeSpell() then
-            print(("GFCHANGEITEMSPELL: Change spell for %s to %s"):format(tostring(act.invobject), act.invobject.components.gfspellitem:GetItemSpellName()))
+            --print(("GFCHANGEITEMSPELL: Change spell for %s to %s"):format(tostring(act.invobject), act.invobject.components.gfspellitem:GetItemSpellName()))
             if act.doer then
                 if act.doer.components.gfspellcaster then
                     act.doer.components.gfspellcaster:ForceUpdateReplicaHUD()
@@ -144,9 +154,22 @@ AddAction("GFDRINKIT", STRINGS.ACTIONS.GFDRINKIT, function(act)
 	if obj ~= nil 
 		and obj.components.gfdrinkable ~= nil 
 		and act.doer.components.eater
-		and act.doer:HasTag("gfcandrink") 
+		and not act.doer:HasTag("gfcantdrink") 
 	then
         return act.doer.components.eater:Drink(obj)
+    end
+end)
+
+AddAction("GFENHANCEITEM", STRINGS.ACTIONS.GFENHANCEITEM, function(act)
+    local item, target = act.invobject, act.target
+    if item and target 
+        and item.components.gfitemenhancer 
+        and item.components.gfitemenhancer:CheckItem(target)
+    then
+        if item.components.gfitemenhancer:EnhanceItem(target) then
+            item.components.gfitemenhancer:OnEnhanceDone()
+            return true
+        end
     end
 end)
 
@@ -227,8 +250,16 @@ AddComponentAction("INVENTORY", "gfdrinkable", function(inst, doer, actions, rig
         not (doer.replica.inventory:GetActiveItem() == inst
             and doer.replica.rider ~= nil
 			and doer.replica.rider:IsRiding())
-		and doer:HasTag("gfcandrink")
+		and not doer:HasTag("gfcantdrink")
     then
         table.insert(actions, ACTIONS.GFDRINKIT)
+    end
+end)
+
+AddComponentAction("USEITEM", "gfitemenhancer", function(inst, doer, target, actions, right)
+    if right then
+        if target and inst.components.gfitemenhancer:CheckItem(target) then
+            table.insert(actions, ACTIONS.GFENHANCEITEM)
+        end
     end
 end)

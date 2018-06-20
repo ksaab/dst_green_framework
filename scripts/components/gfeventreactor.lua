@@ -78,7 +78,7 @@ function GFEventReactor:GetReactionCount(type)
 end
 
 function GFEventReactor:RemoveCallback(type)
-    GFDebugPrint("GFEventReactor: remove callback", type)
+    --GFDebugPrint("GFEventReactor: remove callback", type)
     if type then
         self.inst:RemoveEventCallback(type, self.callbacks[type])
         self.callbacks[type] = nil
@@ -87,7 +87,7 @@ function GFEventReactor:RemoveCallback(type)
 end
 
 function GFEventReactor:RemoveReaction(name, type)
-    GFDebugPrint("GFEventReactor: remove reaction", name)
+    --GFDebugPrint("GFEventReactor: remove reaction", name)
     if type then
         if self.reactions[type] ~= nil and self.reactions[type][name] ~= nil then
             if type == "unequipped" then

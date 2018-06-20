@@ -23,18 +23,16 @@ local Spell = Class(function(self, name)
     self.playerState = "gfcustomcast" --player goes to this state when he try to cast the spell
 
     --spell checks, work for players only, AI doesn't check this
+    self.preCastCheckFn = nil
     self.spellCheckFn = nil --custon check for spells (check for the day time or caster's sanity pool)
                             --args (self, caster)
     self.requiredTag = nil --fail cast if caster DOESN'T have this tag
     self.forbiddenTag = nil --fail cast if caster HAVE this tag
 
+    --self.resourceCost = {0, 0, 0, 0}
+
     self.tags = {} --not sure shoud this be server only or not
-    
-    if not GFGetIsMasterSim() then 
-        GFDebugPrint(("Spell: spell %s created"):format(self.name))
-        return 
-    end
-    --server side
+
     self.spellParams = {}
     self.spellVisuals = {}
     self.stateVisuals = {}
@@ -109,8 +107,39 @@ function Spell:AICheckFn(ent)
     return self.aicheckfn and self:aicheckfn(ent) or false
 end
 
+function Spell:ResourceCheck(inst)
+    if GFGetIsMasterSim() then
+        if self.resourceCost[1] > 0 and inst.components.sanity and self.resourceCost[1] > inst.components.sanity.current then return "SANITY_FAIL"
+        elseif self.resourceCost[2] > 0 and inst.components.health and self.resourceCost[2] > inst.components.health.currenthealth then return "HEALTH_FAIL" 
+        elseif self.resourceCost[3] > 0 and inst.components.hunger and self.resourceCost[3] > inst.components.hunger.current then return "HUNGER_FAIL" 
+        --elseif self.resourceCost[4] > 0 and self.resourceCost[4] > inst.components.health.value then return "HEALTH_FAIL" 
+        end
+    else
+        if self.resourceCost[1] > 0 and inst.replica.sanity and self.resourceCost[1] > inst.replica.sanity.current then return "SANITY_FAIL"
+        elseif self.resourceCost[2] > 0 and inst.replica.health and self.resourceCost[2] > inst.replica.health.currenthealth then return "HEALTH_FAIL" 
+        elseif self.resourceCost[3] > 0 and inst.replica.hunger and self.resourceCost[3] > inst.replica.hunger.current then return "HUNGER_FAIL" 
+        --elseif self.resourceCost[4] > 0 and self.resourceCost[4] > inst.replica.health.value then return "HEALTH_FAIL" 
+        end
+    end
+
+    return true
+end
+
+function Spell:PreCastCheck(inst)
+    --[[ local resCheck = self:ResourceCheck(inst)
+    if resCheck ~= true then
+        return resCheck
+    end ]]
+    
+    if self.preCastCheckFn then
+        return self:preCastCheckFn(inst)
+    end
+
+    return true
+end
+
 --it is called at the CASTPELL action, if this returns false, the action will return true ("silent" fail)
---and character will say alerting phrase ("I can't cast it, cuz I'm not so skilled")
+--and character will say alerting phrase ("Nothing happens")
 function Spell:CanBeCastedBy(inst)
     return not (self.spellCheckFn and not self:spellCheckFn(inst))
         and not (self.requiredTag and not inst:HasTag(self.requiredTag))
@@ -120,6 +149,18 @@ end
 function Spell:DoCastSpell(...)
     return self:spellfn(...)
 end
+
+--[[ function Spell:HasPostCast()
+    return self.postCastfn ~= nil
+end
+
+function Spell:GetPostCastDelay()
+    return self.postCastfn ~= nil
+end
+
+function Spell:DoPostCast(...)
+    self.postCastfn(...)
+end ]]
 
 function Spell:__tostring()
     return string.format("spell: name: %s, id: %i, item: %.2f, doer: %.2f, state: %s", 

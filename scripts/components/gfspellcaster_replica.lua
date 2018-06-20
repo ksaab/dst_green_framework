@@ -4,35 +4,20 @@ local spellIDToNames = GFSpellIDToName
 
 local function SliceSpellString(inst)
     local self = inst.replica.gfspellcaster
-    GFDebugPrint(inst, self._spellString:value())
+    --GFDebugPrint(inst, self._spellString:value())
     local spells = self._spellString:value():split(';')
     self.spells = {}
     for _, v in pairs(spells) do
         local spellName = spellIDToNames[tonumber(v)]
         self.spells[spellName] = spellList[spellName]
     end
-    for k, v in pairs(self.spells) do
-        print(k, v)
-    end
 
     self.inst:PushEvent("gfsc_updatespelllist")
 end
 
---local function SliceActiveSpellString(inst)
---    local self = inst.replica.gfspellcaster
---    GFDebugPrint(inst, self._activeSpellString:value())
---    local spells = self._activeSpellString:value():split(';')
---    self.activeSpell = {}
---    for _, v in pairs(spells) do
---        if v ~= "" then
---            self.activeSpell[spellIDToNames[tonumber(v)]] = true
---        end
---    end
---end
-
 local function SetRechargesDirty(inst)
     local self = inst.replica.gfspellcaster
-    GFDebugPrint("GFSpellCasterReplica: recharge", inst, self._spellRecharges:value())
+    --GFDebugPrint("GFSpellCasterReplica: recharge", inst, self._spellRecharges:value())
     local spellArray = self._spellRecharges:value():split(';')
     self.spellsReadyTime = {}
     self.spellsRechargeDuration = {}
@@ -75,7 +60,7 @@ local GFSpellCaster = Class(function(self, inst)
         --inst:ListenForEvent("gfsc_updaterechargesdirty", function(inst) inst:PushEvent("gfforcerechargewatcher") end)
     end
 
-    if not GFGetDedicatedNet() and inst == GFGetPlayer() then 
+    if not GFGetIsDedicatedNet() and inst == GFGetPlayer() then 
         --inst:PushEvent("gfsc_updaterechargesdirty")
     end
 end)
@@ -140,12 +125,29 @@ function GFSpellCaster:GetSpellCount()
     return GetTableSize(self.spells)
 end
 
+function GFSpellCaster:PreCastCheck(spellName)
+    if spellName and spellList[spellName] then
+        local preCheck = spellList[spellName]:PreCastCheck(self.inst)
+        if not preCheck or type(preCheck) == "string" then
+            --if STRINGS.CHARACTERS.GENERIC[preCheck] then
+            if self.inst.components.talker then
+                self.inst.components.talker:Say(GetString(self.inst, "PRECAST_FAILED", preCheck), 2.5, false, true, false)
+            end
+
+            return false
+        end
+
+        return true
+    end
+end
+
 function GFSpellCaster:HandleIconClick(spellName)
     local inst = self.inst
     if spellName 
         and spellList[spellName] 
         and not (inst:HasTag("playerghost") or inst:HasTag("corpse"))
         and self:IsSpellValidForCaster(spellName)
+        and self:PreCastCheck(spellName)
     then
         SendModRPCToServer(MOD_RPC["Green Framework"]["GFCLICKSPELLBUTTON"], spellName)
         --[[ if spellList[spellName].instant then

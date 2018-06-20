@@ -1,77 +1,31 @@
 --[[Init the world]]
-local gfFunctions = GLOBAL.require "gf_global_functions"
+local _G = GLOBAL
 
 AddPrefabPostInit("world", function(world)
     world:ListenForEvent("playerentered", function(world, player)
-        gfFunctions.GFDebugPrint(string.format("Add Spell Pointer (%s) to %s", gfFunctions.GFGetIsMasterSim() and "server" or "client", tostring(player)))
+        _G.GFDebugPrint(string.format("Add Spell Pointer (%s) to %s", _G.GFGetIsMasterSim() and "server" or "client", tostring(player)))
         player:AddComponent("gfspellpointer")
-        if not gfFunctions.GFGetDedicatedNet() then
-            gfFunctions.GFDebugPrint(string.format("Add Recharge Watcher to %s", tostring(player)))
+        if not _G.GFGetIsDedicatedNet() then
+            _G.GFDebugPrint(string.format("Add Recharge Watcher to %s", tostring(player)))
             player:AddComponent("gfrechargewatcher")
         end
 
-        if gfFunctions.GFGetIsMasterSim() then
-            if GLOBAL.GFDev then
+        --[[ if _G.GFGetIsMasterSim() then
+            if _G.GFDev then
                 world:ListenForEvent("playeractivated", function(world, player)
                     local inv = player.components.inventory
         
                     if inv and not inv:Has("gf_magic_echo_amulet", 1) then
-                        inv:GiveItem( GLOBAL.SpawnPrefab("gf_magic_echo_amulet") )
-                        inv:GiveItem( GLOBAL.SpawnPrefab("gf_lightning_spear") )
-                        inv:GiveItem( GLOBAL.SpawnPrefab("hammer") )
-                        inv:GiveItem( GLOBAL.SpawnPrefab("gf_tentacle_staff") )
+                        inv:GiveItem( _G.SpawnPrefab("gf_magic_echo_amulet") )
+                        inv:GiveItem( _G.SpawnPrefab("gf_lightning_spear") )
+                        inv:GiveItem( _G.SpawnPrefab("hammer") )
+                        inv:GiveItem( _G.SpawnPrefab("gf_tentacle_staff") )
                     end
                 end)
             end
-        end
-
-        --[[ if gfFunctions.GFGetIsMasterSim() then
-            GFDebugPrint(string.format("Add Spell Pointer (server) to %s", tostring(player)))
-            player:AddComponent("gfspellpointer")
-            if not gfFunctions.GFGetDedicatedNet() then --dedicated server doesn't need the recharge watcher component
-                GFDebugPrint(string.format("Add Recharge Watcher to %s", tostring(player)))
-                player:AddComponent("gfrechargewatcher")
-            end
-
-            world:ListenForEvent("playeractivated", function(world, player)
-                local inv = player.components.inventory
-    
-                if inv and not inv:Has("gf_magic_echo_amulet", 1) then
-                    inv:GiveItem( GLOBAL.SpawnPrefab("gf_magic_echo_amulet") )
-                    inv:GiveItem( GLOBAL.SpawnPrefab("gf_lightning_spear") )
-                    inv:GiveItem( GLOBAL.SpawnPrefab("hammer") )
-                    inv:GiveItem( GLOBAL.SpawnPrefab("gf_tentacle_staff") )
-                end
-            end)
-        else
-            GFDebugPrint(string.format("Add Spell Pointer (client) to %s", tostring(player)))
-            player:AddComponent("gfspellpointer")
-            GFDebugPrint(string.format("Add Recharge Watcher to %s", tostring(player)))
-            player:AddComponent("gfrechargewatcher")
-        end  ]]
+        end ]]
     end)
 end)
-
---[[Init players]]--
-local allCharacters = 
-{
-    wilson = {"equip_chainlightning"},
-    willow = {"equip_crushlightning"},
-    --wendy = {},
-    wes = {},
-    wickerbottom = {"character_crushlightning"},
-    wolfgang = {},
-    winona = {"character_chainlightning"},
-    woodie = {},
-    waxwell = {},
-    webber = {},
-    wx78 = {},
-    wathgrithr = {},
-}
-
-for prefab, spells in pairs(allCharacters) do
-    gfFunctions.GFSetUpCharacterSpells(prefab, spells)
-end
 
 local function PlayerFFCheck(self, target)
     return (target:HasTag("player") and not isPVPEnabled)
@@ -79,33 +33,29 @@ local function PlayerFFCheck(self, target)
 end
 
 AddPlayerPostInit(function(player)
-    player:AddTag("gfcandrink")
-    gfFunctions.GFMakePlayerCaster(player)
-    if gfFunctions.GFGetIsMasterSim() then
+    _G.GFMakePlayerCaster(player)
+    if _G.GFGetIsMasterSim() then
         player.components.gfspellcaster:SetIsTargetFriendlyFn(PlayerFFCheck)
-        --player:AddComponent("gfeffectable")
-        --player:AddComponent("gfeventreactor")
+        player:AddComponent("gfeffectable")
+        player:AddComponent("gfeventreactor")
     end 
 end)
 
 --[[Init other stuff]]
---equipment
-AddPrefabPostInit("boomerang", function(inst)
-    if GLOBAL.TheWorld.ismastersim then
-        inst:ListenForEvent("gfonweaponhit", function(inst) print(inst, "did the hit!") end)
-    end 
-end)
-
-AddPrefabPostInit("gf_lightning_spear", function(inst)
-    gfFunctions.GFMakeInventoryCastingItem(inst, {"equip_chainlightning", "equip_crushlightning"})
+--[[ AddPrefabPostInit("gf_lightning_spear", function(inst)
+    _G.GFMakeInventoryCastingItem(inst, {"equip_chainlightning", "equip_crushlightning"})
 end)
 
 AddPrefabPostInit("gf_tentacle_staff", function(inst)
-    gfFunctions.GFMakeInventoryCastingItem(inst, {"apply_lesser_rejuvenation", "apply_slow"})
+    _G.GFMakeInventoryCastingItem(inst, {"apply_lesser_rejuvenation", "apply_slow"})
 end)
 
 AddPrefabPostInit("hammer", function(inst)
-    gfFunctions.GFMakeInventoryCastingItem(inst, {"equip_groundslam", "character_chainlightning"})
+    _G.GFMakeInventoryCastingItem(inst, {"equip_groundslam", "equip_shootsting"})
+end)
+
+AddPrefabPostInit("gf_bee_dart", function(inst)
+    _G.GFMakeInventoryCastingItem(inst, "equip_shootsting")
 end)
 
 --creatures
@@ -117,18 +67,23 @@ local function PigmanFFCheck(self, target)
 end
 
 AddPrefabPostInit("pigman", function(inst)
-    gfFunctions.GFMakeCaster(inst)
-    if gfFunctions.GFGetIsMasterSim() then
+    _G.GFMakeCaster(inst)
+    if _G.GFGetIsMasterSim() then
         inst.components.gfspellcaster:SetIsTargetFriendlyFn(PigmanFFCheck)
     end
-end)
+end) ]]
 
 --[[Init common]]
 AddPrefabPostInitAny(function(inst) 
-	if not (inst:HasTag("FX") or inst:HasTag("NOCLICK")) then
-        if gfFunctions.GFGetIsMasterSim() then
-            inst:AddComponent("gfeffectable")
-            inst:AddComponent("gfeventreactor")
+	if inst:HasTag("FX") or inst:HasTag("NOCLICK") or inst:HasTag("player") then return end
+    if _G.GFGetIsMasterSim() then
+        inst:AddComponent("gfeffectable")
+        inst:AddComponent("gfeventreactor")
+        if inst.components.equippable and inst.components.equippable.equipslot == _G.EQUIPSLOTS.HANDS then
+            _G.GFMakeInventoryCastingItem(inst, _G.GFEntitiesBaseSpells[inst.prefab])
+        end
+        if _G.GFCasterCreatures[inst.prefab] ~= nil then
+            _G.GFMakeCaster(inst, _G.GFEntitiesBaseSpells[inst.prefab])
         end
     end
 end)

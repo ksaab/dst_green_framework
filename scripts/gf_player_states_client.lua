@@ -23,6 +23,10 @@ local function GetSpellCastTime(spellName)
 	return 0
 end
 
+local function IsValidGround(pos)
+	return GLOBAL.TheWorld.Map:IsPassableAtPoint(pos:Get()) and not GLOBAL.TheWorld.Map:IsGroundTargetBlocked(pos)
+end
+
 local function CanCastSpell(spell, inst, item)
     local itemValid = true
     --check item if exists
@@ -31,10 +35,40 @@ local function CanCastSpell(spell, inst, item)
     end
 
     --check doer
-    local instValid = inst.replica.gfspellcaster and inst.replica.gfspellcaster:CanCastSpell(spell)
+	local instValid = inst.replica.gfspellcaster and inst.replica.gfspellcaster:CanCastSpell(spell)
+	local precastCheck = spellList[spell]:PreCastCheck(inst)
 
-	return instValid and itemValid
+	return instValid and itemValid and precastCheck
 end
+
+--drink
+local gfdodrink = State{
+	name = "gfdodrink",
+	tags = { "doing", "busy" },
+
+	onenter = function(inst)
+		inst.components.locomotor:Stop()
+		inst.AnimState:PlayAnimation("action_uniqueitem_pre")
+		inst.AnimState:PushAnimation("action_uniqueitem_lag", false)
+		inst:PerformPreviewBufferedAction()
+		inst.sg:SetTimeout(2)
+	end,
+
+	ontimeout = function(inst)
+		inst:ClearBufferedAction()
+		inst.sg:GoToState("idle")
+	end,
+
+	onupdate = function(inst)
+		if inst:HasTag("doing") then
+			if inst.entity:FlattenMovementPrediction() then
+				inst.sg:GoToState("idle", "noanim")
+			end
+		elseif inst.bufferedaction == nil then
+			inst.sg:GoToState("idle")
+		end
+	end,
+} 
 
 --custom  anim cast
 local gfcustomcast = State
@@ -54,7 +88,7 @@ local gfcustomcast = State
 			inst.AnimState:PushAnimation("gf_fast_cast_loop", true)
 
 			inst:PerformPreviewBufferedAction()
-			inst.sg:SetTimeout(2)
+			inst.sg:SetTimeout(GetSpellCastTime(act.spell) + 1)
 			
 			return
 		end
@@ -80,7 +114,9 @@ local gfcustomcast = State
 	events =
 	{
 		EventHandler("unequip", function(inst) 
-			inst.sg:GoToState("idle") 
+			if inst.sg:HasStateTag("casting") then
+				inst.sg:GoToState("idle") 
+			end
 		end),
 	},
 }
@@ -103,7 +139,7 @@ local gfchannelcast = State
 			inst.AnimState:PushAnimation("channel_loop", true)
 
 			inst:PerformPreviewBufferedAction()
-			inst.sg:SetTimeout(2)
+			inst.sg:SetTimeout(GetSpellCastTime(act.spell) + 1)
 			
 			return
 		end
@@ -129,7 +165,9 @@ local gfchannelcast = State
 	events =
 	{
 		EventHandler("unequip", function(inst) 
-			inst.sg:GoToState("idle") 
+			if inst.sg:HasStateTag("casting") then
+				inst.sg:GoToState("idle") 
+			end 
 		end),
 	},
 }
@@ -176,7 +214,9 @@ local gfcastwithstaff = State{
 	events =
 	{
 		EventHandler("unequip", function(inst) 
-			inst.sg:GoToState("idle") 
+			if inst.sg:HasStateTag("casting") then
+				inst.sg:GoToState("idle") 
+			end
 		end),
 	},
 }
@@ -225,16 +265,376 @@ local gfgroundslam = State{
 	events =
 	{
 		EventHandler("unequip", function(inst) 
-			inst.sg:GoToState("idle") 
+			if inst.sg:HasStateTag("casting") then
+				inst.sg:GoToState("idle") 
+			end
 		end),
 	},
 }
 
+local gfreadscroll = State
+{
+	name = "gfreadscroll",
+	tags = {"doing", "casting", "busy", "nodangle"},
+
+	onenter = function(inst)
+		inst.components.locomotor:Stop()
+
+		local act = inst:GetBufferedAction()
+		if act and act.spell then
+			local castTime = math.max(0.75, GetSpellCastTime(act.spell))
+			if act.pos then
+				inst:ForceFacePoint(act.pos.x, 0, act.pos.z)
+			end
+
+			inst.AnimState:PlayAnimation("scroll_open", false) 
+			inst.AnimState:PushAnimation("scroll_loop", true) 
+
+			inst:PerformPreviewBufferedAction()
+			inst.sg:SetTimeout(GetSpellCastTime(act.spell) + 1)
+			return
+		end
+
+		inst.sg:GoToState("idle")
+	end,
+
+	ontimeout = function(inst)
+		inst:ClearBufferedAction()
+		inst.sg:GoToState("idle")
+	end,
+
+	onupdate = function(inst)
+		if inst:HasTag("doing") then
+			if inst.entity:FlattenMovementPrediction() then
+				inst.sg:GoToState("idle", "noanim")
+			end
+		elseif inst.bufferedaction == nil then
+			inst.sg:GoToState("idle")
+		end
+	end,
+
+	events =
+	{
+		EventHandler("unequip", function(inst) 
+			if inst.sg:HasStateTag("casting") then
+				inst.sg:GoToState("idle") 
+			end
+		end), 
+	},
+}
+
+local gftwirlcast = State
+{
+	name = "gftwirlcast",
+	tags = {"doing", "casting", "busy", "nodangle"},
+
+	onenter = function(inst)
+		inst.components.locomotor:Stop()
+
+		local act = inst:GetBufferedAction()
+		if act and act.spell then
+			if act.pos then
+				inst:ForceFacePoint(act.pos.x, 0, act.pos.z)
+			end
+
+			inst.AnimState:PlayAnimation("lunge_pre")
+			inst.AnimState:PushAnimation("lunge_lag", false)
+
+			inst:PerformPreviewBufferedAction()
+			inst.sg:SetTimeout(2)
+			return
+		end
+
+		inst.sg:GoToState("idle")
+	end,
+
+	ontimeout = function(inst)
+		inst:ClearBufferedAction()
+		inst.sg:GoToState("idle")
+	end,
+
+	onupdate = function(inst)
+		if inst:HasTag("doing") then
+			if inst.entity:FlattenMovementPrediction() then
+				inst.sg:GoToState("idle", "noanim")
+			end
+		elseif inst.bufferedaction == nil then
+			inst.sg:GoToState("idle")
+		end
+	end,
+
+	events =
+	{
+		EventHandler("unequip", function(inst) 
+			if inst.sg:HasStateTag("casting") then
+				inst.sg:GoToState("idle") 
+			end
+		end), 
+	},
+}
+
+local gfbookcast = State
+{
+	name = "gfbookcast",
+	tags = {"doing", "casting", "busy", "nodangle"},
+
+	onenter = function(inst)
+		inst.components.locomotor:Stop()
+
+		local act = inst:GetBufferedAction()
+		if act and act.spell then
+			if act.pos then
+				inst:ForceFacePoint(act.pos.x, 0, act.pos.z)
+			end
+
+			local item = act.invobject
+
+			inst.AnimState:PlayAnimation("action_uniqueitem_pre")
+			inst.AnimState:PushAnimation("action_uniqueitem_lag", false)
+
+			inst:PerformPreviewBufferedAction()
+			inst.sg:SetTimeout(2)
+			return
+		end
+
+		inst.sg:GoToState("idle")
+	end,
+
+	ontimeout = function(inst)
+		inst:ClearBufferedAction()
+		inst.sg:GoToState("idle")
+	end,
+
+	onupdate = function(inst)
+		if inst:HasTag("doing") then
+			if inst.entity:FlattenMovementPrediction() then
+				inst.sg:GoToState("idle", "noanim")
+			end
+		elseif inst.bufferedaction == nil then
+			inst.sg:GoToState("idle")
+		end
+	end,
+
+	events =
+	{
+		EventHandler("unequip", function(inst) 
+			if inst.sg:HasStateTag("casting") then
+				inst.sg:GoToState("idle") 
+			end
+		end), 
+	},
+}
+
+local gfhighleap = State{
+	name = "gfhighleap",
+	tags = { "doing", "busy", "casting", "nopredict", "nomorph" },
+
+	onenter = function(inst)
+		inst.components.locomotor:Stop()
+
+		local act = inst:GetBufferedAction()
+		if act and act.spell and act.pos and IsValidGround(act.pos) then
+			if act.pos then
+				inst:ForceFacePoint(act.pos.x, 0, act.pos.z)
+			end
+
+			local item = act.invobject
+
+			inst.AnimState:PlayAnimation("superjump_pre")
+			inst.AnimState:PushAnimation("superjump", false)
+
+			inst:PerformPreviewBufferedAction()
+			inst.sg:SetTimeout(2)
+			return
+		end
+
+		inst.sg:GoToState("idle")
+	end,
+
+	ontimeout = function(inst)
+		inst:ClearBufferedAction()
+		inst.sg:GoToState("idle")
+	end,
+
+	onupdate = function(inst)
+		if inst:HasTag("doing") then
+			if inst.entity:FlattenMovementPrediction() then
+				inst.sg:GoToState("idle", "noanim")
+			end
+		elseif inst.bufferedaction == nil then
+			inst.sg:GoToState("idle")
+		end
+	end,
+
+	events =
+	{
+		EventHandler("unequip", function(inst) 
+			if inst.sg:HasStateTag("casting") then
+				inst.sg:GoToState("idle") 
+			end
+		end), 
+	},
+}
+
+local gftdartshoot = State{
+	name = "gftdartshoot",
+	tags = {"doing", "casting", "busy", "nodangle"},
+
+	onenter = function(inst)
+		inst.components.locomotor:Stop()
+
+		local act = inst:GetBufferedAction()
+		if act and act.spell then
+			if act.pos then
+				inst:ForceFacePoint(act.pos.x, 0, act.pos.z)
+			end
+
+			inst.AnimState:PlayAnimation("dart_pre", false)
+
+			inst:PerformPreviewBufferedAction()
+			inst.sg:SetTimeout(2)
+			return
+		end
+
+		inst.sg:GoToState("idle")
+	end,
+
+	ontimeout = function(inst)
+		inst:ClearBufferedAction()
+		inst.sg:GoToState("idle")
+	end,
+
+	onupdate = function(inst)
+		if inst:HasTag("doing") then
+			if inst.entity:FlattenMovementPrediction() then
+				inst.sg:GoToState("idle", "noanim")
+			end
+		elseif inst.bufferedaction == nil then
+			inst.sg:GoToState("idle")
+		end
+	end,
+
+	events =
+	{
+		EventHandler("unequip", function(inst) 
+			if inst.sg:HasStateTag("casting") then
+				inst.sg:GoToState("idle") 
+			end
+		end), 
+	},
+}
+
+local gfleap = State{
+	name = "gfleap",
+	tags = { "doing", "busy", "casting", "nomorph" },
+
+	onenter = function(inst)
+		inst.components.locomotor:Stop()
+
+		local act = inst:GetBufferedAction()
+		if act and act.spell and act.pos and IsValidGround(act.pos) then
+			if act.pos then
+				inst:ForceFacePoint(act.pos.x, 0, act.pos.z)
+			end
+
+			inst.AnimState:PlayAnimation("atk_leap_pre")
+			inst.AnimState:PushAnimation("atk_leap_lag", false)
+
+			inst:PerformPreviewBufferedAction()
+			inst.sg:SetTimeout(2)
+			return
+		end
+
+		inst.sg:GoToState("idle")
+	end,
+
+	ontimeout = function(inst)
+		inst:ClearBufferedAction()
+		inst.sg:GoToState("idle")
+	end,
+
+	onupdate = function(inst)
+		if inst:HasTag("doing") then
+			if inst.entity:FlattenMovementPrediction() then
+				inst.sg:GoToState("idle", "noanim")
+			end
+		elseif inst.bufferedaction == nil then
+			inst.sg:GoToState("idle")
+		end
+	end,
+
+	events =
+	{
+		EventHandler("unequip", function(inst) 
+			if inst.sg:HasStateTag("casting") then
+				inst.sg:GoToState("idle") 
+			end
+		end), 
+	},
+}
+
+local gfflurry = State{
+	name = "gfflurry",
+	tags = {"doing", "casting", "busy", "nodangle"},
+
+	onenter = function(inst)
+		inst.components.locomotor:Stop()
+
+		local act = inst:GetBufferedAction()
+		if act and act.spell then
+			if act.pos then
+				inst:ForceFacePoint(act.pos.x, 0, act.pos.z)
+			end
+
+			inst.AnimState:PlayAnimation("multithrust_yell", false)
+
+			inst:PerformPreviewBufferedAction()
+			inst.sg:SetTimeout(2)
+			return
+		end
+
+		inst.sg:GoToState("idle")
+	end,
+
+	ontimeout = function(inst)
+		inst:ClearBufferedAction()
+		inst.sg:GoToState("idle")
+	end,
+
+	onupdate = function(inst)
+		if inst:HasTag("doing") then
+			if inst.entity:FlattenMovementPrediction() then
+				inst.sg:GoToState("idle", "noanim")
+			end
+		elseif inst.bufferedaction == nil then
+			inst.sg:GoToState("idle")
+		end
+	end,
+
+	events =
+	{
+		EventHandler("unequip", function(inst) 
+			if inst.sg:HasStateTag("casting") then
+				inst.sg:GoToState("idle") 
+			end
+		end), 
+	},
+}
+
+
 --Add states block--------------
+AddStategraphState("wilson_client", gfdodrink)
 AddStategraphState("wilson_client", gfcastwithstaff)
 AddStategraphState("wilson_client", gfgroundslam)
 AddStategraphState("wilson_client", gfchannelcast)
 AddStategraphState("wilson_client", gfcustomcast)
+AddStategraphState("wilson_client", gfreadscroll)
+AddStategraphState("wilson_client", gftwirlcast)
+AddStategraphState("wilson_client", gfbookcast)
+AddStategraphState("wilson_client", gfhighleap)
+AddStategraphState("wilson_client", gftdartshoot)
+AddStategraphState("wilson_client", gfleap)
+AddStategraphState("wilson_client", gfflurry)
 
 --Add events block--------------
 AddStategraphEvent("wilson_client", EventHandler("gfforcemove", function(inst, data)
@@ -243,6 +643,9 @@ AddStategraphEvent("wilson_client", EventHandler("gfforcemove", function(inst, d
 end))
 
 --Add actions handlers block----
+AddStategraphActionHandler("wilson_client", ActionHandler(ACTIONS.GFDRINKIT, "gfdodrink"))
+AddStategraphActionHandler("wilson_client", ActionHandler(ACTIONS.GFENHANCEITEM, "dolongaction"))
+
 AddStategraphActionHandler("wilson_client", ActionHandler(ACTIONS.GFCASTSPELL, function(inst)
     local act = inst:GetBufferedAction()
 	local item = act.invobject
@@ -250,7 +653,7 @@ AddStategraphActionHandler("wilson_client", ActionHandler(ACTIONS.GFCASTSPELL, f
 	local spell
 	local spellName
     
-	if gfsp == nil or (act.pos == nil and act.target == nil) then return print("failed data isn't valid") "idle" end
+	if gfsp == nil or (act.pos == nil and act.target == nil) then return "idle" end
 
 	if gfsp.currentSpell ~= nil then
 		spellName = gfsp.currentSpell
@@ -259,7 +662,7 @@ AddStategraphActionHandler("wilson_client", ActionHandler(ACTIONS.GFCASTSPELL, f
 		spellName = item.replica.gfspellitem:GetItemSpellName()	
 	end
 
-	if spellName == nil or spellList[spellName] == nil then print("failed spell name isn't valid") return "idle" end --invalid spell name
+	if spellName == nil or spellList[spellName] == nil then return "idle" end --invalid spell name
 
 	--gfsp:Disable()
 	spell = spellList[spellName]
@@ -289,6 +692,5 @@ AddStategraphActionHandler("wilson_client", ActionHandler(ACTIONS.GFCASTSPELL, f
 	end
 
     --action data is not valid for spell cast
-    print("failed spell isn't valid")
 	return "idle"
 end))
