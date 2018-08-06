@@ -1,3 +1,5 @@
+--Green Framework. Please, don't copy any files or functions from this mod, because it can break other mods based on the GF.
+
 local effectList = GFEffectList
 local effectNamesToID = GFEffectNameToID
 local effectIDToNames = GFEffectIDToName
@@ -118,12 +120,13 @@ function GFEffectable:UpdateEffectsList()
     self.effects = comp.effects
     for effectName, effect in pairs(comp.effects) do
         if effect.type ~= 0 then --0 is the server only effect type
-            local expTime = effect.static and 0 or effect.expirationTime - currTime
+            local expTime = (effect.static or effect.aura) and 0 or effect.expirationTime - currTime
+            --print(string.format("%i,%i,%.2f", effectNamesToID[effectName], effect.stacks, expTime))
             table.insert(str, string.format("%i,%i,%.2f", effectNamesToID[effectName], effect.stacks, expTime))
         end
     end
     self._effectsList:set_local("")
-    self._effectsList:set(table.concat(str), ';')
+    self._effectsList:set(table.concat(str, ';'))
 end
 
 return GFEffectable

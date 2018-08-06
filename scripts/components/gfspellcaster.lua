@@ -1,3 +1,5 @@
+--Green Framework. Please, don't copy any files or functions from this mod, because it can break other mods based on the GF.
+
 local spellList = GFSpellList
 
 local function GetSpell(spellname)
@@ -13,7 +15,10 @@ local GFSpellCaster = Class(function(self, inst)
     self.spellsReadyTime = {}
     self.spellsRechargeDuration = {}
 
-    self.onClient = inst:HasTag("gfscclientside") --don't need to network things if the inst isn't a player
+    self.lastCastTime = 0
+
+    self.onClient = inst:HasTag("player") --don't need to network things if the inst isn't a player
+    --self.onClient = inst._gfclientside ~= nil
 
     self.baseSpellPower = 1
     self.baseRecharge = 1
@@ -89,6 +94,14 @@ function GFSpellCaster:RemoveSpell(spellName, nonUpdateReplica)
     end
 end
 
+function GFSpellCaster:SetModifier(name, value)
+    self.modifiers[name] = self.modifiers[name] ~= nil and self.modifiers[name] + value or 1 + value
+end
+
+function GFSpellCaster:GetModifier(name)
+    return self.modifiers[name] or 1
+end
+
 function GFSpellCaster:PushRecharge(spellname, recharge)
     --GFDebugPrint(("GFSpellCaster: spell %s recharge started on %s, duration %.2f"):format(spellname, tostring(self.inst), recharge))
     self.spellsReadyTime[spellname] = GetTime() + recharge
@@ -113,7 +126,7 @@ function GFSpellCaster:CastSpell(spellname, target, pos, item, spellParams, noRe
     end
 
     if not noRecharge then
-        local doerRecharge = spell:GetDoerRecharge()
+        local doerRecharge = spell:GetDoerRecharge(self.inst)
         if doerRecharge > 0 then
             self:PushRecharge(spellname, doerRecharge * self.baseRecharge * self.rechargeExternal:Get())
         end
@@ -130,7 +143,9 @@ function GFSpellCaster:CastSpell(spellname, target, pos, item, spellParams, noRe
         end
     end
 
-    self.inst:PushEvent("gfspellcastsuccess", {spell = spell, target = target, pos = pos})
+    self.lastCastTime = GetTime()
+
+    self.inst:PushEvent("gfspellcastsuccess", {spell = spell, target = target, pos = pos, item = item, params = spellParams})
 
     return true
 end
@@ -195,6 +210,7 @@ end
 
 --pick a spell for creatures 
 function GFSpellCaster:GetValidAiSpell()
+    if self.lastCastTime + 1.5 > GetTime() then return end
     for spellName, spell in pairs(self.spells) do
         if self:CanCastSpell(spellName) then
             local spellData = spell:AICheckFn(self.inst)
@@ -246,6 +262,8 @@ function GFSpellCaster:HandleIconClick(spellName)
     if spellName 
         and spellList[spellName] 
         and not (inst:HasTag("playerghost") or inst:HasTag("corpse"))
+        and not inst.sg:HasStateTag("busy")
+        and (not inst.components.rider or not inst.components.rider:IsRiding())
         and self:IsSpellValidForCaster(spellName)
         and self:PreCastCheck(spellName)
     then

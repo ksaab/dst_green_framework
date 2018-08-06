@@ -1,3 +1,5 @@
+--Green Framework. Please, don't copy any files or functions from this mod, because it can break other mods based on the GF.
+
 local spellList = GFSpellList
 local spellNamesToID = GFSpellNameToID
 local spellIDToNames = GFSpellIDToName
@@ -32,7 +34,7 @@ end
 local GFSpellCaster = Class(function(self, inst)
     self.inst = inst
 
-    self.onClient = inst:HasTag("gfscclientside")
+    self.onClient = inst:HasTag("player")
 
     if not self.onClient then 
         return 
@@ -146,6 +148,8 @@ function GFSpellCaster:HandleIconClick(spellName)
     if spellName 
         and spellList[spellName] 
         and not (inst:HasTag("playerghost") or inst:HasTag("corpse"))
+        and not inst.sg:HasStateTag("busy")
+        and (not inst.replica.rider or not inst.replica.rider:IsRiding())
         and self:IsSpellValidForCaster(spellName)
         and self:PreCastCheck(spellName)
     then

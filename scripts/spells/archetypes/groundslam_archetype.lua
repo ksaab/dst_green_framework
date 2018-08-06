@@ -1,3 +1,5 @@
+--Green Framework. Please, don't copy any files or functions from this mod, because it can break other mods based on the GF.
+
 local GFSpell = require("gf_spell")
 
 local function DoCast(self, doer, target, pos, spellData)
@@ -45,30 +47,34 @@ local function DoCast(self, doer, target, pos, spellData)
     local ents = TheSim:FindEntities(x, y, z, radius, nil, notags)
     if sector == 360 then
         for k, ent in pairs(ents) do
-            local ex, ey, ez = ent.Transform:GetWorldPosition()
-            if visuals.impactFx then
-                SpawnPrefab(visuals.impactFx).Transform:SetPosition(ex, ey, ez)--"shovel_dirt"
-            end
-            if ent.components.combat and not doer.components.gfspellcaster:IsTargetFriendly(ent) then
-                ent.components.combat:GetAttacked(doer, damage)
-            elseif ent.components.inventoryitem and ent.Physics then
-                ent.Physics:Teleport(ex, ey + 0.5, ez)
-                ent.Physics:SetVel(0, 3, 0)
+            if ent ~= doer then
+                local ex, ey, ez = ent.Transform:GetWorldPosition()
+                if visuals.impactFx then
+                    SpawnPrefab(visuals.impactFx).Transform:SetPosition(ex, ey, ez)--"shovel_dirt"
+                end
+                if ent.components.combat and not doer.components.gfspellcaster:IsTargetFriendly(ent) then
+                    ent.components.combat:GetAttacked(doer, damage)
+                elseif ent.components.inventoryitem and ent.Physics then
+                    ent.Physics:Teleport(ex, ey + 0.5, ez)
+                    ent.Physics:SetVel(0, 3, 0)
+                end
             end
         end
     else
         for k, ent in pairs(ents) do
-            local ex, ey, ez = ent.Transform:GetWorldPosition()
-            local eangle = math.atan2(ex - x, ez - z) - halfpi
-            --eangle = eangle >= 0 and eangle or 2 * PI - eangle
-            --print("entity", ent, "angle", eangle / DEGREES)
-            if eangle < maxAngle and eangle > minAngle then
-                if visuals.impactFx then SpawnPrefab(visuals.impactFx).Transform:SetPosition(ex, ey, ez) end
-                if ent.components.combat and not doer.components.gfspellcaster:IsTargetFriendly(ent) then
-                    ent.components.combat:GetAttacked(doer, damage, nil)
-                elseif ent.components.inventoryitem and ent.Physics then
-                    ent.Physics:Teleport(ex, ey + 0.5, ez)
-                    ent.Physics:SetVel(0, 12, 0)
+            if ent ~= doer then
+                local ex, ey, ez = ent.Transform:GetWorldPosition()
+                local eangle = math.atan2(ex - x, ez - z) - halfpi
+                --eangle = eangle >= 0 and eangle or 2 * PI - eangle
+                --print("entity", ent, "angle", eangle / DEGREES)
+                if eangle < maxAngle and eangle > minAngle then
+                    if visuals.impactFx then SpawnPrefab(visuals.impactFx).Transform:SetPosition(ex, ey, ez) end
+                    if ent.components.combat and not doer.components.gfspellcaster:IsTargetFriendly(ent) then
+                        ent.components.combat:GetAttacked(doer, damage, nil)
+                    elseif ent.components.inventoryitem and ent.Physics then
+                        ent.Physics:Teleport(ex, ey + 0.5, ez)
+                        ent.Physics:SetVel(0, 12, 0)
+                    end
                 end
             end
         end

@@ -1,19 +1,22 @@
-local State = GLOBAL.State
-local EventHandler = GLOBAL.EventHandler
-local FRAMES = GLOBAL.FRAMES
-local TimeEvent = GLOBAL.TimeEvent
-local ActionHandler = GLOBAL.ActionHandler
-local EventHandler = GLOBAL.EventHandler
-local EQUIPSLOTS = GLOBAL.EQUIPSLOTS
-local COLLISION = GLOBAL.COLLISION
-local SpawnPrefab = GLOBAL.SpawnPrefab
-local ACTIONS = GLOBAL.ACTIONS
-local ShakeAllCameras = GLOBAL.ShakeAllCameras
-local CAMERASHAKE = GLOBAL.CAMERASHAKE
-local Vector3 = GLOBAL.Vector3
-local BufferedAction = GLOBAL.BufferedAction
+--Green Framework. Please, don't copy any files or functions from this mod, because it can break other mods based on the GF.
 
-local spellList = GLOBAL.GFSpellList
+local _G = GLOBAL
+local State = _G.State
+local EventHandler = _G.EventHandler
+local FRAMES = _G.FRAMES
+local TimeEvent = _G.TimeEvent
+local ActionHandler = _G.ActionHandler
+local EventHandler = _G.EventHandler
+local EQUIPSLOTS = _G.EQUIPSLOTS
+local COLLISION = _G.COLLISION
+local SpawnPrefab = _G.SpawnPrefab
+local ACTIONS = _G.ACTIONS
+local ShakeAllCameras = _G.ShakeAllCameras
+local CAMERASHAKE = _G.CAMERASHAKE
+local Vector3 = _G.Vector3
+local BufferedAction = _G.BufferedAction
+
+local spellList = _G.GFSpellList
 
 local function GetSpellCastTime(spellName)
 	if spellName and spellList[spellName] then 
@@ -24,7 +27,7 @@ local function GetSpellCastTime(spellName)
 end
 
 local function IsValidGround(pos)
-	return GLOBAL.TheWorld.Map:IsPassableAtPoint(pos:Get()) and not GLOBAL.TheWorld.Map:IsGroundTargetBlocked(pos)
+	return _G.TheWorld.Map:IsPassableAtPoint(pos:Get()) and not _G.TheWorld.Map:IsGroundTargetBlocked(pos)
 end
 
 local function CanCastSpell(spell, inst, item)
@@ -221,6 +224,54 @@ local gfcastwithstaff = State{
 	},
 }
 
+local gfthrow = State{
+	name = "gfthrow",
+	tags = {"doing", "casting", "busy", "nodangle"},
+
+	onenter = function(inst)
+		inst.components.locomotor:Stop()
+
+		local act = inst:GetBufferedAction()
+		if act and act.spell then
+			if act.pos then
+				inst:ForceFacePoint(act.pos.x, 0, act.pos.z)
+			end
+
+			inst.AnimState:PlayAnimation("throw", false)
+
+			inst:PerformPreviewBufferedAction()
+			inst.sg:SetTimeout(2)
+			return
+		end
+
+		inst.sg:GoToState("idle")
+	end,
+
+	ontimeout = function(inst)
+		inst:ClearBufferedAction()
+		inst.sg:GoToState("idle")
+	end,
+
+	onupdate = function(inst)
+		if inst:HasTag("doing") then
+			if inst.entity:FlattenMovementPrediction() then
+				inst.sg:GoToState("idle", "noanim")
+			end
+		elseif inst.bufferedaction == nil then
+			inst.sg:GoToState("idle")
+		end
+	end,
+
+	events =
+	{
+		EventHandler("unequip", function(inst) 
+			if inst.sg:HasStateTag("casting") then
+				inst.sg:GoToState("idle") 
+			end
+		end), 
+	},
+}
+
 --groundslam
 local gfgroundslam = State{
 	name = "gfgroundslam",
@@ -290,6 +341,7 @@ local gfreadscroll = State
 			inst.AnimState:PlayAnimation("scroll_open", false) 
 			inst.AnimState:PushAnimation("scroll_loop", true) 
 
+
 			inst:PerformPreviewBufferedAction()
 			inst.sg:SetTimeout(GetSpellCastTime(act.spell) + 1)
 			return
@@ -310,6 +362,13 @@ local gfreadscroll = State
 			end
 		elseif inst.bufferedaction == nil then
 			inst.sg:GoToState("idle")
+		end
+	end,
+
+	onexit = function(inst)
+		if inst.replica.inventory:GetEquippedItem(EQUIPSLOTS.HANDS) then
+			inst.AnimState:Show("ARM_carry") 
+			inst.AnimState:Hide("ARM_normal")
 		end
 	end,
 
@@ -621,6 +680,52 @@ local gfflurry = State{
 	},
 }
 
+local gfcraftcast = State
+{
+	name = "gfcraftcast",
+	tags = {"doing", "casting", "busy", "nodangle"},
+
+	onenter = function(inst)
+		inst.components.locomotor:Stop()
+
+		local act = inst:GetBufferedAction()
+		if act and act.spell then
+			inst.AnimState:PlayAnimation("build_pre")
+            inst.AnimState:PushAnimation("build_loop", true)
+
+			inst:PerformPreviewBufferedAction()
+			inst.sg:SetTimeout(2)
+			return
+		end
+
+		inst.sg:GoToState("idle")
+	end,
+
+	ontimeout = function(inst)
+		inst:ClearBufferedAction()
+		inst.sg:GoToState("idle")
+	end,
+
+	onupdate = function(inst)
+		if inst:HasTag("doing") then
+			if inst.entity:FlattenMovementPrediction() then
+				inst.sg:GoToState("idle", "noanim")
+			end
+		elseif inst.bufferedaction == nil then
+			inst.sg:GoToState("idle")
+		end
+	end,
+
+	events =
+	{
+		EventHandler("unequip", function(inst) 
+			if inst.sg:HasStateTag("casting") then
+				inst.sg:GoToState("idle") 
+			end
+		end), 
+	},
+}
+
 
 --Add states block--------------
 AddStategraphState("wilson_client", gfdodrink)
@@ -635,6 +740,8 @@ AddStategraphState("wilson_client", gfhighleap)
 AddStategraphState("wilson_client", gftdartshoot)
 AddStategraphState("wilson_client", gfleap)
 AddStategraphState("wilson_client", gfflurry)
+AddStategraphState("wilson_client", gfcraftcast)
+AddStategraphState("wilson_client", gfthrow)
 
 --Add events block--------------
 AddStategraphEvent("wilson_client", EventHandler("gfforcemove", function(inst, data)

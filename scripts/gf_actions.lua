@@ -1,36 +1,10 @@
+--Green Framework. Please, don't copy any files or functions from this mod, because it can break other mods based on the GF.
+
 local STRINGS = GLOBAL.STRINGS
 local ACTIONS = GLOBAL.ACTIONS
 local spellList = GLOBAL.GFSpellList
 local GetString = GLOBAL.GetString
 
---[[ AddAction("GFCASTSPELL", "Cast", function(act)
-    if act.doer.components.gfspellcaster then 
-        if act.doer:HasTag("player") then
-            local item = act.invobject
-            if item ~= nil then
-                if item.components.gfspellpointer then
-                    item.components.gfspellpointer:SetEnabled(false)
-                end
-                if item.components.gfspellitem then
-                    local itemSpell = item.components.gfspellitem:GetItemSpellName()
-                    if not spellList[itemSpell]:CanBeCastedBy(act.doer) then
-                        act.doer.components.talker:Say("Something wrong", 2.5)
-                        return true
-                    end
-                    return itemSpell 
-                        and act.doer.components.gfspellcaster:CanCastSpell(itemSpell)
-                        and item.components.gfspellitem:CanCastSpell(itemSpell)
-                        and act.doer.components.gfspellcaster:CastSpell(itemSpell, act.target, act.pos, item)
-                        or false
-                end
-            end
-        elseif act.spell ~= nil then
-            return act.doer.components.gfspellcaster:CastSpell(act.spell, act.target, act.pos)
-        end
-    end
-
-	return false
-end) ]]
 
 AddAction("GFCASTSPELL", STRINGS.ACTIONS.GFCASTSPELL, function(act)
     local doer = act.doer
@@ -73,24 +47,10 @@ ACTIONS.GFCASTSPELL.strfn = function(act)
     local spell = act.doer.components.gfspellpointer and act.doer.components.gfspellpointer.currentSpell or nil
     if spell ~= nil then
 		return spellList[spell].actionFlag or "GENERIC"
-		--[[ local sn = item.spell.name
-		return (sn == "spearlunge" and "SPEARLUNGE") 
-			or (sn == "thorsjump" and "THORSJUMP") 
-			or (sn == "makealive" and "MAKEALIVE") 
-			or (sn == "throwlucien" and "THROW") 
-			or nil ]]
 	else
 		return "GENERIC"
 	end
 end
-
---[[ AddAction("GFSTARTSPELLTARGETING", "Target", function(act)
-	local item = act.invobject--doer.replica.inventory:GetEquippedItem(GLOBAL.EQUIPSLOTS.HANDS)
-	if item and item.components.gfspellpointer then
-		item.components.gfspellpointer:SetEnabled(true)
-		return true
-	end
-end) ]]
 
 AddAction("GFSTARTSPELLTARGETING", STRINGS.ACTIONS.GFSTARTSPELLTARGETING, function(act)
     local doer = act.doer--doer.replica.inventory:GetEquippedItem(GLOBAL.EQUIPSLOTS.HANDS)

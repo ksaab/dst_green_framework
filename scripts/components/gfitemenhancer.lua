@@ -1,3 +1,5 @@
+--Green Framework. Please, don't copy any files or functions from this mod, because it can break other mods based on the GF.
+
 local function check()
     return false
 end 
@@ -12,12 +14,12 @@ local GFItemEnhancer = Class(function(self, inst)
 end)
 
 function GFItemEnhancer:CheckItem(item)
-    return self.checkfn(item)
+    return self.checkfn(item, self.inst)
 end
 
 function GFItemEnhancer:EnhanceItem(item)
     if self.enchancefn then
-        return self.enchancefn(item)
+        return self.enchancefn(item, self.inst)
     end
 
     return false

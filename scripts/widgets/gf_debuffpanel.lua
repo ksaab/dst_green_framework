@@ -1,3 +1,5 @@
+--Green Framework. Please, don't copy any files or functions from this mod, because it can break other mods based on the GF.
+
 local Widget = require "widgets/widget"
 local Image = require "widgets/image"
 local Text = require "widgets/text"
@@ -47,7 +49,8 @@ function DebuffPanel:Update()
         exists[name] = true
         if self.debuffs[name] == nil then
             --icon
-            self.debuffs[name] = self:AddChild(Image(effect.iconAtlas or defaultAtlas, effect.icon or defaultImage))
+            self.debuffs[name] = self:AddChild(Image("images/gfspellhud.xml", "gf_spell_panel_icon.tex"))
+            self.debuffs[name].icon = self.debuffs[name]:AddChild(Image(effect.iconAtlas or defaultAtlas, effect.icon or defaultImage))
             --icon text
             self.debuffs[name]:SetTooltip(string.format("%s\n%s", 
                 effect.titleText or invalidText, 

@@ -1,3 +1,5 @@
+--Green Framework. Please, don't copy any files or functions from this mod, because it can break other mods based on the GF.
+
 local colors = {
     {42/255, 209/255, 235/255}, --light blue
     {124/255, 252/255, 0}, -- green

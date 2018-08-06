@@ -1,3 +1,5 @@
+--Green Framework. Please, don't copy any files or functions from this mod, because it can break other mods based on the GF.
+
 local Widget = require "widgets/widget"
 local SpellButton = require "widgets/gf_spellbutton"
 local Image = require "widgets/image"
@@ -42,6 +44,7 @@ local function OnUpdateSpellList(self)
     end
 
     self.spellCount = count
+    --self.owner:PushEvent("gfsc_updatespelllist")
     GFDebugPrint(("SpellPanel: Updated, num of skills = %i"):format(count))
 end
 
@@ -66,7 +69,7 @@ local SpellPanel = Class(Widget, function(self, owner)
 
     self.spellCount = 0
 
-    self.owner:ListenForEvent("gfsc_updatespelllist", function(inst) OnUpdateSpellList(self) end, self.owner.classified)
+    self.owner:ListenForEvent("gfsc_updatespelllist", function() OnUpdateSpellList(self) end, self.owner.classified)
 
     self:Hide()
     

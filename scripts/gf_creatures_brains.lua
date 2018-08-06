@@ -62,3 +62,5 @@ end
 
 
 AddBrainPostInit("pigbrain", MakeCaster)
+AddBrainPostInit("bunnymanbrain", MakeCaster)
+AddBrainPostInit("knightbrain", MakeCaster)

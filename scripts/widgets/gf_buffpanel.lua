@@ -1,3 +1,5 @@
+--Green Framework. Please, don't copy any files or functions from this mod, because it can break other mods based on the GF.
+
 local Widget = require "widgets/widget"
 local Image = require "widgets/image"
 local Text = require "widgets/text"
@@ -47,7 +49,9 @@ function BuffPanel:Update()
         exists[name] = true
         if self.buffs[name] == nil then
             --icon
-            self.buffs[name] = self:AddChild(Image(effect.iconAtlas or defaultAtlas, effect.icon or defaultImage))
+            self.buffs[name] = self:AddChild(Image("images/gfspellhud.xml", "gf_spell_panel_icon.tex"))
+            self.buffs[name].icon = self.buffs[name]:AddChild(Image(effect.iconAtlas or defaultAtlas, effect.icon or defaultImage))
+            --self.buffs[name].icon:MoveToBack()
             --icon text
             self.buffs[name]:SetTooltip(string.format("%s\n%s", 
                 effect.titleText or invalidText, 

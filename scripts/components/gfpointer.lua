@@ -1,3 +1,5 @@
+--Green Framework. Please, don't copy any files or functions from this mod, because it can break other mods based on the GF.
+
 local function DestroyPointer(self)
     local inst = self.pointer
     inst:DoPeriodicTask(0, function(inst, colour, scale, startTime)

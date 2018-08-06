@@ -1,3 +1,5 @@
+--Green Framework. Please, don't copy any files or functions from this mod, because it can break other mods based on the GF.
+
 local Reaction = Class(function(self, name, data)
     if data == nil or data.reactfn == nil then self.fail = true return end
 

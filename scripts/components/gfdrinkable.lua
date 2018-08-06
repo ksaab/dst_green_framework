@@ -1,3 +1,5 @@
+--Green Framework. Please, don't copy any files or functions from this mod, because it can break other mods based on the GF.
+
 local GFDrinkable = Class(function(self, inst)
     self.inst = inst
     self.infinite = false
@@ -11,7 +13,7 @@ end
 function GFDrinkable:OnDrunk(drinker)
     --print("drinked")
     if self.onDrunkFn ~= nil then
-        self:onDrunkFn(drinker)
+        self.onDrunkFn(drinker, self.inst)
     end
 
     --remove after drunk

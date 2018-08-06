@@ -1,16 +1,17 @@
-local require = GLOBAL.require
-local TheInput = GLOBAL.TheInput
-local ACTIONS = GLOBAL.ACTIONS
-local spellList = GLOBAL.GFSpellList
-local STRINGS = GLOBAL.STRINGS
+local _G = GLOBAL
+local require = _G.require
+local TheInput = _G.TheInput
+local ACTIONS = _G.ACTIONS
+local spellList = _G.GFSpellList
+local STRINGS = _G.STRINGS
 
 local defaultLMBAction = STRINGS.GF.DEFAULTACTIONACTION
 local defaultRMBAction = STRINGS.GF.DEFAULTALTACTIONACTION
 
 --icons for effects
 AddClassPostConstruct( "widgets/controls", function(self)
-	GLOBAL.TheWorld:ListenForEvent( "playerentered", function( inst, ownr )
-        if ownr == nil or ownr ~= GLOBAL.GFGetPlayer() then return end
+	_G.TheWorld:ListenForEvent( "playerentered", function( inst, ownr )
+        if ownr == nil or ownr ~= _G.GFGetPlayer() then return end
         --positive effects panel
 		local BuffPanel = require "widgets/gf_buffpanel"
 		self.gf_buffPanel = self.bottom_root:AddChild( BuffPanel(ownr) )
@@ -49,20 +50,22 @@ AddClassPostConstruct( "widgets/controls", function(self)
 	end)
 end)
 
---it's not good, but no idae how to make it better
-local function PostHoverer(self, anim, owner)
-	require("constants")
-	local Text = require "widgets/text"
+require("constants")
+local Text = require "widgets/text"
 
+--it's not good, but no idea how to make it better
+local function PostHoverer(self, anim, owner)
 	self._prevEntity = nil
 	--text fields
-	self.abilitiesString = self:AddChild(Text(GLOBAL.UIFONT, 18, nil, {105/255, 175/255, 234/255, 1}))
-	self.spellString = self:AddChild(Text(GLOBAL.UIFONT, 18, nil, {50/255, 205/255, 50/255, 1}))
-	self.positiveString = self:AddChild(Text(GLOBAL.UIFONT, 15, nil, {229/255, 216/255, 105/255, 1}))
-	self.negativeString = self:AddChild(Text(GLOBAL.UIFONT, 15, nil, {104/255, 82/255, 128/255, 1}))
+	self.abilitiesString = self:AddChild(Text(_G.UIFONT, 18, nil, {105/255, 175/255, 234/255, 1}))
+	self.enchantString = self:AddChild(Text(_G.UIFONT, 20, nil, {50/255, 205/255, 50/255, 1}))
+	self.spellString = self:AddChild(Text(_G.UIFONT, 18, nil, {50/255, 205/255, 50/255, 1}))
+	self.positiveString = self:AddChild(Text(_G.UIFONT, 15, nil, {229/255, 216/255, 105/255, 1}))
+	self.negativeString = self:AddChild(Text(_G.UIFONT, 15, nil, {104/255, 82/255, 128/255, 1}))
 
 	--text fields positions
 	self.abilitiesString:SetPosition(0, 65, 0)
+	self.enchantString:SetPosition(0, 65, 0)
 	self.spellString:SetPosition(0, 18, 0)
 	self.positiveString:SetPosition(0, 18, 0) -- -1
 	self.negativeString:SetPosition(0, 3, 0) -- -16
@@ -70,15 +73,15 @@ local function PostHoverer(self, anim, owner)
 	self.lasttimeinvUpdate = 0
 	self.lasttimeEffectsUpdate = 0
 
-	self._OnUpdate = self.OnUpdate
+	local _oldOnUpdate = self.OnUpdate
 	self.OnUpdate  = function(dt)
-		self:_OnUpdate(dt)
-		if not self.shown then return end
+		_oldOnUpdate(self, dt)
+		if not self.shown and not self.owner:HasTag("playerghost") then return end
 
 		local affoff = 0
 		local buffoff = 0
 		local invoff = 0
-		local obj = GLOBAL.TheInput:GetWorldEntityUnderMouse()
+		local obj = _G.TheInput:GetWorldEntityUnderMouse()
 
 		if obj == nil then
 			if self.owner.HUD 
@@ -105,7 +108,7 @@ local function PostHoverer(self, anim, owner)
 		end
 
 		if obj and (obj.replica.gfeffectable or obj.replica.gfspellitem) then
-			if obj ~= self._prevEntity or GLOBAL.GetTime() - self.lasttimeEffectsUpdate > 1 then
+			if obj ~= self._prevEntity or _G.GetTime() - self.lasttimeEffectsUpdate > 1 then
 				local posstr, negstr, affstr, encstr, ispellstr
 				if obj.replica.gfeffectable then
 					local scei = obj.replica.gfeffectable.hudInfo
@@ -133,16 +136,24 @@ local function PostHoverer(self, anim, owner)
 					self.negativeString:SetPosition(0, 18 + invoff, 0)
 				end
 				self.negativeString:SetString(negstr or "")
-				if affstr or encstr then
+				if affstr then -- or encstr 
 					self.abilitiesString:SetPosition(0, 65 + affoff, 0)
-					self.abilitiesString:SetString(string.format("%s%s", affstr or "", encstr or ""))
+					self.abilitiesString:SetString(string.format("%s", affstr))
+					affoff = affoff + 20
 				else
 					self.abilitiesString:SetString("")
+				end
+				if encstr then -- or encstr 
+					self.enchantString:SetPosition(0, 65 + affoff, 0)
+					self.enchantString:SetString(string.format("%s", encstr))
+				else
+					self.enchantString:SetString("")
 				end
 				
 			end
 		else
 			self.abilitiesString:SetString("")
+			self.enchantString:SetString("")
 			self.spellString:SetString("")
 			self.positiveString:SetString("")
 			self.negativeString:SetString("")
@@ -191,7 +202,7 @@ local function PostControls(self)
 					self.playeractionhint:Show()
 					self.playeractionhint:SetTarget(actTarget)
 					self.playeractionhint:SetScreenOffset(0, offset)
-					self.playeractionhint.text:SetString(TheInput:GetLocalizedControl(controller_id, GLOBAL.CONTROL_CONTROLLER_ACTION) 
+					self.playeractionhint.text:SetString(TheInput:GetLocalizedControl(controller_id, _G.CONTROL_CONTROLLER_ACTION) 
 						.. " "
 						.. (lmb and lmb:GetActionString() or defaultLMBAction))
 				end
@@ -199,7 +210,7 @@ local function PostControls(self)
 				if rmb and rmb.action == ACTIONS.GFSTOPSPELLTARGETING then
 					self.groundactionhint:Show()
 					self.groundactionhint:SetTarget(self.owner)
-					self.groundactionhint.text:SetString(TheInput:GetLocalizedControl(controller_id, GLOBAL.CONTROL_CONTROLLER_ALTACTION) 
+					self.groundactionhint.text:SetString(TheInput:GetLocalizedControl(controller_id, _G.CONTROL_CONTROLLER_ALTACTION) 
 						.. " "
 						.. (rmb and rmb:GetActionString() or defaultRMBAction))
 				end

@@ -1,3 +1,5 @@
+--Green Framework. Please, don't copy any files or functions from this mod, because it can break other mods based on the GF.
+
 local spelllist = GFSpellList
 local spelllistcached = GFSpellNameToID
 
@@ -7,7 +9,7 @@ end
 
 local Spell = Class(function(self, name)
     --both side
-    self.name = name --spell name
+    self.name = name or "name_not_setted" --spell name
     self.title = nil --a title for the hoverer widget
     --self.description = nil --not used
     self.iconAtals = nil
@@ -71,9 +73,9 @@ function Spell:HasSpellTag(tag)
 end
 
 --used in the spellitem component
-function Spell:GetItemRecharge()
+function Spell:GetItemRecharge(item)
     if self.getRechargefn then
-        local _, r = self:getRechargefn()
+        local _, r = self:getRechargefn(nil, item)
         return r
     else
         return self.itemRecharge
@@ -82,9 +84,9 @@ function Spell:GetItemRecharge()
 end
 
 --used in the spellcaster component
-function Spell:GetDoerRecharge()
+function Spell:GetDoerRecharge(doer)
     if self.getRechargefn then
-        local r = self:getRechargefn()
+        local r = self:getRechargefn(doer)
         return r
     else
         return self.doerRecharge

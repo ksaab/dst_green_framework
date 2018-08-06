@@ -7,13 +7,12 @@ local function lightningdummyfn()
     inst:AddTag("NOCLICK")
 
     inst:AddComponent("gflightningdrawer")
-    if not TheWorld.ismatersim then
+    if not TheWorld.ismastersim then
         return inst
     end
 
     inst.persists = false
-    inst:DoTastInTime(10, inst.Remove)
-
+    inst:DoTaskInTime(10, function() inst:Remove() end)
     return inst
 end
 
@@ -26,12 +25,12 @@ local function crackledummyfn()
     inst:AddTag("NOCLICK")
 
     inst:AddComponent("gfcrackledrawer")
-    if not TheWorld.ismatersim then
+    if not TheWorld.ismastersim then
         return inst
     end
 
     inst.persists = false
-    inst:DoTastInTime(20, inst.Remove)
+    inst:DoTaskInTime(20, inst.Remove)
 
     return inst
 end
@@ -55,7 +54,7 @@ local function netdummyfn()
 
     inst:AddTag("NOCLICK")
 
-    if not TheWorld.ismatersim then
+    if not TheWorld.ismastersim then
         return inst
     end
 

@@ -1,3 +1,5 @@
+--Green Framework. Please, don't copy any files or functions from this mod, because it can break other mods based on the GF.
+
 local function UpdateRechareable(inst)
     --GFDebugPrint("GFRechargeWatcher updated")
     inst:DoTaskInTime(0, function(inst)
@@ -23,6 +25,8 @@ local GFRechargeWatcher = Class(function(self, inst)
     inst:ListenForEvent("itemget", CheckItemBeforeUpdate)
     inst:ListenForEvent("gfsc_updaterechargesdirty", UpdateRechareable)
     inst:ListenForEvent("gfsc_updatespelllist", UpdateRechareable)
+
+    self.inst:DoTaskInTime(3, UpdateRechareable)
 end)
 
 function GFRechargeWatcher:UpdateRechareableList()
@@ -30,7 +34,7 @@ function GFRechargeWatcher:UpdateRechareableList()
     self.itemList = {}
     self.iconList = {}
     local function CheckHUD()
-        for k, icon in pairs(inst.HUD.controls.spellPanel.iconsPanel.icons) do
+        for k, icon in pairs(inst.HUD.controls.gf_spellPanel.iconsPanel.icons) do
             if icon.spell ~= nil then
                 local remain, total = inst.replica.gfspellcaster:GetSpellRecharge(icon.spell)
                 if remain > 0 then
@@ -70,7 +74,7 @@ function GFRechargeWatcher:UpdateRechareableList()
         CheckItems(inv:GetEquips())
     end
 
-    if inst.HUD and inst.HUD.controls and inst.HUD.controls.spellPanel and inst.HUD.controls.spellPanel.iconsPanel.icons then
+    if inst.HUD and inst.HUD.controls and inst.HUD.controls.gf_spellPanel and inst.HUD.controls.gf_spellPanel.iconsPanel.icons then
         CheckHUD()
     end
 end

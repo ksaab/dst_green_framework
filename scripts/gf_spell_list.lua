@@ -25,18 +25,7 @@ local GFSpellIDToName = _G.GFSpellIDToName
 
 local spellArray = 
 {
-    [3] = { name = "equip_chainlightning", folder = "item/"},
-    [4] = { name = "equip_crushlightning", folder = "item/"},
-    [5] = { name = "equip_groundslam", folder = "item/"},
 
-    [10] = { name = "character_chainlightning", folder = "character/"},
-    [11] = { name = "character_crushlightning", folder = "character/"},
-
-    [100] = {name = "amulet_magic_echo"},
-    [101] = {name = "apply_lesser_rejuvenation"},
-    [102] = {name = "apply_slow"},
-
-    [105] = {name = "equip_shootsting", folder = "item/"}
 }
 
 local spellsFolder = "spells/"

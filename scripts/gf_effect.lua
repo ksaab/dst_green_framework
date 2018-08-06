@@ -1,3 +1,5 @@
+--Green Framework. Please, don't copy any files or functions from this mod, because it can break other mods based on the GF.
+
 local Effect = Class(function(self, name)
     --[[SERVER AND CLIENT]]
     self.name = name
@@ -27,10 +29,12 @@ local Effect = Class(function(self, name)
     --flags
     self.savable = false --save effect or not
     self.nonRefreshable = false --can effect be refreshed or not
+
     self.updateDurationOnRefresh = true
     self.updateStacksOnRefresh = false
     self.updateable = true --need to update on ticks or not
     self.static = true --for static effects without timers (affixes and etc)
+    self.aura = false
     self.removableByStacks = true --can be removed by consuming stacks or not
 
     --effect data

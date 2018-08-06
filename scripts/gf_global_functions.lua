@@ -1,6 +1,10 @@
+--Green Framework. Please, don't copy any files or functions from this mod, because it can break other mods based on the GF.
+
+rawset(_G, "GFVersion", 1.0)
+
 local GFIsTogether = _G.TheNet ~= nil and true or false
 rawset(_G, "GFIsTogether", GFIsTogether)
-print(("Green Framework: is together: %s"):format(tostring(GFIsTogether)))
+--print(("Green Framework: is together: %s"):format(tostring(GFIsTogether)))
 
 local function ReturnTrue()
     return true
@@ -77,21 +81,59 @@ function GFAddCustomEffect(name, route, id)
     GFEffectIDToName[id] = name
 end
 
-function GFAddBaseSpellsToEntity(prefab, ...)
+function GFAddBaseAffixes(prefab, type, chance, ...)
+    if GFEntitiesBaseAffixes[prefab] == nil then
+        GFEntitiesBaseAffixes[prefab] = {}
+    end
+    local aff = GFEntitiesBaseAffixes[prefab]
+    if aff[type] == nil then
+        aff[type] = {}
+        aff[type].chance = 1
+    end 
+    if aff[type].list == nil then
+        aff[type].list = {}
+    end 
+    if chance ~= nil then aff[type].chance = chance end
+    for i = 1, arg.n do
+        table.insert(aff[type].list, arg[i])
+    end
+    --[[ for k, v in pairs(arg) do
+        print(k, v)
+    end ]]
+end
+
+function GFAddCasterCreature(prefab, fn)
+    GFCasterCreatures[prefab] = fn ~= nil and fn or true
+end
+
+function GFAddBaseSpells(prefab, ...)
     if GFEntitiesBaseSpells[prefab] == nil then
         GFEntitiesBaseSpells[prefab] = {}
     end
-    for _, v in pairs(arg) do
-        table.insert(GFEntitiesBaseSpells[prefab], v)
-    end
+    
+    --[[ print("printing...")
+    for k, v in pairs(arg) do
+        print(k, v)
+        --table.insert(GFEntitiesBaseSpells[prefab], v)
+    end ]]
+    for i = 1, arg.n do
+        table.insert(GFEntitiesBaseSpells[prefab], arg[i])
+    end 
 end
 
-function GFMakePlayerCaster(inst, spells)
+local function PlayerFFCheck(self, target)
+    return (target:HasTag("player") and not GFGetPVPEnabled())
+        or (self.inst.components.leader and self.inst.components.leader:IsFollower(target))
+end
+
+function GFMakePlayerCaster(inst, spells, friendfn)
     if not inst.gfmodified then
         inst.gfmodified = true
-        inst:AddTag("gfscclientside")
+        --inst:AddTag("gfscclientside")
+        inst._gfclientside = true
         if GFGetIsMasterSim() then
             inst:AddComponent("gfspellcaster")
+            inst.components.gfspellcaster:SetIsTargetFriendlyFn(friendfn or PlayerFFCheck)
             if spells ~= nil then
                 inst.components.gfspellcaster:AddSpell(spells)
             end
@@ -101,11 +143,14 @@ function GFMakePlayerCaster(inst, spells)
     end
 end
 
-function GFMakeCaster(inst, spells)
+function GFMakeCaster(inst, spells, friendfn)
     if not inst.gfmodified then
         inst.gfmodified = true
         if GFGetIsMasterSim() then
             inst:AddComponent("gfspellcaster")
+            if type(friendfn) == "function" then
+                inst.components.gfspellcaster:SetIsTargetFriendlyFn(friendfn)
+            end
             if spells ~= nil then
                 inst.components.gfspellcaster:AddSpell(spells)
             end
@@ -151,16 +196,6 @@ function GFGetValidSpawnPosition(x, y, z, minradius, maxradius, ground, maxtries
     until try < maxtries
 
     return pt
-end
-
-function GFListenForEventOnce(inst, event, fn, source) --not mine, author simplex
-    -- Currently, inst2 is the source, but I don't want to make that assumption.
-    function gn(inst2, data)
-        inst:RemoveEventCallback(event, gn, source) --as you can see, it removes the event listener even before firing the function
-        return fn(inst2, data)
-    end
-     
-    return inst:ListenForEvent(event, gn, source)
 end
 
 function GFIsEntityOnLine(ent, pt1, pt2) -- not net, geometry
@@ -227,7 +262,7 @@ function GFIsEntityInside(polygon, ent)
 	return not IsNumberEven(intersections)
 end
 
-function GFSoftColorChange(inst, fc, sc, time, step)
+function GFSoftColourChange(inst, fc, sc, time, step)
     if sc == nil then sc = {1, 1, 1, 1} end
     if time == nil then time = 1 end
     if step == nil or step > 1 then step = 0.1 end

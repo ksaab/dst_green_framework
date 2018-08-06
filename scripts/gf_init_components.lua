@@ -1,3 +1,5 @@
+--Green Framework. Please, don't copy any files or functions from this mod, because it can break other mods based on the GF.
+
 local _G = GLOBAL
 
 AddReplicableComponent("gfspellcaster")
@@ -39,7 +41,7 @@ AddComponentPostInit("combat", function(self)
         return isBloked
     end
 
-    function self:GetAttackedWithMods(target, damage, weapon, damageType)
+    function self:AttackWithMods(target, damage, weapon, damageType)
 		if not (target and target.components.combat and damage) then return end
 
 		--local playermultiplier = target ~= nil and target:HasTag("player")

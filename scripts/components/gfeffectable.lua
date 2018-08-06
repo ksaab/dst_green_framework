@@ -1,5 +1,7 @@
+--Green Framework. Please, don't copy any files or functions from this mod, because it can break other mods based on the GF.
+
 local effectList = GFEffectList
-local affixList = GFAffixList
+local affixList = GFEntitiesBaseAffixes
 
 local function RemoveEffectsOnDeath(inst)
     inst.components.gfeffectable:RemoveAllEffects(false, "death")
@@ -66,10 +68,17 @@ end
 local function TryAddAffix(inst)
     local self = inst.components.gfeffectable
     if self and self.isNew then
-        --print("new creature, try to add affix")
-        if math.random() < (self.affixes.chance or 1) * self.eliteChanceMult then
-            self:ApplyEffect(self.affixes.list[math.random(#(self.affixes.list))])
+        for affixType, affixData in pairs(self.affixes) do
+            if math.random() < affixData.chance then
+                local aff = affixData.list[math.random(#(affixData.list))]
+                --GFDebugPrint(("Add [%s-type] affix [%s] to %s"):format(affixType, aff, tostring(self.inst)))
+                self:ApplyEffect(aff)
+            end
         end
+        --print("new creature, try to add affix")
+        --[[ if math.random() < (self.affixes.chance or 1) * self.eliteChanceMult then
+            self:ApplyEffect(self.affixes.list[math.random(#(self.affixes.list))])
+        end ]]
     --else
         --print("old creature, refusing")
     end
@@ -93,7 +102,7 @@ local GFEffectable = Class(function(self, inst)
 
     self.isUpdating = false
     
-    inst:AddTag("gfeffectable")
+    --inst:AddTag("gfeffectable")
 
     inst:ListenForEvent("death", RemoveEffectsOnDeath)
 
@@ -158,14 +167,17 @@ function GFEffectable:ApplyEffect(effectName, effectParam)
             and self:CheckResists(effect) --check resists and other stuff
         then 
             effect:Refresh(self.inst, effectParam)
-            if not effect.static then
-                self.inst:PushEvent("gfeffectrefreshed", {effect = effect})
-            end
-            self.inst.replica.gfeffectable:UpdateEffectsList()
+            if not effect.aura then
+                if not effect.static then
+                    self.inst:PushEvent("gfeffectrefreshed", {effect = effect})
+                end
+                
+                self.inst.replica.gfeffectable:UpdateEffectsList()
 
-            --update user interface for host, clients call this from the replica 
-            if self.inst == GFGetPlayer() and effect.hudonrefreshfn then
-                effect:hudonrefreshfn(self.inst)
+                --update user interface for host, clients call this from the replica 
+                if self.inst == GFGetPlayer() and effect.hudonrefreshfn then
+                    effect:hudonrefreshfn(self.inst)
+                end
             end
 
             return true
@@ -188,8 +200,10 @@ function GFEffectable:ApplyEffect(effectName, effectParam)
                     fx.Transform:SetPosition(self.inst.Transform:GetWorldPosition())
                     fx.Follower:FollowSymbol(self.inst.GUID, self.followSymbol, 0, yof + (fx.yOffset or 0), 0)
                     fx.entity:SetParent(self.inst.entity)
-                    fx:ApplyFX()
-                else
+                    if fx.ApplyFX ~= nil then
+                        fx:ApplyFX()
+                    end
+                elseif fx ~= nil then
                     fx:DoTaskInTime(0, fx.Remove)
                 end
             end
@@ -202,8 +216,10 @@ function GFEffectable:ApplyEffect(effectName, effectParam)
                     fx.Follower:FollowSymbol(self.inst.GUID, self.followSymbol, 0, yof + (fx.yOffset or 0), 0)
                     fx.entity:SetParent(self.inst.entity)
                     self.effectsfx[effectName] = fx
-                    fx:StartFollowFX()
-                else
+                    if fx.StartFollowFX ~= nil then
+                        fx:StartFollowFX()
+                    end
+                elseif fx ~= nil then
                     fx:DoTaskInTime(0, fx.Remove)
                 end
             end
@@ -244,7 +260,11 @@ function GFEffectable:RemoveEffect(effectName, reason)
     if effect == nil then return end --effect isn't existed on entity
 
     if self.effectsfx[effectName] and self.effectsfx[effectName]:IsValid() then
-        self.effectsfx[effectName]:StopFollowFX()
+        if self.effectsfx[effectName].StopFollowFX then
+            self.effectsfx[effectName]:StopFollowFX()
+        else
+            self.effectsfx[effectName]:Remove()
+        end
         self.effectsfx[effectName] = nil
     end
 
@@ -368,7 +388,7 @@ function GFEffectable:GetDebugString()
     for effectName, effect in pairs(self.effects) do
         local timer = effect.static and "static" or string.format("%.2f/%.2f", 
             effect.expirationTime - currTime, effect.expirationTime - effect.applicationTime)
-        table.insert(str, string.format("[%s(%i) %s]", effectName, effect.type, timer))
+        table.insert(str, string.format("[%s(%i) %s]", effectName, effect.stacks, timer))
     end
 
     local res = {}

@@ -1,3 +1,5 @@
+--Green Framework. Please, don't copy any files or functions from this mod, because it can break other mods based on the GF.
+
 local GFSpell = require("gf_spell")
 
 --pointer params:
@@ -150,6 +152,7 @@ local Spell = Class(GFSpell, function(self)
         projOnHit = nil,
         projOnDone = nil,
     }
+    self.playerState = "gftdartshoot"
 
     self.itemRecharge = 2 --can't cast the spell with item
     self.doerRecharge = 0 --caster can't cast the spell (even if he equips an another item with the same spell)

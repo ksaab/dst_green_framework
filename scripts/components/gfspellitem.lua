@@ -1,3 +1,5 @@
+--Green Framework. Please, don't copy any files or functions from this mod, because it can break other mods based on the GF.
+
 local spellList = GFSpellList
 
 local function GetSpell(spellname)
@@ -45,7 +47,7 @@ end
 
 function GFSpellItem:AddSpell(spellStr)
     if spellStr == nil then 
-        GFDebugPrint("GFSpellItem: spell string or array is not valid")
+        --GFDebugPrint("GFSpellItem: spell string or array is not valid")
         return false 
     end
 
@@ -84,14 +86,14 @@ end
 
 function GFSpellItem:SetItemSpell(spellname)
     if not GetSpell(spellname) then
-        GFDebugPrint(("GFSpellItem: spell %s is not valid"):format(spellname or "none"))
+        --GFDebugPrint(("GFSpellItem: spell %s is not valid"):format(spellname or "none"))
         return
     end
 
     if spellname == self:GetItemSpellName() then return end
 
     if not self.spells[spellname] then
-        GFDebugPrint(("GFSpellItem: spell %s is not bounded to %s"):format(spellname, tostring(self.inst)))
+        --GFDebugPrint(("GFSpellItem: spell %s is not bounded to %s"):format(spellname, tostring(self.inst)))
         return
     end
     
@@ -127,7 +129,7 @@ function GFSpellItem:ChangeSpell()
         self:SetItemSpell(firstSpell)
         return true
     else
-        GFDebugPrint(("GFSpellItem: can't switch spell on %s, there are no valid spells"):format(tostring(self.inst)))
+        --GFDebugPrint(("GFSpellItem: can't switch spell on %s, there are no valid spells"):format(tostring(self.inst)))
         return false
     end
 end
@@ -144,7 +146,7 @@ end
 
 function GFSpellItem:OnCastDone(spellname, doer)
     local spell = GetSpell(spellname)
-    local itemRecharge = spell:GetItemRecharge()
+    local itemRecharge = spell:GetItemRecharge(self.inst)
     if itemRecharge > 0 then
         if doer and doer.components.gfspellcaster then
             itemRecharge = itemRecharge * doer.components.gfspellcaster.baseRecharge * doer.components.gfspellcaster.rechargeExternal:Get()

@@ -9,24 +9,9 @@ local GFAffixList = GLOBAL.GFAffixList
 
 local affixArray = 
 {
-    --[[ pigman = 
-    {
-        chance = 1,
-        list = 
-        {
-            "affix_shaman",
-        },
-    },
-    spider = 
-    {
-        chance = 1,
-        list = 
-        {
-            "affix_test",
-        },
-    }, ]]
+
 }
 
 for prefab, affixes in pairs (affixArray) do
-    GFAffixList[prefab] = affixes
+    GLOBAL.GFEntitiesBaseAffixes[prefab] = affixes
 end

@@ -1,11 +1,6 @@
-local assets_crackle =
+local assets =
 {
-    Asset("ANIM", "anim/gf_reticule_crackles.zip"),
-}
-
-local assets_effect =
-{
-    Asset("ANIM", "anim/gf_reticule_effect.zip"),
+    Asset("ANIM", "anim/gf_reticules.zip"),
 }
 
 local PAD_DURATION = .1
@@ -31,41 +26,6 @@ local function UpdatePing(inst, s0, s1, t0, duration, multcolour, addcolour)
     inst.AnimState:SetAddColour(c * addcolour[1], c * addcolour[2], c * addcolour[3], c * addcolour[4])
 end
 
-local function MakeCrackleReticule(name, anim, ping, repanim)
-    local function fn()
-        local inst = CreateEntity()
-
-        inst:AddTag("FX")
-        inst:AddTag("NOCLICK")
-        --[[Non-networked entity]]
-        inst.entity:SetCanSleep(false)
-        inst.persists = false
-
-        inst.entity:AddTransform()
-        inst.entity:AddAnimState()
-
-        inst.AnimState:SetBank("gf_reticule_crackles")
-        inst.AnimState:SetBuild("gf_reticule_crackles")
-        inst.AnimState:PlayAnimation(anim)
-        inst.AnimState:SetOrientation(ANIM_ORIENTATION.OnGround)
-        inst.AnimState:SetLayer(LAYER_WORLD_BACKGROUND)
-        inst.AnimState:SetSortOrder(3)
-        inst.AnimState:SetScale(SCALE, SCALE)
-
-        if ping then
-            inst.AnimState:SetBloomEffectHandle("shaders/anim.ksh")
-
-            local duration = .4
-            inst:DoPeriodicTask(0, UpdatePing, nil, { 1, 1 }, { 1.04, 1.3 }, GetTime(), duration, {}, {})
-            inst:DoTaskInTime(duration, inst.Remove)
-        end
-
-        return inst
-    end
-
-    return Prefab(name, fn, assets_crackle)
-end
-
 local function MakeEffectReticule(name, anim, ping, repanim)
     local function fn()
         local inst = CreateEntity()
@@ -79,8 +39,8 @@ local function MakeEffectReticule(name, anim, ping, repanim)
         inst.entity:AddTransform()
         inst.entity:AddAnimState()
 
-        inst.AnimState:SetBank("gf_reticule_effect")
-        inst.AnimState:SetBuild("gf_reticule_effect")
+        inst.AnimState:SetBank("gf_reticules")
+        inst.AnimState:SetBuild("gf_reticules")
         inst.AnimState:PlayAnimation(anim, true)
         inst.AnimState:SetOrientation(ANIM_ORIENTATION.OnGround)
         inst.AnimState:SetLayer(LAYER_WORLD_BACKGROUND)
@@ -98,12 +58,11 @@ local function MakeEffectReticule(name, anim, ping, repanim)
         return inst
     end
 
-    return Prefab(name, fn, assets_effect)
+    return Prefab(name, fn, assets)
 end
 
-return MakeCrackleReticule("gf_reticule_crackles", "anim120", false),
-    MakeCrackleReticule("gf_reticule_crackles_ping", "anim120", true),
-    MakeEffectReticule("gf_reticule_nature", "naturefive", false),
-    MakeEffectReticule("gf_reticule_nature_ping", "naturefive", true),
-    MakeEffectReticule("gf_reticule_nature_triangle", "naturethree", false),
-    MakeEffectReticule("gf_reticule_nature_triangle_ping", "naturethree", true)
+return 
+    MakeEffectReticule("gf_reticule_conus", "conus", false),
+    MakeEffectReticule("gf_reticule_conus_ping", "conus", true),
+    MakeEffectReticule("gf_reticule_triangle", "triangle", false),
+    MakeEffectReticule("gf_reticule_triangle_ping", "triangle", true)

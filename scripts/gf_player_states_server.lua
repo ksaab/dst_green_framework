@@ -1,20 +1,26 @@
-local State = GLOBAL.State
-local EventHandler = GLOBAL.EventHandler
-local FRAMES = GLOBAL.FRAMES
-local TimeEvent = GLOBAL.TimeEvent
-local ActionHandler = GLOBAL.ActionHandler
-local EventHandler = GLOBAL.EventHandler
-local EQUIPSLOTS = GLOBAL.EQUIPSLOTS
-local COLLISION = GLOBAL.COLLISION
-local SpawnPrefab = GLOBAL.SpawnPrefab
-local ACTIONS = GLOBAL.ACTIONS
-local ShakeAllCameras = GLOBAL.ShakeAllCameras
-local CAMERASHAKE = GLOBAL.CAMERASHAKE
-local Vector3 = GLOBAL.Vector3
-local BufferedAction = GLOBAL.BufferedAction
-local distsq = GLOBAL.distsq
+--Green Framework. Please, don't copy any files or functions from this mod, because it can break other mods based on the GF.
 
-local spellList = GLOBAL.GFSpellList
+local _G = GLOBAL
+local State = _G.State
+local EventHandler = _G.EventHandler
+local FRAMES = _G.FRAMES
+local TimeEvent = _G.TimeEvent
+local ActionHandler = _G.ActionHandler
+local EventHandler = _G.EventHandler
+local EQUIPSLOTS = _G.EQUIPSLOTS
+local COLLISION = _G.COLLISION
+local SpawnPrefab = _G.SpawnPrefab
+local ACTIONS = _G.ACTIONS
+local ShakeAllCameras = _G.ShakeAllCameras
+local CAMERASHAKE = _G.CAMERASHAKE
+local Vector3 = _G.Vector3
+local BufferedAction = _G.BufferedAction
+local distsq = _G.distsq
+local TUNING = _G.TUNING
+
+_G.require "stategraphs/commonstates"
+
+local spellList = _G.GFSpellList
 
 local function GetSpellCastTime(spellName)
 	if spellName and spellList[spellName] then 
@@ -29,7 +35,7 @@ local function FindValidGround(inst, range)
 	local pos = Vector3()
 	for i = range, 0, -1 do
 		pos.x, pos.y, pos.z = inst.entity:LocalToWorldSpace(i, 0, 0)
-		if GLOBAL.TheWorld.Map:IsPassableAtPoint(pos:Get()) and not GLOBAL.TheWorld.Map:IsGroundTargetBlocked(pos) then
+		if _G.TheWorld.Map:IsPassableAtPoint(pos:Get()) and not _G.TheWorld.Map:IsGroundTargetBlocked(pos) then
 			return pos
 		end
 	end
@@ -38,7 +44,7 @@ local function FindValidGround(inst, range)
 end
 
 local function IsValidGround(pos)
-	return GLOBAL.TheWorld.Map:IsPassableAtPoint(pos:Get()) and not GLOBAL.TheWorld.Map:IsGroundTargetBlocked(pos)
+	return _G.TheWorld.Map:IsPassableAtPoint(pos:Get()) and not _G.TheWorld.Map:IsGroundTargetBlocked(pos)
 end
 
 --[[ local function GetSpellPostCast(spellName)
@@ -86,17 +92,21 @@ local gfdodrink = State{
 		inst.components.locomotor:Stop()
 		local act = inst:GetBufferedAction()
 		if act then
-			local swap
+			local item = act.invobject
+			local swapBuild, swapSymbol
+			swapBuild = (item and item.swapBuild) and item.swapBuild or "swap_gf_bottle"
+			swapSymbol = (item and item.swapSymbol) and item.swapSymbol or "swap_gf_bottle"
+			--[[ local swap
 			--print(act.invobject, act.target)
 			if act.invobject and act.invobject.swapSymbol then
 				swap = act.invobject.swapSymbol
 			else
 				swap = "swap_gf_cute_bottle"
-			end
+			end ]]
 			inst.components.locomotor:Stop()
 			inst.AnimState:PlayAnimation("action_uniqueitem_pre")
             inst.AnimState:PushAnimation("horn", false)
-			inst.AnimState:OverrideSymbol("horn01", "swap_gf_cute_bottle", swap)
+			inst.AnimState:OverrideSymbol("horn01", swapBuild, swapSymbol)
 			--inst.AnimState:OverrideSymbol("horn01", "swap_potion_gw", "swap_twirl_orange")
 			inst.AnimState:Show("ARM_normal")
 
@@ -251,13 +261,13 @@ local gfcastwithstaff = State{
 				if visuals.lightColour ~= nil then
 					inst.sg.statemem.stafflight = SpawnPrefab("staff_castinglight")
         			inst.sg.statemem.stafflight.Transform:SetPosition(inst.Transform:GetWorldPosition())
-        			inst.sg.statemem.stafflight:SetUp(visuals.lightColour, 1.9, .33)
+        			inst.sg.statemem.stafflight:SetUp(visuals.lightColour or {1, 1, 1, 1}, 1.9, .33)
 				end
 				if visuals.fxColour ~= nil then
 					inst.sg.statemem.stafffx = SpawnPrefab(inst.components.rider:IsRiding() and "staffcastfx_mount" or "staffcastfx")
 					inst.sg.statemem.stafffx.entity:SetParent(inst.entity)
 					inst.sg.statemem.stafffx.Transform:SetRotation(inst.Transform:GetRotation())
-					inst.sg.statemem.stafffx:SetUp(visuals.fxColour)
+					inst.sg.statemem.stafffx:SetUp(visuals.fxColour or {1, 1, 1, 1})
 				end
 			end
 
@@ -302,6 +312,49 @@ local gfcastwithstaff = State{
 	}
 }
 
+local gfthrow = State{
+	name = "gfthrow",
+	tags = { "casting", "busy", "doing", "nomorph" },
+
+	onenter = function(inst)
+		inst.components.locomotor:Stop()
+		
+		local act = inst:GetBufferedAction()
+		if act and act.spell then
+			if act.pos then
+				inst:ForceFacePoint(act.pos.x, 0, act.pos.z)
+			end
+			inst.AnimState:PlayAnimation("throw")
+
+			return
+		end
+		--failed
+		inst.sg:GoToState("idle")
+	end,
+
+	timeline =
+	{
+		TimeEvent(7 * FRAMES, function(inst)
+			inst:PerformBufferedAction()
+			inst.sg.statemem.throwed = true
+			inst.SoundEmitter:PlaySound("dontstarve/common/lava_arena/whoosh")
+		end),
+	},
+
+	events =
+	{
+		EventHandler("animover", function(inst)
+			inst.sg:GoToState("idle")
+		end),
+
+		EventHandler("unequip", function(inst) 
+			if not inst.sg.statemem.throwed then
+				inst.sg:GoToState("idle") 
+			end
+		end),
+	},
+}
+
 --groundslam
 local gfgroundslam = State{
 	name = "gfgroundslam",
@@ -317,9 +370,8 @@ local gfgroundslam = State{
 			end
 			
 			inst.AnimState:PlayAnimation("atk_leap_pre")
-        	inst.AnimState:PushAnimation("atk_leap", false)
-
-			inst.sg:SetTimeout(castTime)
+			inst.AnimState:PushAnimation("atk_leap", false)
+			
 			return
 		end
 
@@ -362,16 +414,19 @@ local gfreadscroll = State
 
 		local act = inst:GetBufferedAction()
 		if act and act.spell then
-			local castTime = math.max(0.75, GetSpellCastTime(act.spell))
+			local castTime = math.max(1.75, GetSpellCastTime(act.spell))
 			if act.pos then
 				inst:ForceFacePoint(act.pos.x, 0, act.pos.z)
 			end
 
-			local item = inst.replica.inventory:GetEquippedItem(GLOBAL.EQUIPSLOTS.HANDS)
+			local item = act.invobject
+			local swapBuild, swapSymbol
+			swapBuild = (item and item.swapBuild) and item.swapBuild or "swap_gw_scroll"
+			swapSymbol = (item and item.swapSymbol) and item.swapSymbol or "swap_gw_scroll"
 
 			inst.AnimState:PlayAnimation("scroll_open", false) 
 			inst.AnimState:PushAnimation("scroll_loop", true) 
-			--inst.AnimState:OverrideSymbol("book", "scroll", (item and item.symboloverride) and item.symboloverride or "read")
+			inst.AnimState:OverrideSymbol("book", swapBuild, swapSymbol)
 			inst.AnimState:Hide("ARM_carry") 
 			inst.AnimState:Show("ARM_normal")
 			inst.SoundEmitter:PlaySound("dontstarve/common/use_book") 
@@ -503,19 +558,44 @@ local gfbookcast = State
 
 			inst.SoundEmitter:PlaySound("dontstarve/common/use_book") 
 
+			local visuals = spellList[act.spell].stateVisuals
+			if visuals ~= nil then
+				if visuals.fxColour ~= nil then
+					inst.sg.statemem.bookfx = SpawnPrefab(inst.components.rider:IsRiding() and "book_fx_mount" or "book_fx")
+					inst.sg.statemem.bookfx.entity:SetParent(inst.entity)
+					inst.sg.statemem.bookfx.Transform:SetRotation(inst.Transform:GetRotation())
+					inst.sg.statemem.bookfx.AnimState:SetMultColour(_G.unpack(visuals.fxColour))
+				end
+			end
+
 			return
 		end
 
 		inst.sg:GoToState("idle")
 	end,
 
-	--[[ onexit = function(inst)
-
-	end, ]]
+	onexit = function(inst)
+		if inst.sg.statemem.bookfx ~= nil and inst.sg.statemem.bookfx:IsValid() then
+			inst.sg.statemem.bookfx:Remove()
+		end
+	end,
 
 	timeline =
 	{
+		TimeEvent(28 * FRAMES, function(inst)
+			inst.SoundEmitter:PlaySound("dontstarve/common/use_book_light")
+		end),
+		TimeEvent(54 * FRAMES, function(inst)
+			inst.SoundEmitter:PlaySound("dontstarve/common/use_book_close")
+		end),
 		TimeEvent(58 * FRAMES, function(inst)
+			if inst.sg.statemem.bookfx ~= nil then
+				if inst.sg.statemem.bookfx:IsValid() then
+					(inst.sg.statemem.bookfx.KillFX or inst.sg.statemem.bookfx.Remove)(inst.sg.statemem.bookfx)
+				end
+				inst.sg.statemem.bookfx = nil
+			end
+			inst.sg.statemem.book_fx = nil
 			inst.sg:RemoveStateTag("casting")
 			inst.sg:RemoveStateTag("busy")
 			inst:PerformBufferedAction()
@@ -903,6 +983,56 @@ local gfflurry = State
 	},
 }
 
+local gfcraftcast = State
+{
+	name = "gfcraftcast",
+	tags = {"doing", "casting", "busy", "nodangle"},
+
+	onenter = function(inst)
+		inst.components.locomotor:Stop()
+
+		local act = inst:GetBufferedAction()
+		if act and act.spell then
+			local castTime = math.max(0.75, GetSpellCastTime(act.spell))
+
+			inst.AnimState:PlayAnimation("build_pre", false) 
+			inst.AnimState:PushAnimation("build_loop", true) 
+			inst.SoundEmitter:PlaySound("dontstarve/wilson/make_trap", "make_preview")
+
+			inst.sg:SetTimeout(castTime)
+			return
+		end
+
+		inst.sg:GoToState("idle")
+	end,
+
+	ontimeout = function(inst)
+		inst.sg:RemoveStateTag("casting")
+		inst.sg:RemoveStateTag("busy")
+		inst:PerformBufferedAction()
+		inst.AnimState:PlayAnimation("build_pst", false)
+	end,
+
+	onexit = function(inst)
+		inst.SoundEmitter:KillSound("make_preview")
+	end,
+
+	events =
+	{
+		EventHandler("animqueueover", function(inst)
+			if inst.AnimState:AnimDone() then
+				inst.sg:GoToState("idle")
+			end
+		end),
+
+		EventHandler("unequip", function(inst) 
+			if inst.sg:HasStateTag("casting") then
+				inst.sg:GoToState("idle") 
+			end
+		end), 
+	},
+}
+
 --Add states--------------
 AddStategraphState("wilson", gfdodrink)
 AddStategraphState("wilson", gfcastwithstaff)
@@ -918,6 +1048,8 @@ AddStategraphState("wilson", gftdartshoot)
 AddStategraphState("wilson", gfleap)
 AddStategraphState("wilson", gfleapdone)
 AddStategraphState("wilson", gfflurry)
+AddStategraphState("wilson", gfcraftcast)
+AddStategraphState("wilson", gfthrow)
 
 --Add events--------------
 AddStategraphEvent("wilson", EventHandler("gfforcemove", function(inst, data)
@@ -949,7 +1081,6 @@ AddStategraphActionHandler("wilson", ActionHandler(ACTIONS.GFCASTSPELL, function
 
 	if spellName == nil or spellList[spellName] == nil then return "idle" end --invalid spell name
 
-	--gfsp:Disable()
 	spell = spellList[spellName]
 
 	if spell then
@@ -971,6 +1102,7 @@ AddStategraphActionHandler("wilson", ActionHandler(ACTIONS.GFCASTSPELL, function
 			--then go to item spell state
 			if CanCastSpell(spellName, inst, item) == true then
 				act.spell = spellName
+				gfsp:Disable()
 				return spell:GetPlayerState()
 			end
 		end
