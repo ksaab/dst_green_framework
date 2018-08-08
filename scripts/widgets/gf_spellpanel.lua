@@ -44,37 +44,28 @@ local function OnUpdateSpellList(self)
     end
 
     self.spellCount = count
-    --self.owner:PushEvent("gfsc_updatespelllist")
-    GFDebugPrint(("SpellPanel: Updated, num of skills = %i"):format(count))
+    --GFDebugPrint(("SpellPanel: Updated, num of skills = %i"):format(count))
 end
 
 local SpellPanel = Class(Widget, function(self, owner)
 	self.owner = owner
     Widget._ctor(self, "SpellPanel")
     
-    --self:SetHAnchor(ANCHOR_LEFT)
-    --self:SetVAnchor(ANCHOR_BOTTOM)
-    
-    self:SetScale(0.55)
-    --self:MoveToBack()
-    
+    --[[self:SetHAnchor(ANCHOR_LEFT)
+    self:SetVAnchor(ANCHOR_BOTTOM)
+    self:MoveToBack()
+    self:SetScaleMode(SCALEMODE_PROPORTIONAL)]]
 
-    --self:SetScaleMode(SCALEMODE_PROPORTIONAL)
+    self:SetScale(0.55)
     self:SetPosition(-460, 85, 0)
+    self:Hide()
 
     self.iconsPanel = self:AddChild(Image("images/gfspellhud.xml", "gf_spell_panel_left.tex"))
     self.iconsPanel:SetHRegPoint(ANCHOR_LEFT)
     self.iconsPanel.icons = {}
-    --print(self.iconsPanel)
-
     self.spellCount = 0
 
-    self.owner:ListenForEvent("gfsc_updatespelllist", function() OnUpdateSpellList(self) end, self.owner.classified)
-
-    self:Hide()
-    
-    OnUpdateSpellList(self)
-    owner:DoTaskInTime(3, function() OnUpdateSpellList(self) end)
+    self.owner:ListenForEvent("gfupdatespellshud", function() OnUpdateSpellList(self) end, self.owner.classified)
 end)
 
 return SpellPanel

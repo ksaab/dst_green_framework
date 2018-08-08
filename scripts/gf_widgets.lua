@@ -10,44 +10,51 @@ local defaultRMBAction = STRINGS.GF.DEFAULTALTACTIONACTION
 
 --icons for effects
 AddClassPostConstruct( "widgets/controls", function(self)
-	_G.TheWorld:ListenForEvent( "playerentered", function( inst, ownr )
-        if ownr == nil or ownr ~= _G.GFGetPlayer() then return end
-        --positive effects panel
-		local BuffPanel = require "widgets/gf_buffpanel"
-		self.gf_buffPanel = self.bottom_root:AddChild( BuffPanel(ownr) )
-        self.gf_buffPanel:SetPosition(-450, 150, 0)
-        --negative effects panel
-        local DebuffPanel = require "widgets/gf_debuffpanel"
-		self.gf_debuffPanel = self.bottom_root:AddChild( DebuffPanel(ownr) )
-		self.gf_debuffPanel:SetPosition(450, 150, 0)
-		--spellbuttons
-		local SpellPanel = require "widgets/gf_spellpanel"
-		self.gf_spellPanel = self.bottom_root:AddChild( SpellPanel(ownr) )
-		--need to update all effect-hud functions
-		if ownr.replica.gfeffectable then
-			for k, v in pairs(ownr.replica.gfeffectable.effects) do
-				if v.hudonapplyfn then
-					v:hudonapplyfn(ownr)
-				end
-			end
-		end
+	print("Init widgets for", self.owner)
 
-		local _oldShowCraftingAndInventory = self.ShowCraftingAndInventory
-		function self:ShowCraftingAndInventory()
-			_oldShowCraftingAndInventory(self)
-			if self.gf_spellPanel ~= nil and self.gf_spellPanel.spellCount > 0 then
-				self.gf_spellPanel:Show()
-			end
-		end
+	--[[init new widgets]]
+	local owner = self.owner
+	if owner == nil or owner ~= _G.GFGetPlayer() then return end
+	--positive effects panel
+	local BuffPanel = require "widgets/gf_buffpanel"
+	self.gf_buffPanel = self.bottom_root:AddChild( BuffPanel(owner) )
+	self.gf_buffPanel:SetPosition(-450, 150, 0)
+	--negative effects panel
+	local DebuffPanel = require "widgets/gf_debuffpanel"
+	self.gf_debuffPanel = self.bottom_root:AddChild( DebuffPanel(owner) )
+	self.gf_debuffPanel:SetPosition(450, 150, 0)
+	--spell panel
+	local SpellPanel = require "widgets/gf_spellpanel"
+	self.gf_spellPanel = self.bottom_root:AddChild( SpellPanel(owner) )
 
-		local _oldHideCraftingAndInventory = self.HideCraftingAndInventory
-		function self:HideCraftingAndInventory()
-			_oldHideCraftingAndInventory(self)
-			if self.gf_spellPanel ~= nil then
-				self.gf_spellPanel:Hide()
+	--updating effects hud data
+	--[[ if owner.replica.gfeffectable then
+		print("Effectable replica exists, updating hud effects on", owner)
+		for k, v in pairs(owner.replica.gfeffectable.effects) do
+			if v.hudonapplyfn then
+				v:hudonapplyfn(owner)
 			end
 		end
-	end)
+	else
+		print(owner, "doesn't have the effectable relpica...")
+	end ]]
+
+	--[[show/hide spell panel]]
+	local _oldShowCraftingAndInventory = self.ShowCraftingAndInventory
+	function self:ShowCraftingAndInventory()
+		_oldShowCraftingAndInventory(self)
+		if self.gf_spellPanel ~= nil and self.gf_spellPanel.spellCount > 0 then
+			self.gf_spellPanel:Show()
+		end
+	end
+
+	local _oldHideCraftingAndInventory = self.HideCraftingAndInventory
+	function self:HideCraftingAndInventory()
+		_oldHideCraftingAndInventory(self)
+		if self.gf_spellPanel ~= nil then
+			self.gf_spellPanel:Hide()
+		end
+	end
 end)
 
 require("constants")

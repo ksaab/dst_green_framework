@@ -1,7 +1,23 @@
 --Green Framework. Please, don't copy any files or functions from this mod, because it can break other mods based on the GF.
+local function ReplicaReferenceAllItems(inst)
+    local inv = inst.replica.inventory
+    local items = {}
+    if inv ~= nil then
+        for _, v in pairs(inv:GetItems()) do
+            table.insert(items, v)
+        end
+        for _, v in pairs(inv:GetEquips()) do
+            table.insert(items, v)
+        end
+        for _, v in pairs(inv:GetOverflowContainer()) do
+            table.insert(items, v)
+        end
+    end
+
+    return items
+end
 
 local function UpdateRechareable(inst)
-    --GFDebugPrint("GFRechargeWatcher updated")
     inst:DoTaskInTime(0, function(inst)
         local self = inst.components.gfrechargewatcher
         self:UpdateRechareableList()
@@ -19,14 +35,13 @@ local GFRechargeWatcher = Class(function(self, inst)
     self.itemList = {}
     self.iconList = {}
 
-    UpdateRechareable(inst)
-
     inst:StartUpdatingComponent(self)
     inst:ListenForEvent("itemget", CheckItemBeforeUpdate)
-    inst:ListenForEvent("gfsc_updaterechargesdirty", UpdateRechareable)
-    inst:ListenForEvent("gfsc_updatespelllist", UpdateRechareable)
+    inst:ListenForEvent("gfupdaterechargesdirty", UpdateRechareable)
+    inst:ListenForEvent("gfupdatespellshud", UpdateRechareable)
 
-    self.inst:DoTaskInTime(3, UpdateRechareable)
+    UpdateRechareable(inst)
+    --self.inst:DoTaskInTime(3, UpdateRechareable)
 end)
 
 function GFRechargeWatcher:UpdateRechareableList()
@@ -72,6 +87,10 @@ function GFRechargeWatcher:UpdateRechareableList()
     if inv then
         CheckItems(inv:GetItems())
         CheckItems(inv:GetEquips())
+        local cont = inv:GetOverflowContainer()
+        if cont ~= nil then
+            CheckItems(cont:GetItems())
+        end
     end
 
     if inst.HUD and inst.HUD.controls and inst.HUD.controls.gf_spellPanel and inst.HUD.controls.gf_spellPanel.iconsPanel.icons then
@@ -81,12 +100,12 @@ end
 
 function GFRechargeWatcher:OnUpdate(dt)
     local inst = self.inst
+    --updating inventory items cooldowns
     if inst.replica.inventory then
         for k, line in pairs(self.itemList) do 
             if line.item and line.item:IsValid() then
                 line.remain = math.max(0, line.remain - dt)
                 local percent = 1 - math.min(1, math.max(line.remain / line.total, 0))
-                --print(percent)
                 line.item:PushEvent("rechargechange", { percent = percent })
                 if percent >= 1 then
                     table.remove(self.itemList, k)
@@ -100,6 +119,7 @@ function GFRechargeWatcher:OnUpdate(dt)
         self.itemList = {}
     end
 
+    --updating spell panel cooldowns
     if inst.HUD and inst.HUD.controls then
         for k, line in pairs(self.iconList) do 
             line.remain = math.max(0, line.remain - dt)

@@ -20,7 +20,6 @@ local function ConvertTimeToText(val)
 end
 
 local BuffPanel = Class(Widget, function(self, owner)
-
 	self.owner = owner
 	Widget._ctor(self, "BuffPanel")
 
@@ -30,8 +29,9 @@ local BuffPanel = Class(Widget, function(self, owner)
 
     self:SetScale(0.7)
 
-    self:Update()
+    --update effects list
     self.inst:ListenForEvent( "gfupdateeffectshud", function() self:Update() end, self.owner)
+    --update widget position
     self.inst:ListenForEvent( "gfupdatebuffpanelpos", function(owner, data) 
         if data and data.x  and data.y then
             self:SetPosition(-450 + data.x, 150 + data.y, 0) 
@@ -107,6 +107,5 @@ function BuffPanel:OnUpdate(dt)
 
     self.updateTick = self.updateTick + dt
 end
-
 
 return BuffPanel

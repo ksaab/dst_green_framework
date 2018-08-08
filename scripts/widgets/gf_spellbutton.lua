@@ -71,4 +71,8 @@ function SpellButton:RechargeDone()
     end
 end
 
+function SpellButton:__tostring()
+    return string.format("button: %s", self.spell or "none")
+end
+
 return SpellButton

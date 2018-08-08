@@ -20,9 +20,9 @@ local function SetItemSpellDirty(inst)
     local val = self._itemSpell:value()
     if val == "" then
         self.itemSpell = nil
-        if self.inst.components.gfspellpointer then
+        --[[ if self.inst.components.gfspellpointer then
             self.inst.components.gfspellpointer:SetPointer()
-        end
+        end ]]
     else
         local spellName = spellIDToNames[tonumber(val)]
         self.itemSpell = spellList[spellName]
@@ -80,19 +80,23 @@ function GFSpellItem:SetSpells()
     if not TheWorld.ismastersim then return end
 
     local splstr = {}
-    self._spellString:set_local("")
+    --self._spellString:set_local("")
     for spellName, spell in pairs(self.inst.components.gfspellitem.spells) do
         self.spells[spellName] = spell
         table.insert(splstr, spellNamesToID[spellName])
     end
-    self._spellString:set(table.concat(splstr, ';'))
+
+    local setstr = table.concat(splstr, ';')
+    self._spellString:set_local(setstr)
+    self._spellString:set(setstr)
+    --self._spellString:set(table.concat(splstr, ';'))
 end
 
 function GFSpellItem:SetItemSpell(spellname)
     if not TheWorld.ismastersim then return end
 
     self.itemSpell = spellname ~= "" and spellList[spellname] or nil
-    self._itemSpell:set_local("")
+    self._itemSpell:set_local(spellNamesToID[spellname])
     self._itemSpell:set(spellNamesToID[spellname])
 
     --set pointer on server-side
@@ -105,7 +109,7 @@ function GFSpellItem:SetSpellRecharges()
     if not TheWorld.ismastersim then return end
 
     local splstr = {}
-    self._spellRecharges:set_local("")
+    --self._spellRecharges:set_local("")
     local totals = self.inst.components.gfspellitem.spellsRechargeDuration
     for k, v in pairs(self.inst.components.gfspellitem.spellsReadyTime) do
         local remain = v - GetTime()
@@ -113,7 +117,11 @@ function GFSpellItem:SetSpellRecharges()
         self.spellsRechargeDuration[k] = totals[k]
         table.insert(splstr, ("%s,%.2f,%.2f"):format(spellNamesToID[k], v - GetTime(), totals[k]))
     end
-    self._spellRecharges:set(table.concat(splstr, ';'))
+
+    local setstr = table.concat(splstr, ';')
+    self._spellRecharges:set_local(setstr)
+    self._spellRecharges:set(setstr)
+    --self._spellRecharges:set(table.concat(splstr, ';'))
 end
 
 function GFSpellItem:CanCastSpell(spellname)

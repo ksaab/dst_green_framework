@@ -29,6 +29,17 @@ local GFSpellCaster = Class(function(self, inst)
     --set up custom sp and recharge modifiers
     self.rechargeExternal = SourceModifierList(self.inst) 
     self.spellPowerExternal = SourceModifierList(self.inst)
+
+    if self.onClient then
+        local function ListenOnce(inst)
+            print(inst, "is ready, removing spellcaster component listener")
+            inst.replica.gfspellcaster:SetSpells()
+            inst.replica.gfspellcaster:SetSpellRecharges()
+            inst:RemoveEventCallback("gfplayerisready", ListenOnce)
+        end
+
+        inst:ListenForEvent("gfplayerisready", ListenOnce)--, TheWorld)
+    end
 end)
 
 function GFSpellCaster:ForceUpdateReplicaSpells()
@@ -113,6 +124,14 @@ function GFSpellCaster:PushRecharge(spellname, recharge)
     self.inst:PushEvent("gfrechargestarted", {spell = spellname})
 end
 
+function GFSpellCaster:ReduceRecharge(spellname, reduceTime, nonUpdateReplica)
+    --GFDebugPrint(("GFSpellCaster: spell %s recharge started on %s, duration %.2f"):format(spellname, tostring(self.inst), recharge))
+    self.spellsRechargeDuration[spellname] = self.spellsRechargeDuration[spellname] - reduceTime
+    if self.onClient and not nonUpdateReplica then
+        self.inst.replica.gfspellcaster:SetSpellRecharges()
+    end
+end
+
 function GFSpellCaster:CastSpell(spellname, target, pos, item, spellParams, noRecharge)
     local spell = GetSpell(spellname)
     if spell == nil then
@@ -159,7 +178,7 @@ end
 end ]]
 
 --the main problem for spells is to find a correct target to prevent injuring a friend
---(ex: pigman-shaman shouldn't hit other pigman or player-leader with the lightning spell)
+--(ex: pigman-shaman shouldn't hit other pigman or a player-leader with the lightning spell)
 function GFSpellCaster:SetIsTargetFriendlyFn(fn)
     self.isTargetFriendlyfn = fn
 end
@@ -298,7 +317,7 @@ function GFSpellCaster:OnSave(data)
     local currTime = GetTime()
     for spellName, val in pairs(self.spellsReadyTime) do
         local rech = val - currTime
-        if rech > 30 then --don't need to save short coodlwns
+        if rech > 15 then --don't need to save short coodlwns
             savetable[spellName] = {r = rech, t = self.spellsRechargeDuration[spellName]}
         end
     end

@@ -34,7 +34,7 @@ local function GenerateHudInfo(inst)
         elseif type == 4 then
             --enchants
             if effect.wantsHover then table.insert(enchtable, effect.hoverText or invalidString) end
-        else
+        elseif type ~= 0 then
             GFDebugPrint(("GFEffectable Replica: effects %s has invalid type %i"):format(effectName, type))
         end
     end
@@ -44,6 +44,7 @@ local function GenerateHudInfo(inst)
     self.hudInfo.affixString = #affixtable > 0 and table.concat(affixtable, ", ") or nil
     self.hudInfo.enchantString = #enchtable > 0 and table.concat(enchtable, ", ") or nil
 
+    --print("Update hud info")
     inst:PushEvent("gfupdateeffectshud")
 end
 
@@ -125,8 +126,10 @@ function GFEffectable:UpdateEffectsList()
             table.insert(str, string.format("%i,%i,%.2f", effectNamesToID[effectName], effect.stacks, expTime))
         end
     end
-    self._effectsList:set_local("")
-    self._effectsList:set(table.concat(str, ';'))
+
+    local setstr = table.concat(str, ';')
+    self._effectsList:set_local(setstr)
+    self._effectsList:set(setstr)
 end
 
 return GFEffectable

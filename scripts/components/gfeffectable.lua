@@ -113,6 +113,16 @@ local GFEffectable = Class(function(self, inst)
         inst:DoTaskInTime(0, TryAddAffix)
     end
     --inst:StartUpdatingComponent(self)
+
+    if inst:HasTag("player") then
+        local function ListenOnce(inst)
+            print(inst, "is ready, removing effectable component listener")
+            inst.replica.gfeffectable:UpdateEffectsList()
+            inst:RemoveEventCallback("gfplayerisready", ListenOnce)
+        end
+
+        inst:ListenForEvent("gfplayerisready", ListenOnce)--, TheWorld)
+    end
 end)
 
 function GFEffectable:ChangeResist(resist, value)
@@ -257,7 +267,7 @@ function GFEffectable:RemoveEffect(effectName, reason)
     reason = reason or "expire"
 
     local effect = self.effects[effectName]
-    if effect == nil then return end --effect isn't existed on entity
+    if effect == nil then return end --effect doesn't exist on entity
 
     if self.effectsfx[effectName] and self.effectsfx[effectName]:IsValid() then
         if self.effectsfx[effectName].StopFollowFX then

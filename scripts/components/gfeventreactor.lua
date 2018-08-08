@@ -56,7 +56,7 @@ function GFEventReactor:AddReaction(name, data)
     self.reactions[event][name] = react
 
     self.inst:PushEvent("scnewreaction", {name = name, event = event})
-    GFDebugPrint(("GFEventReactor: reaction %s added on event %s"):format(name, event))
+    --GFDebugPrint(("GFEventReactor: reaction %s added on event %s"):format(name, event))
 end
 
 function GFEventReactor:GetReactionCount(type)

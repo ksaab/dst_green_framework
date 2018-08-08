@@ -365,12 +365,12 @@ local gfreadscroll = State
 		end
 	end,
 
-	onexit = function(inst)
+	--[[ onexit = function(inst)
 		if inst.replica.inventory:GetEquippedItem(EQUIPSLOTS.HANDS) then
 			inst.AnimState:Show("ARM_carry") 
 			inst.AnimState:Hide("ARM_normal")
 		end
-	end,
+	end, ]]
 
 	events =
 	{

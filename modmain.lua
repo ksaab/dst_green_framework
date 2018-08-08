@@ -89,6 +89,12 @@ GFAddCasterCreature("pigman", PigmanFrindlyFireCheck)
 GFAddCasterCreature("bunnyman", PigmanFrindlyFireCheck)
 GFAddCasterCreature("knight", ChessFrindlyFireCheck)
 
+_G.GFAddBaseSpells("winona", "item_acidcloud")
+
+AddModRPCHandler("Green Framework", "GFPLAYEISRREADY", function(inst)
+    inst:PushEvent("gfplayerisready")
+end)
+
 AddModRPCHandler("Green Framework", "GFDISABLEPOINTER", function(inst)
     if inst.components.gfspellpointer then
         inst.components.gfspellpointer:Disable()

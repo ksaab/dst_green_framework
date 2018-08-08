@@ -76,75 +76,10 @@ local function OverrideLeftMouseActions(inst, target, position)
 end
 
 local function OverrideRightMouseActions(inst, target, position)
-    --print("OverrideRightMouseActions")
     return inst.components.playeractionpicker:SortActionList({ ACTIONS.GFSTOPSPELLTARGETING }, position, nil)
 end
 
---[[ local function OverrideActionButton(inst, target)
-    --print(target, position)
-    local self = inst.components.gfspellpointer
-    local spellName = self.currentSpell
-
-    if spellName == nil then return end
-
-    local spell = spellList[spellName]
-    local item
-    local equipitem = self.inst.replica.inventory:GetEquippedItem(EQUIPSLOTS.HANDS)
-    
-    if equipitem 
-        and equipitem.components.gfspellitem 
-        and equipitem.components.gfspellitem.spells[spellName] ~= nil
-    then
-        item = equipitem
-    end
-
-    if inst.replica.gfspellcaster:CanCastSpell(spellName)
-        and not (item and not item.replica.gfspellitem:CanCastSpell(spellName)) 
-    then
-        if spell.needTarget then
-            local x, y, z = inst.Transform:GetWorldPosition()
-            local ents = TheSim:FindEntities(x, y, z, math.min(spell.range, 20), nil, {"plyerghost", "corpse", "FX", "NOCLICK", "shadow"})
-            local nonCombat = {}
-            for i, v in pairs(ents) do
-                if v ~= inst and v.entity:IsVisible() and CanEntitySeeTarget(inst, v) then
-                    if v.components.combat then
-                        return BufferedAction(inst, v, ACTIONS.GFCASTSPELL, item)
-                    end
-                    table.insert(nonCombat, v)
-                end
-            end
-            if #nonCombat > 0 then
-                return BufferedAction(inst, nonCombat[1], ACTIONS.GFCASTSPELL, item)
-            end
-        elseif self.pointer ~= nil then
-            print("OverrideActionButton")
-            local pos = self.pointer.targetPosition
-            return BufferedAction(inst, nil, ACTIONS.GFCASTSPELL, item, pos)
-        end 
-    end
-end ]]
-
-local function EnableSpellTargetingActions(inst)
-    --[[ if inst.components.playeractionpicker then
-        inst.components.playeractionpicker.leftclickoverride = OverrideLeftMouseActions
-        inst.components.playeractionpicker.rightclickoverride = OverrideRightMouseActions
-    end ]]
-    --if inst.components.playercontroller then
-        --inst.components.playercontroller.actionbuttonoverride = OverrideActionButton
-    --end
-end
-
-local function DisableSpellTargetingActions(inst)
-    --[[ if inst.components.playeractionpicker then
-        inst.components.playeractionpicker.leftclickoverride = nil
-        inst.components.playeractionpicker.rightclickoverride = nil
-    end ]]
-    --if inst.components.playercontroller then
-        --inst.components.playercontroller.actionbuttonoverride = nil
-    --end
-end
-
-local DisablePointerOnDeath = DisableSpellTargetingActions
+local DisablePointerOnDeath = DisablePointerOnUnequipped
 
 local GFSpellPointer = Class(function(self, inst)
     self.inst = inst
@@ -156,14 +91,12 @@ local GFSpellPointer = Class(function(self, inst)
     self._currentSpell = net_int(inst.GUID, "GFSpellPointer._currentSpell", "gfspellpointerdirty")
     self._currentSpell:set_local(0)
 
+    --need to disable pointers, when an item is unequipped or a player dies
     if GFGetIsMasterSim() then
         inst:ListenForEvent("unequip", DisablePointerOnUnequipped)
         inst:ListenForEvent("death", DisablePointerOnDeath)
     end
-    --[[ if inst.components.gfpointer then
-        self.pointer = self.inst.components.gfpointer
-        inst:ListenForEvent("gfspellpointerdirty", OnDirty)
-    end ]]
+
     if not GFGetIsDedicatedNet() and inst == ThePlayer then
         inst:ListenForEvent("gfspellpointerdirty", OnDirty)
         inst:AddComponent("gfpointer")
@@ -171,7 +104,7 @@ local GFSpellPointer = Class(function(self, inst)
     end
 end)
 
-function GFSpellPointer:SetOnClient()
+function GFSpellPointer:SetOnClient() --not used
     self.inst:ListenForEvent("gfspellpointerdirty", OnDirty)
     self.inst:AddComponent("gfpointer")
     self.pointer = self.inst.components.gfpointer
