@@ -89,7 +89,11 @@ function GFRechargeWatcher:UpdateRechareableList()
         CheckItems(inv:GetEquips())
         local cont = inv:GetOverflowContainer()
         if cont ~= nil then
-            CheckItems(cont:GetItems())
+            if cont.GetItems then
+                CheckItems(cont:GetItems())
+            elseif cont.ReferenceAllItems then
+                CheckItems(cont:ReferenceAllItems())
+            end
         end
     end
 

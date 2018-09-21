@@ -144,7 +144,7 @@ function GFLightningDrawer:DrowLightning(points)
         end
     end)
 
-    self.inst:DoTaskInTime(0.4, function(inst) 
+    self.inst:DoTaskInTime(0.3, function(inst) 
         for k, v in pairs(inst.components.gflightningdrawer.fxs) do
             v:Remove()
         end

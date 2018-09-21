@@ -75,12 +75,6 @@ local function TryAddAffix(inst)
                 self:ApplyEffect(aff)
             end
         end
-        --print("new creature, try to add affix")
-        --[[ if math.random() < (self.affixes.chance or 1) * self.eliteChanceMult then
-            self:ApplyEffect(self.affixes.list[math.random(#(self.affixes.list))])
-        end ]]
-    --else
-        --print("old creature, refusing")
     end
 end
 

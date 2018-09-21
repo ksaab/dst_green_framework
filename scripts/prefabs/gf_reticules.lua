@@ -34,8 +34,7 @@ local function MakeEffectReticule(name, anim, ping, repanim)
         inst:AddTag("NOCLICK")
         --[[Non-networked entity]]
         inst.entity:SetCanSleep(false)
-        inst.persists = false
-
+        
         inst.entity:AddTransform()
         inst.entity:AddAnimState()
 
@@ -54,6 +53,8 @@ local function MakeEffectReticule(name, anim, ping, repanim)
             inst:DoPeriodicTask(0, UpdatePing, nil, { 1, 1 }, { 1.04, 1.3 }, GetTime(), duration, {}, {})
             inst:DoTaskInTime(duration, inst.Remove)
         end
+
+        inst.persists = false
 
         return inst
     end

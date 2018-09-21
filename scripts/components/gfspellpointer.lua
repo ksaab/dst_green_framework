@@ -89,7 +89,7 @@ local GFSpellPointer = Class(function(self, inst)
     self.withItem = false
 
     self._currentSpell = net_int(inst.GUID, "GFSpellPointer._currentSpell", "gfspellpointerdirty")
-    self._currentSpell:set_local(0)
+    --self._currentSpell:set_local(0)
 
     --need to disable pointers, when an item is unequipped or a player dies
     if GFGetIsMasterSim() then
@@ -97,10 +97,14 @@ local GFSpellPointer = Class(function(self, inst)
         inst:ListenForEvent("death", DisablePointerOnDeath)
     end
 
-    if not GFGetIsDedicatedNet() and inst == ThePlayer then
-        inst:ListenForEvent("gfspellpointerdirty", OnDirty)
-        inst:AddComponent("gfpointer")
-        self.pointer = self.inst.components.gfpointer
+    if not GFGetIsDedicatedNet() then
+        inst:DoTaskInTime(0, function()
+            if inst == ThePlayer then
+                inst:ListenForEvent("gfspellpointerdirty", OnDirty)
+                inst:AddComponent("gfpointer")
+                self.pointer = self.inst.components.gfpointer
+            end
+        end)
     end
 end)
 
@@ -141,7 +145,7 @@ function GFSpellPointer:Disable()
             self.inst.components.playercontroller.gfSpellPointerEnabled = false
         end
     else
-        SendModRPCToServer(MOD_RPC["Green Framework"]["GFDISABLEPOINTER"])
+        SendModRPCToServer(MOD_RPC["GreenFramework"]["GFDISABLEPOINTER"])
     end
 end
 

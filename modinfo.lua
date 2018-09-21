@@ -1,10 +1,10 @@
 name = "Green![dev]"
 id = "GreenFramework"
-version = "1.0.0"
+version = "1.1.4"
 author = "ksaab"
 
 description = "Enhanced magic system for Don't Starve Together"
-forumthread = ""
+forumthread = "files/file/1877-green"
 
 icon = "modicon.tex"
 icon_atlas = "modicon.xml"

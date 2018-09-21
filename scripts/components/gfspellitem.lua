@@ -27,9 +27,11 @@ end
 
 local GFSpellItem = Class(function(self, inst)
     self.inst = inst
-    self.spells = {} --full spell list
-    self.itemSpell = nil
 
+    self.spells = {} --all spells
+    self.itemSpell = nil --current active spell
+
+    --recharges
     self.spellsReadyTime = {}
     self.spellsRechargeDuration = {}
 
@@ -37,8 +39,7 @@ local GFSpellItem = Class(function(self, inst)
     self.onCastDoneFn = nil
 
     inst:ListenForEvent("onpickup", ForcePushRecharges)
-
-    inst:AddTag("rechargeable")
+    inst:ListenForEvent("equipped", ForcePushRecharges)
 end)
 
 function GFSpellItem:ForceUpdateReplicaSpells()
@@ -195,16 +196,6 @@ function GFSpellItem:GetSpellCount()
 end
 
 --[[ function GFSpellItem:OnUpdate(dt)
-    local str = {}
-    for k, v in pairs(self.spellsReadyTime) do
-        local cooldown = v - GetTime()
-        if cooldown > 0 then
-            table.insert(str, ("%s ready in %.2f"):format(k, cooldown))
-        end
-    end
-    if #str > 0 then
-        GFDebugPrint(table.concat(str))
-    end
 end ]]
 
 function GFSpellItem:OnSave(data)
@@ -230,7 +221,6 @@ function GFSpellItem:OnLoad(data)
         end
     end
 end
-
 
 function GFSpellItem:GetDebugString()
     local str = {}

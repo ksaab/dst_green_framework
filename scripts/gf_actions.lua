@@ -136,7 +136,8 @@ end)
 --ACTION COLLECTORS------
 -------------------------
 AddComponentAction("POINT", "gfspellitem", function(inst, doer, pos, actions, right)
-    if doer.sg:HasStateTag("casting") -- player is casting something at this moment
+    if not doer.sg
+        or doer.sg:HasStateTag("casting") -- player is casting something at this moment
         or doer.replica.inventory:GetActiveItem() ~= nil --prevent casts with an active item
         or doer.replica.gfspellcaster == nil --doer must be a caster
         or doer.components.gfspellpointer == nil --and have a pointer
@@ -167,7 +168,8 @@ AddComponentAction("POINT", "gfspellitem", function(inst, doer, pos, actions, ri
 end)
 
 AddComponentAction("EQUIPPED", "gfspellitem", function(inst, doer, target, actions, right)
-    if doer.sg:HasStateTag("casting") -- player is casting something at this moment
+    if not doer.sg
+        or doer.sg:HasStateTag("casting") -- player is casting something at this moment
         or doer.replica.inventory:GetActiveItem() ~= nil --prevent casts with an active item
         or doer.replica.gfspellcaster == nil --doer must be a caster
         or doer.components.gfspellpointer == nil --and have a pointer
@@ -196,21 +198,21 @@ AddComponentAction("EQUIPPED", "gfspellitem", function(inst, doer, target, actio
         end
     end
 end)
-
+--[[ 
 AddComponentAction("INVENTORY", "gfspellitem", function(inst, doer, actions)
     if inst.replica.gfspellitem
         and inst.replica.gfspellitem:GetSpellCount() > 1
     then
         table.insert(actions, ACTIONS.GFCHANGEITEMSPELL)
     end
-end)
+end) ]]
 
 AddComponentAction("INVENTORY", "gfdrinkable", function(inst, doer, actions, right)
-    if (right or inst.replica.equippable == nil) and
+    if not inst.replica.equippable and
         not (doer.replica.inventory:GetActiveItem() == inst
             and doer.replica.rider ~= nil
 			and doer.replica.rider:IsRiding())
-		and not doer:HasTag("gfcantdrink")
+		and not doer:HasTag("cantdrink")
     then
         table.insert(actions, ACTIONS.GFDRINKIT)
     end
@@ -218,7 +220,7 @@ end)
 
 AddComponentAction("USEITEM", "gfitemenhancer", function(inst, doer, target, actions, right)
     if right then
-        if target and inst.components.gfitemenhancer:CheckItem(target) then
+        if target and inst.CheckEnchance and inst.CheckEnchance(target, inst) then
             table.insert(actions, ACTIONS.GFENHANCEITEM)
         end
     end

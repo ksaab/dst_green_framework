@@ -7,10 +7,6 @@ AddPrefabPostInit("world", function(world)
     world:ListenForEvent("playerentered", function(world, player)
         --gfspellpointer and gfrechargewatcher components are hard-bounded to ThePlayer
         --so need to add it here, when ThePlayer alredy exists
-        if player.components.gfspellpointer == nil then
-            _G.GFDebugPrint(string.format("Add Spell Pointer (%s) to %s", _G.GFGetIsMasterSim() and "server" or "client", tostring(player)))
-            player:AddComponent("gfspellpointer")
-        end
         if not _G.GFGetIsDedicatedNet() and player == _G.ThePlayer then
             _G.GFDebugPrint(string.format("Add Recharge Watcher to %s", tostring(player)))
             player:AddComponent("gfrechargewatcher")
@@ -27,11 +23,13 @@ end
 
 AddPlayerPostInit(function(player)
     _G.GFMakePlayerCaster(player, _G.GFEntitiesBaseSpells[player.prefab])
+    _G.GFDebugPrint(string.format("Add Spell Pointer (%s) to %s", _G.GFGetIsMasterSim() and "server" or "client", tostring(player)))
+    player:AddComponent("gfspellpointer")
     if _G.GFGetIsMasterSim() then
         player:AddComponent("gfeffectable")
         player:AddComponent("gfeventreactor")
 
-        local function ListenOnce()
+        --[[ local function ListenOnce()
             if player.components.inventory then
                 local items = player.components.inventory:ReferenceAllItems()
                 for k, item in pairs(items) do
@@ -52,7 +50,7 @@ AddPlayerPostInit(function(player)
             end
         end
 
-        player:ListenForEvent("gfplayerisready", ListenOnce)
+        player:ListenForEvent("gfplayerisready", ListenOnce) ]]
     end 
 end)
 

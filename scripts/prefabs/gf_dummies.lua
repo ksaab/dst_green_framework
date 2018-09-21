@@ -4,15 +4,18 @@ local function lightningdummyfn()
     inst.entity:AddNetwork()
     inst.entity:AddSoundEmitter()
 
+    inst:AddComponent("gflightningdrawer")
     inst:AddTag("NOCLICK")
 
-    inst:AddComponent("gflightningdrawer")
+    inst.entity:SetPristine()
+
     if not TheWorld.ismastersim then
         return inst
     end
 
     inst.persists = false
-    inst:DoTaskInTime(10, function() inst:Remove() end)
+    inst:DoTaskInTime(10, inst.Remove)
+
     return inst
 end
 
@@ -21,10 +24,12 @@ local function crackledummyfn()
 	inst.entity:AddTransform()
     inst.entity:AddNetwork()
     inst.entity:AddSoundEmitter()
-
+    
+    inst:AddComponent("gfcrackledrawer")
     inst:AddTag("NOCLICK")
 
-    inst:AddComponent("gfcrackledrawer")
+    inst.entity:SetPristine()
+
     if not TheWorld.ismastersim then
         return inst
     end
@@ -53,6 +58,8 @@ local function netdummyfn()
     inst.entity:AddSoundEmitter()
 
     inst:AddTag("NOCLICK")
+
+    inst.entity:SetPristine()
 
     if not TheWorld.ismastersim then
         return inst

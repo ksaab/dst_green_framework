@@ -39,7 +39,7 @@ end
 local GFCrackleDrawer = Class(function(self, inst)
     self.inst = inst
     self.fxs = {}
-    self._docrackles = net_string(inst.GUID, "GFCrackleDrawer._docrackles", "gfdocreackles")
+    self._docrackles = net_string(inst.GUID, "GFCrackleDrawer._docrackles", "gfdocrackles")
     self._cracklesColour = net_tinybyte(inst.GUID, "GFCrackleDrawer._cracklesColour")
     self._cracklesBloom = net_bool(inst.GUID, "GFCrackleDrawer._cracklesBloom")
 
@@ -47,7 +47,7 @@ local GFCrackleDrawer = Class(function(self, inst)
     self._cracklesBloom:set_local(false)
 
     if not TheWorld.ismastersim then
-        inst:ListenForEvent("gfdocreackles", OnCracklesDirty)
+        inst:ListenForEvent("gfdocrackles", OnCracklesDirty)
     end
 end)
 
@@ -142,37 +142,12 @@ function GFCrackleDrawer:DrowCrackles(points)
         end
     end
 
-    --[[ self.inst:DoTaskInTime(0, function(inst) 
-        for k, v in pairs(inst.components.gfcrackledrawer.fxs) do
-            v.obj:Show()
-        end
-    end) ]]
-
     self.inst.tick = 0
     self.inst:DoTaskInTime(8, function(inst) 
         for k, v in pairs(inst.components.gfcrackledrawer.fxs) do
             v.obj:Remove()
         end
-        --inst:Remove()
     end)
-
-    --[[ self.inst._crackTask = self.inst:DoPeriodicTask(1, function(inst) 
-        if inst.tick <= 10 then
-            for k, v in pairs(inst.components.gfcrackledrawer.fxs) do
-                v.obj.Transform:SetScale(v.scale, 1 - inst.tick * 0.1, v.scale)
-            end
-            inst.tick = inst.tick + 1
-        else
-            for k, v in pairs(inst.components.gfcrackledrawer.fxs) do
-                v.obj:Remove()
-            end
-            if inst._crackTask then
-                inst._crackTask:Cancel()
-                inst._crackTask = nil
-                inst:Remove()
-            end
-        end
-    end) ]]
 end
 
 return GFCrackleDrawer

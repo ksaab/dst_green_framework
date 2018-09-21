@@ -35,15 +35,15 @@ local GFSpellCaster = Class(function(self, inst)
     self.inst = inst
     self.onClient = inst:HasTag("player")
 
-    if not self.onClient then 
+    --[[ if not self.onClient then 
         return 
-    end
+    end ]]
     
     self.spells = {}
     self.spellsReadyTime = {}
     self.spellsRechargeDuration = {}
     
-    self._spellString = net_string(inst.GUID, "GFSpellCaster._netSpellString", "gfsetspellsdirty")
+    self._spellString = net_string(inst.GUID, "GFSpellCaster._spellString", "gfsetspellsdirty")
     self._spellRecharges = net_string(inst.GUID, "GFSpellCaster._spellRecharges", "gfsetrechargesdirty")
     self._forceUpdateRecharges = net_event(inst.GUID, "gfupdaterechargesdirty")
 
@@ -52,7 +52,7 @@ local GFSpellCaster = Class(function(self, inst)
         inst:ListenForEvent("gfsetrechargesdirty", SetRechargesDirty)
 
         inst:DoTaskInTime(0.5, function()
-            SendModRPCToServer(MOD_RPC["Green Framework"]["GFPLAYEISRREADY"])
+            --SendModRPCToServer(MOD_RPC["GreenFramework"]["GFPLAYEISRREADY"])
         end)
     end
 end)
@@ -154,7 +154,7 @@ function GFSpellCaster:HandleIconClick(spellName)
         and self:IsSpellValidForCaster(spellName)
         and self:PreCastCheck(spellName)
     then
-        SendModRPCToServer(MOD_RPC["Green Framework"]["GFCLICKSPELLBUTTON"], spellName)
+        SendModRPCToServer(MOD_RPC["GreenFramework"]["GFCLICKSPELLBUTTON"], spellName)
         --[[ if spellList[spellName].instant then
             local act = BufferedAction(inst, inst, ACTIONS.GFCASTSPELL)
             act.spell = spellName
