@@ -33,7 +33,7 @@ local function GFUpdateRecharges(inst)
     end
 end
 
-AddPrefabPostInit("player_classified", function(inst)
+--[[AddPrefabPostInit("player_classified", function(inst)
     inst._spellString = _G.net_string(inst.GUID, "GFSpellCaster._spellString", "gfsetspellsdirty")
     inst._spellRecharges = _G.net_string(inst.GUID, "GFSpellCaster._spellRecharges", "gfsetrechargesdirty")
     inst._forceUpdateRecharges = _G.net_event(inst.GUID, "gfupdaterechargesdirty")
@@ -54,7 +54,7 @@ AddPrefabPostInit("player_classified", function(inst)
         inst:ListenForEvent("gfsetrechargesdirty", GFSetRechargesDirty)
         inst:ListenForEvent("gfupdaterechargesdirty", GFUpdateRecharges)
     end
-end)
+end)]]
 
 --this function checks spell friendlyfire for players
 local function PlayerFFCheck(self, target)
