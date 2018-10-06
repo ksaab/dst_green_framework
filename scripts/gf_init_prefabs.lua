@@ -15,7 +15,7 @@ AddPrefabPostInit("world", function(world)
 end)
 
 --[[Init player]]
---[[ local function GFSetSpellsDirty(inst)
+local function GFSetSpellsDirty(inst)
     if inst._parent ~= nil then
         inst._parent:PushEvent("gfsetspellsdirty")
     end
@@ -54,7 +54,7 @@ AddPrefabPostInit("player_classified", function(inst)
         inst:ListenForEvent("gfsetrechargesdirty", GFSetRechargesDirty)
         inst:ListenForEvent("gfupdaterechargesdirty", GFUpdateRecharges)
     end
-end) ]]
+end)
 
 --this function checks spell friendlyfire for players
 local function PlayerFFCheck(self, target)
