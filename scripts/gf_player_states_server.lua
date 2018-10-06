@@ -1033,6 +1033,35 @@ local gfcraftcast = State
 	},
 }
 
+local gfmakeattention = _G.State
+{
+	name = "gfmakeattention",
+	tags = {"doing", "casting", "nodangle"},
+
+	onenter = function(inst)
+        inst.components.locomotor:Stop()
+        inst.AnimState:PlayAnimation("emoteXL_waving" .. math.random(3))
+        local act = inst:GetBufferedAction()
+        if act and act.target and act.target.components.gfquestgiver then
+            act.target.components.gfquestgiver:GetAttention(inst)
+        end
+	end,
+
+    timeline =
+    {
+        _G.TimeEvent(35 * _G.FRAMES, function(inst)
+            inst:PerformBufferedAction()
+        end),
+    },
+
+	events =
+	{
+		_G.EventHandler("animover", function(inst)
+            inst.sg:GoToState("idle")
+        end),
+	},
+}
+
 --Add states--------------
 AddStategraphState("wilson", gfdodrink)
 AddStategraphState("wilson", gfcastwithstaff)
@@ -1050,6 +1079,7 @@ AddStategraphState("wilson", gfleapdone)
 AddStategraphState("wilson", gfflurry)
 AddStategraphState("wilson", gfcraftcast)
 AddStategraphState("wilson", gfthrow)
+AddStategraphState("wilson", gfmakeattention)
 
 --Add events--------------
 AddStategraphEvent("wilson", EventHandler("gfforcemove", function(inst, data)
@@ -1060,6 +1090,7 @@ end))
 --Add actions handlers----
 AddStategraphActionHandler("wilson", ActionHandler(ACTIONS.GFDRINKIT, "gfdodrink"))
 AddStategraphActionHandler("wilson", ActionHandler(ACTIONS.GFENHANCEITEM, "dolongaction"))
+AddStategraphActionHandler("wilson", ActionHandler(ACTIONS.GFTALKFORQUEST, "gfmakeattention"))
 
 AddStategraphActionHandler("wilson", ActionHandler(ACTIONS.GFCASTSPELL, function(inst)
     local act = inst:GetBufferedAction()

@@ -1,6 +1,7 @@
 --Green Framework. Please, don't copy any files or functions from this mod, because it can break other mods based on the GF.
 
 local _G = GLOBAL
+local SourceModifierList = _G.require("util/sourcemodifierlist")
 
 AddReplicableComponent("gfspellcaster")
 AddReplicableComponent("gfspellitem")
@@ -28,8 +29,8 @@ AddComponentPostInit("eater", function(self)
 	end
 end)
 
---Want to push the event to weapon on attacks
---it allows to trigger the enchant script on throwable items
+--Want to push an event to the weapon on attacks
+--it allows to trigger an enchant script on throwable items
 AddComponentPostInit("combat", function(self)
     local _oldGetAttacked = self.GetAttacked
     function self:GetAttacked(attacker, damage, weapon, stimuli)
@@ -55,4 +56,19 @@ AddComponentPostInit("combat", function(self)
 	function self:GetDamageMods()
 		return self.externaldamagemultipliers:Get()	* (self.damagemultiplier or 1)
 	end
+end)
+
+AddComponentPostInit( "health", function(self) 
+    if not self.inst:HasTag("player") then return end
+
+    self.healMultiplier = SourceModifierList(self.inst)
+    local _oldDoDelta = self.DoDelta
+    
+    function self:DoDelta(amount, overtime, cause, ignore_invincible, afflicter, ignore_absorb)
+        if amount > 0 then
+            amount = amount * self.healMultiplier:Get()
+        end
+
+        _oldDoDelta(self, amount, overtime, cause, ignore_invincible, afflicter, ignore_absorb)
+    end
 end)

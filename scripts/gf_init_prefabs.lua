@@ -21,10 +21,52 @@ local function PlayerFFCheck(self, target)
         or (self.inst.components.leader and self.inst.components.leader:IsFollower(target))
 end
 
+local function GFSetSpellsDirty(inst)
+    if inst._parent ~= nil then
+        inst._parent:PushEvent("gfsetspellsdirty")
+    end
+end
+
+local function GFSetRechargesDirty(inst)
+    if inst._parent ~= nil then
+        inst._parent:PushEvent("gfsetspellsdirty")
+    end
+end
+
+local function GFUpdateRecharges(inst)
+    if inst._parent ~= nil then
+        inst._parent:PushEvent("gfsetspellsdirty")
+    end
+end
+
+AddPrefabPostInit("player_classified", function(inst)
+    inst._spellString = _G.net_string(inst.GUID, "GFSpellCaster._spellString", "gfsetspellsdirty")
+    inst._spellRecharges = _G.net_string(inst.GUID, "GFSpellCaster._spellRecharges", "gfsetrechargesdirty")
+    inst._forceUpdateRecharges = _G.net_event(inst.GUID, "gfupdaterechargesdirty")
+
+    local _oldOnEntityReplicated = nil
+    if inst.OnEntityReplicated ~= nil then
+        _oldOnEntityReplicated = inst.OnEntityReplicated
+        inst.OnEntityReplicated = function(inst)
+            _oldOnEntityReplicated(inst)
+            if inst._parent ~= nil then
+                inst._parent.replica["gfspellcaster"]:AttachClassified(inst)
+            end
+        end
+    end
+
+    if not _G.GFGetIsMasterSim() then
+        inst:ListenForEvent("gfsetspellsdirty", GFSetSpellsDirty)
+        inst:ListenForEvent("gfsetrechargesdirty", GFSetRechargesDirty)
+        inst:ListenForEvent("gfupdaterechargesdirty", GFUpdateRecharges)
+    end
+end)
+
 AddPlayerPostInit(function(player)
     _G.GFMakePlayerCaster(player, _G.GFEntitiesBaseSpells[player.prefab])
     _G.GFDebugPrint(string.format("Add Spell Pointer (%s) to %s", _G.GFGetIsMasterSim() and "server" or "client", tostring(player)))
     player:AddComponent("gfspellpointer")
+    player:AddComponent("gfquestdoer")
     if _G.GFGetIsMasterSim() then
         player:AddComponent("gfeffectable")
         player:AddComponent("gfeventreactor")
@@ -71,15 +113,19 @@ local invalidPrefabs =
 }
 
 AddPrefabPostInitAny(function(inst) 
-	if inst:HasTag("FX") or inst:HasTag("NOCLICK") or inst:HasTag("player") or invalidPrefabs[inst.prefab] then return end
+    local prefab = inst.prefab
+    if inst:HasTag("FX") or inst:HasTag("NOCLICK") or inst:HasTag("player") or invalidPrefabs[prefab] then return end
+    if _G.GFQuestGivers[prefab] ~= nil then
+        _G.GFMakeQuestGiver(inst, _G.GFQuestGivers[prefab])
+    end
     if _G.GFGetIsMasterSim() then
         inst:AddComponent("gfeffectable")
         inst:AddComponent("gfeventreactor")
         if inst.components.equippable and inst.components.equippable.equipslot == _G.EQUIPSLOTS.HANDS then
-            _G.GFMakeInventoryCastingItem(inst, _G.GFEntitiesBaseSpells[inst.prefab])
+            _G.GFMakeInventoryCastingItem(inst, _G.GFEntitiesBaseSpells[prefab])
         end
-        if _G.GFCasterCreatures[inst.prefab] ~= nil then
-            _G.GFMakeCaster(inst, _G.GFEntitiesBaseSpells[inst.prefab], _G.GFCasterCreatures[inst.prefab])
+        if _G.GFCasterCreatures[prefab] ~= nil then
+            _G.GFMakeCaster(inst, _G.GFEntitiesBaseSpells[prefab], _G.GFCasterCreatures[prefab])
         end
     end
 end)

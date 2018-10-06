@@ -15,7 +15,7 @@ local function DoReact(inst, event, data)
         elseif data[v.target] ~= nil then
             v:React(inst, data[v.target], data)
         else
-            GFDebugPrint(("GFEventReactor: can't react on %s, target %s is not valid"):format(event, v.target))
+            --GFDebugPrint(("GFEventReactor: can't react on %s, target %s is not valid"):format(event, v.target))
         end
     end
 end

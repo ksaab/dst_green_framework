@@ -133,11 +133,69 @@ AddAction("GFENHANCEITEM", STRINGS.ACTIONS.GFENHANCEITEM, function(act)
     end
 end)
 
+AddAction("GFTALKFORQUEST", STRINGS.GFTALKFORQUEST.STR, function(act)
+    local giver = act.target
+    local doer = act.doer
+
+    if giver ~= nil 
+        and doer.components.gfquestdoer ~= nil
+        and giver.components.gfquestgiver ~= nil
+        and (not giver.components.health or not giver.components.health:IsDead())
+        --and (not giver.components.health or not giver.components.health:IsDead())
+    then
+        --check is character is busy
+        if giver.components.combat ~= nil and giver.components.combat.target ~= nil then
+            if doer.components.talker then
+                doer.components.talker:Say(STRINGS.GFTALKFORQUEST.TARGETBUSY)
+            end
+
+            return true --don't want to make player saying "can't do that"
+        end
+
+        local giveComp = giver.components.gfquestgiver
+        local doerComp = doer.components.gfquestdoer
+
+        --checking completed quests
+        local cList = giveComp.questCompleteList --all quests which the target are able to complete
+        for qName, qData in pairs(doerComp.currentQuests) do
+            if qData.done and cList[qName] ~= nil then
+                --GFDebugPrint(string.format("%s completes the quest %s for %s", tostring(giver), tostring(quest), tostring(doer)))
+                doer.components.gfquestdoer:CompleteQuest(qName, giver)
+
+                return true
+            end
+        end
+
+        --there are not completed quest, looking for one to offer
+        local quest = giver.components.gfquestgiver:PickQuest(doer)
+        if quest ~= nil then
+            --find a good one, offering
+            --GFDebugPrint(string.format("%s offers the quest %s to %s", tostring(giver), tostring(quest), tostring(doer)))
+            doer.components.gfquestdoer:OfferQuest(quest)
+            doer.components.gfquestdoer:TrackGiver(giver) --tracking giver
+
+            return true
+        else
+            --this character can't give or pass the quest
+            if doer.components.talker then
+                doer.components.talker:Say(STRINGS.GFTALKFORQUEST.NOQUESTS)
+            end
+
+            return true --don't want to make player saying "can't do that"
+        end
+    end
+
+    return false
+end)
+
+ACTIONS.GFTALKFORQUEST.distance = 10
+ACTIONS.GFTALKFORQUEST.priority = 10
+
+
 --ACTION COLLECTORS------
 -------------------------
 AddComponentAction("POINT", "gfspellitem", function(inst, doer, pos, actions, right)
-    if not doer.sg
-        or doer.sg:HasStateTag("casting") -- player is casting something at this moment
+    if doer:HasTag("busy")
         or doer.replica.inventory:GetActiveItem() ~= nil --prevent casts with an active item
         or doer.replica.gfspellcaster == nil --doer must be a caster
         or doer.components.gfspellpointer == nil --and have a pointer
@@ -168,8 +226,7 @@ AddComponentAction("POINT", "gfspellitem", function(inst, doer, pos, actions, ri
 end)
 
 AddComponentAction("EQUIPPED", "gfspellitem", function(inst, doer, target, actions, right)
-    if not doer.sg
-        or doer.sg:HasStateTag("casting") -- player is casting something at this moment
+    if doer:HasTag("busy")
         or doer.replica.inventory:GetActiveItem() ~= nil --prevent casts with an active item
         or doer.replica.gfspellcaster == nil --doer must be a caster
         or doer.components.gfspellpointer == nil --and have a pointer
@@ -222,6 +279,17 @@ AddComponentAction("USEITEM", "gfitemenhancer", function(inst, doer, target, act
     if right then
         if target and inst.CheckEnchance and inst.CheckEnchance(target, inst) then
             table.insert(actions, ACTIONS.GFENHANCEITEM)
+        end
+    end
+end)
+
+AddComponentAction("SCENE", "gfquestgiver", function(inst, doer, actions, right)
+    if right then
+        if inst:IsValid() 
+            and (not inst.replica.health or not inst.replica.health:IsDead()) --quest give must be alive
+            and inst.components.gfquestgiver:HasQuests() --and have quests
+        then
+            table.insert(actions, ACTIONS.GFTALKFORQUEST)
         end
     end
 end)

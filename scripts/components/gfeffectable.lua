@@ -264,7 +264,7 @@ function GFEffectable:RemoveEffect(effectName, reason)
     if effect == nil then return end --effect doesn't exist on entity
 
     if self.effectsfx[effectName] and self.effectsfx[effectName]:IsValid() then
-        if self.effectsfx[effectName].StopFollowFX then
+        if self.effectsfx[effectName].StopFollowFX and reason ~= "death" then
             self.effectsfx[effectName]:StopFollowFX()
         else
             self.effectsfx[effectName]:Remove()
@@ -349,6 +349,22 @@ function GFEffectable:OnUpdate(dt)
     if needToStopUpdating then
         self.inst:StopUpdatingComponent(self)
         self.isUpdating = false
+    end
+end
+
+function GFEffectable:OnEntitySleep()
+    for effectName, effect in pairs(self.effects) do
+        if effect.aura then
+            effect:OnSleep(self.inst)
+        end
+    end
+end
+
+function GFEffectable:OnEntityWake()
+    for effectName, effect in pairs(self.effects) do
+        if effect.aura then
+            effect:OnWake(self.inst)
+        end
     end
 end
 

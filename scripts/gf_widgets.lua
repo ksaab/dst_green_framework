@@ -26,6 +26,9 @@ AddClassPostConstruct( "widgets/controls", function(self)
 	--spell panel
 	local SpellPanel = require "widgets/gf_spellpanel"
 	self.gf_spellPanel = self.bottom_root:AddChild( SpellPanel(owner) )
+	--quest dialog
+	local QuestDialog = require "widgets/gf_questdialog"
+	self.gf_questDialog = self:AddChild( QuestDialog(self.owner) )
 
 	--updating effects hud data
 	--[[ if owner.replica.gfeffectable then

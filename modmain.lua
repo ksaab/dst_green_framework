@@ -49,12 +49,17 @@ if not rawget(_G, "GFCasterCreatures") then
     rawset(_G, "GFCasterCreatures", {})
 end
 
+if not rawget(_G, "GFQuestGivers") then
+    rawset(_G, "GFQuestGivers", {})
+end
+
 require "gf_global_functions"
 
 modimport "scripts/gf_strings.lua"
 modimport "scripts/gf_spell_list.lua"
 modimport "scripts/gf_effect_list.lua"
 modimport "scripts/gf_affix_list.lua"
+modimport "scripts/gf_quests_list.lua"
 modimport "scripts/gf_actions.lua"
 modimport "scripts/gf_player_states_server.lua"
 modimport "scripts/gf_player_states_client.lua"
@@ -102,5 +107,15 @@ end)
 AddModRPCHandler("GreenFramework", "GFCLICKSPELLBUTTON", function(inst, spellName)
     if inst.components.gfspellcaster then
         inst.components.gfspellcaster:HandleIconClick(spellName)
+    end
+end)
+
+AddModRPCHandler("GreenFramework", "GFOFFERQUESTRESULT", function(inst, check, qName)
+    if check and qName then
+        --print("SERVER: Quest accepted", qName, "by", inst)
+        inst.components.gfquestdoer:AcceptQuest(qName)
+    else
+        --print("SERVER: Quest declined", qName, "by", inst)
+        inst.components.gfquestdoer:StopTrackGiver()
     end
 end)

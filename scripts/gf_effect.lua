@@ -115,6 +115,20 @@ function Effect:Refresh(inst, effectParam)
     end
 end
 
+function Effect:OnWake(inst)
+    --GFDebugPrint("entity wakes")
+    if self.onentwakefn then
+        self:onentwakefn(inst)
+    end
+end
+
+function Effect:OnSleep(inst)
+    --GFDebugPrint("entity sleeps")
+    if self.onentsleepfn then
+        self:onentsleepfn(inst)
+    end
+end
+
 function Effect:Update(inst)
     if self.onupdatefn then
         self:onupdatefn(inst)
@@ -126,6 +140,5 @@ function Effect:Remove(inst)
         self:onremovefn(inst)
     end
 end
-
 
 return Effect

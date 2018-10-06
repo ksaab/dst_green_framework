@@ -1,6 +1,6 @@
 --Green Framework. Please, don't copy any files or functions from this mod, because it can break other mods based on the GF.
 
-rawset(_G, "GFVersion", 1.0)
+rawset(_G, "GFVersion", 1.2)
 
 local GFIsTogether = _G.TheNet ~= nil and true or false
 rawset(_G, "GFIsTogether", GFIsTogether)
@@ -81,6 +81,18 @@ function GFAddCustomEffect(name, route, id)
     GFEffectIDToName[id] = name
 end
 
+function GFAddCustomQuest(name, route, id)
+    --id = (id and type(id) == "number") and id or #GFQuestIDToName + 1
+    --if GFQuestIDToName[id] ~= nil then
+        --error(("Quest with id %i already exists"):format(id), 3)
+    --end
+    GFQuestList[name] = require(route .. name)
+    --GFQuestList[name].name = name
+    --GFQuestList[name].id = id
+    --GFQuestNameToID[name] = id
+    --GFQuestIDToName[id] = name
+end
+
 function GFAddBaseAffixes(prefab, type, chance, ...)
     if GFEntitiesBaseAffixes[prefab] == nil then
         GFEntitiesBaseAffixes[prefab] = {}
@@ -118,6 +130,16 @@ function GFAddBaseSpells(prefab, ...)
     end ]]
     for i = 1, arg.n do
         table.insert(GFEntitiesBaseSpells[prefab], arg[i])
+    end 
+end
+
+function GFAddQuestGiver(prefab, ...)
+    if GFQuestGivers[prefab] == nil then
+        GFQuestGivers[prefab] = {}
+    end
+
+    for i = 1, arg.n do
+        table.insert(GFQuestGivers[prefab], arg[i])
     end 
 end
 
@@ -176,6 +198,15 @@ function GFMakeInventoryCastingItem(inst, spells)
         end
     else
         GFDebugPrint(string.format("GF: %s was already initiated ", tostring(inst)))
+    end
+end
+
+function GFMakeQuestGiver(inst, quests)
+    inst:AddComponent("gfquestgiver")
+    if quests ~= nil and GFGetIsMasterSim() then
+        for _, v in pairs(quests) do
+            inst.components.gfquestgiver:AddQuest(v)
+        end
     end
 end
 

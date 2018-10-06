@@ -10,6 +10,22 @@ STRINGS.GF.DEFAULTALTACTIONACTION = "Cancel"
 STRINGS.GF.INVALID_TITLE = "<NONE>"
 STRINGS.GF.MINUTES_LETTER = "m"
 
+STRINGS.GF.QSTRINGS = 
+{
+    INVALID_TITLE = "<NO TITLE>",
+    INVALID_TEXT = "<NO TEXT>",
+    BUTTON_ACCEPT = "Accept",
+    BUTTON_DECLINE = "Decline",
+    BUTTON_COMPLETE = "Complete",
+}
+
+STRINGS.GFTALKFORQUEST = 
+{
+    STR = "Quest",
+    NOQUESTS = "There is nothing intresting for me here.",
+    TARGETBUSY = "It's not the best time.",
+}
+
 STRINGS.ACTIONS._GFCASTSPELL =
 {
     GENERIC = "Cast",
