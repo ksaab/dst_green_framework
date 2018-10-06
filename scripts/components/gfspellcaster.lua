@@ -51,7 +51,7 @@ end
 --this function updates HUD when the weapon spell is changed
 function GFSpellCaster:ForceUpdateReplicaHUD()
     if self.onClient then
-        self.inst.replica.gfspellcaster.classified._forceUpdateRecharges:push()
+        self.inst.replica.gfspellcaster._forceUpdateRecharges:push()
         if not GFGetIsDedicatedNet() and self.inst == GFGetPlayer() then
             self.inst:PushEvent("gfforcerechargewatcher")
         end
@@ -156,7 +156,7 @@ function GFSpellCaster:CastSpell(spellname, target, pos, item, spellParams, noRe
     end
 
     if self.onClient then
-        self.inst.replica.gfspellcaster.classified._forceUpdateRecharges:push()
+        self.inst.replica.gfspellcaster._forceUpdateRecharges:push()
         if GFGetIsDedicatedNet() and self.inst == GFGetPlayer() then
             self.inst:PushEvent("gfforcerechargewatcher")
         end

@@ -15,13 +15,7 @@ AddPrefabPostInit("world", function(world)
 end)
 
 --[[Init player]]
---this function checks spell friendlyfire for players
-local function PlayerFFCheck(self, target)
-    return (target:HasTag("player") and not isPVPEnabled)
-        or (self.inst.components.leader and self.inst.components.leader:IsFollower(target))
-end
-
-local function GFSetSpellsDirty(inst)
+--[[ local function GFSetSpellsDirty(inst)
     if inst._parent ~= nil then
         inst._parent:PushEvent("gfsetspellsdirty")
     end
@@ -60,7 +54,13 @@ AddPrefabPostInit("player_classified", function(inst)
         inst:ListenForEvent("gfsetrechargesdirty", GFSetRechargesDirty)
         inst:ListenForEvent("gfupdaterechargesdirty", GFUpdateRecharges)
     end
-end)
+end) ]]
+
+--this function checks spell friendlyfire for players
+local function PlayerFFCheck(self, target)
+    return (target:HasTag("player") and not isPVPEnabled)
+        or (self.inst.components.leader and self.inst.components.leader:IsFollower(target))
+end
 
 AddPlayerPostInit(function(player)
     _G.GFMakePlayerCaster(player, _G.GFEntitiesBaseSpells[player.prefab])

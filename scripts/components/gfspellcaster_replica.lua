@@ -6,8 +6,8 @@ local spellIDToNames = GFSpellIDToName
 
 local function SliceSpellString(inst)
     local self = inst.replica.gfspellcaster
-    --GFDebugPrint(inst, self.classified._spellString:value())
-    local spells = self.classified._spellString:value():split(';')
+    --GFDebugPrint(inst, self._spellString:value())
+    local spells = self._spellString:value():split(';')
     self.spells = {}
     for _, v in pairs(spells) do
         local spellName = spellIDToNames[tonumber(v)]
@@ -19,8 +19,8 @@ end
 
 local function SetRechargesDirty(inst)
     local self = inst.replica.gfspellcaster
-    --GFDebugPrint("GFSpellCasterReplica: recharge", inst, self.classified._spellRecharges:value())
-    local spellArray = self.classified._spellRecharges:value():split(';')
+    --GFDebugPrint("GFSpellCasterReplica: recharge", inst, self._spellRecharges:value())
+    local spellArray = self._spellRecharges:value():split(';')
     self.spellsReadyTime = {}
     self.spellsRechargeDuration = {}
     for k, v in pairs(spellArray) do
@@ -29,47 +29,40 @@ local function SetRechargesDirty(inst)
         self.spellsReadyTime[recharges[1]] = GetTime() + tonumber(recharges[2])
         self.spellsRechargeDuration[recharges[1]] = tonumber(recharges[3] or recharges[2])
     end
-
-    self.inst:PushEvent("gfupdatespellshud")
 end
 
 local GFSpellCaster = Class(function(self, inst)
     self.inst = inst
-    if not inst:HasTag("player") then return end
+    self.onClient = inst:HasTag("player")
 
+    --[[ if not self.onClient then 
+        return 
+    end ]]
+    
     self.spells = {}
     self.spellsReadyTime = {}
     self.spellsRechargeDuration = {}
+    
+    self._spellString = net_string(inst.GUID, "GFSpellCaster._spellString", "gfsetspellsdirty")
+    self._spellRecharges = net_string(inst.GUID, "GFSpellCaster._spellRecharges", "gfsetrechargesdirty")
+    self._forceUpdateRecharges = net_event(inst.GUID, "gfupdaterechargesdirty")
 
-    if not GFGetIsMasterSim() then -- and inst == GFGetPlayer() then 
-        inst:ListenForEvent("gfsetspells", SliceSpellString)
-        inst:ListenForEvent("gfsetrecharges", SetRechargesDirty)
-    elseif inst.player_classified ~= nil then
-        self.classified = inst.player_classified
+    if not TheWorld.ismastersim and inst == GFGetPlayer() then 
+        inst:ListenForEvent("gfsetspellsdirty", SliceSpellString)
+        inst:ListenForEvent("gfsetrechargesdirty", SetRechargesDirty)
+
+        inst:DoTaskInTime(0.5, function()
+            --SendModRPCToServer(MOD_RPC["GreenFramework"]["GFPLAYEISRREADY"])
+        end)
     end
 end)
-
-function GFSpellCaster:AttachClassified(classified)
-    if GFGetIsMasterSim() then
-        self.classified = inst.player_classified
-    else
-        self.classified = classified
-        self.ondetachclassified = function() self:DetachClassified() end
-        self.inst:ListenForEvent("onremove", self.ondetachclassified, classified)
-    end
-end
-
-function GFSpellCaster:DetachClassified()
-    self.classified = nil
-    self.ondetachclassified = nil
-end
 
 function GFSpellCaster:SetSpells()
     if not TheWorld.ismastersim then return end
 
     --GFDebugPrint("Updating spells on", self.inst)
     local splstr = {}
-    --self.classified._spellString:set_local("")
+    --self._spellString:set_local("")
     self.spells = {}
     for k, v in pairs(self.inst.components.gfspellcaster.spells) do
         self.spells[k] = spellList[k]
@@ -77,9 +70,9 @@ function GFSpellCaster:SetSpells()
     end
 
     local setstr = table.concat(splstr, ';')
-    self.classified._spellString:set_local(setstr)
-    self.classified._spellString:set(setstr)
-    --self.classified._spellString:set(table.concat(splstr, ';'))
+    self._spellString:set_local(setstr)
+    self._spellString:set(setstr)
+    --self._spellString:set(table.concat(splstr, ';'))
 
     self.inst:PushEvent("gfupdatespellshud") --refresh hud on the host-side
 end
@@ -89,7 +82,7 @@ function GFSpellCaster:SetSpellRecharges()
 
     --GFDebugPrint("Updating recharges on", self.inst)
     local splstr = {}
-    --self.classified._spellRecharges:set_local("")
+    --self._spellRecharges:set_local("")
     local totals = self.inst.components.gfspellcaster.spellsRechargeDuration
     for k, v in pairs(self.inst.components.gfspellcaster.spellsReadyTime) do
         local remain = v - GetTime()
@@ -100,12 +93,9 @@ function GFSpellCaster:SetSpellRecharges()
 
     --print(table.concat(splstr, ';'))
     local setstr = table.concat(splstr, ';')
-    self.classified._spellRecharges:set_local("")
-    self.classified._spellRecharges:set(setstr)
-    --self.classified._spellRecharges:set(table.concat(splstr, ';'))
-
-    print("push")
-    self.inst:PushEvent("gfupdatespellshud") --refresh hud on the host-side
+    self._spellRecharges:set_local(setstr)
+    self._spellRecharges:set(setstr)
+    --self._spellRecharges:set(table.concat(splstr, ';'))
 end
 
 function GFSpellCaster:IsSpellValidForCaster(spellName)

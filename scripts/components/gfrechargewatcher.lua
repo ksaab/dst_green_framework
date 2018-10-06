@@ -37,7 +37,7 @@ local GFRechargeWatcher = Class(function(self, inst)
 
     inst:StartUpdatingComponent(self)
     inst:ListenForEvent("itemget", CheckItemBeforeUpdate)
-    inst:ListenForEvent("gfupdaterecharges", UpdateRechareable)
+    inst:ListenForEvent("gfupdaterechargesdirty", UpdateRechareable)
     inst:ListenForEvent("gfupdatespellshud", UpdateRechareable)
 
     UpdateRechareable(inst)
@@ -55,8 +55,8 @@ function GFRechargeWatcher:UpdateRechareableList()
                 if remain > 0 then
                     icon:RechargeStarted()
                     table.insert(self.iconList, {icon = icon, remain = remain, total = total})
-                    GFDebugPrint(("GFRechargeWatcher: %s adding %s [%.2f/%.2f] to recharge list."):format(tostring(inst),
-                        tostring(icon), remain, total))
+                    --GFDebugPrint(("GFRechargeWatcher: %s adding %s [%.2f/%.2f] to recharge list."):format(tostring(inst),
+                        --tostring(icon), remain, total))
                 end
             end
         end
@@ -75,15 +75,13 @@ function GFRechargeWatcher:UpdateRechareableList()
                         remain = remain >= oremain and remain or oremain 
                         total = total >= ototal and total or ototal 
                         table.insert(self.itemList, {item = item, remain = remain, total = total})
-                        GFDebugPrint(("GFRechargeWatcher: %s adding %s [%.2f/%.2f] to recharge list."):format(tostring(inst),
-                            tostring(item), remain, total))
+                        --GFDebugPrint(("GFRechargeWatcher: %s adding %s [%.2f/%.2f] to recharge list."):format(tostring(inst),
+                            --tostring(item), remain, total))
                     end
                 end
             end
         end
     end
-
-    print("updating watcher")
 
     local inv = self.inst.replica.inventory
     if inv then
