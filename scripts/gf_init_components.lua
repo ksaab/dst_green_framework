@@ -6,6 +6,7 @@ local SourceModifierList = _G.require("util/sourcemodifierlist")
 AddReplicableComponent("gfspellcaster")
 AddReplicableComponent("gfspellitem")
 AddReplicableComponent("gfeffectable")
+AddReplicableComponent("gfquestgiver")
 
 --drink potions, or something else...
 AddComponentPostInit("eater", function(self)

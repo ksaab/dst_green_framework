@@ -3,9 +3,9 @@
 local Button = require "widgets/button"
 local Image = require "widgets/image"
 local UIAnim = require "widgets/uianim"
-local spellList = GFSpellList
 
-local invalidText = STRINGS.GF.INVALID_TITLE
+local INVALID_TITLE = STRINGS.GF.HUD.INVALID_LINES.INVALID_TITLE
+local INVALID_TEXT = STRINGS.GF.HUD.INVALID_LINES.INVALID_TEXT
 
 local function OnClick(self)
     if self == nil then return end
@@ -42,7 +42,7 @@ local SpellButton = Class(Button, function(self, owner, spell)
             --self.icon:SetScale(0.7)
         end
 
-        self:SetTooltip(string.format("%s", spell.title or invalidText))
+        self:SetTooltip(string.format("%s", spell.title or INVALID_TITLE))
     end
 
     self:SetOnClick(function() OnClick(self) end)

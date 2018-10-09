@@ -4,6 +4,8 @@ local Quest = Class(function(self, qName)
     self.title = nil
     self.description = nil
     self.completion = nil
+    self.goaltext = nil
+    self.reminder = nil
 
     self.autoComplete = false
     self.unique = false
@@ -14,6 +16,8 @@ local Quest = Class(function(self, qName)
 
     self.giveCheckFn = nil
     self.rewardFn = nil
+
+    self.onCancelFn = nil
 
     self.onAcceptFn = nil
     self.onCompleteFn = nil
@@ -44,7 +48,12 @@ function Quest:OnComplete(doer, giver)
     if self.onCompleteFn then self:onCompleteFn(doer, giver) end
     if self.rewardFn then self:rewardFn(doer, giver) end
 
-    --print(("%s has pass the quest — %s!"):format(tostring(doer), (self.name or "<NO TITLE>")))
+    --print(("%s has passed the quest — %s!"):format(tostring(doer), (self.name or "<NO TITLE>")))
+end
+
+function Quest:OnCancel(doer, giver)
+    if self.onCancelFn then self:onCancelFn(doer) end
+    print(("%s has canceled the quest — %s!"):format(tostring(doer), (self.name or "<NO TITLE>")))
 end
 
 function Quest:OnAcceptGiver(giver, doer)

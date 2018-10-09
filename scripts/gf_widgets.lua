@@ -5,8 +5,8 @@ local ACTIONS = _G.ACTIONS
 local spellList = _G.GFSpellList
 local STRINGS = _G.STRINGS
 
-local defaultLMBAction = STRINGS.GF.DEFAULTACTIONACTION
-local defaultRMBAction = STRINGS.GF.DEFAULTALTACTIONACTION
+local defaultLMBAction = STRINGS.GF.HUD.CONTROLLER_DEFAULTS.LMB
+local defaultRMBAction = STRINGS.GF.HUD.CONTROLLER_DEFAULTS.RMB
 
 --icons for effects
 AddClassPostConstruct( "widgets/controls", function(self)
@@ -28,8 +28,21 @@ AddClassPostConstruct( "widgets/controls", function(self)
 	self.gf_spellPanel = self.bottom_root:AddChild( SpellPanel(owner) )
 	--quest dialog
 	local QuestDialog = require "widgets/gf_questdialog"
-	self.gf_questDialog = self:AddChild( QuestDialog(self.owner) )
+	self.gf_questDialog = self:AddChild( QuestDialog(owner) )
+	--quest informer
+	local QuestInformer = require "widgets/gf_questinformer"
+	self.gf_questInformer = self.top_root:AddChild( QuestInformer(owner) )
+	--journal button
+	--local JournalButton = require "widgets/gf_journalbutton"
+	--self.mapcontrols.gf_questInformer = self.mapcontrols:AddChild( JournalButton(owner) )
 
+	local ImageButton = require "widgets/imagebutton"
+	local PopJournal = require "screens/gf_questjournal"
+	self.mapcontrols.gf_journalbutton = self.mapcontrols:AddChild(ImageButton("images/gfquestjournal.xml", "journalbutton.tex", "journalbutton.tex", nil, nil, nil, {1,1}, {0,0}))
+	self.mapcontrols.gf_journalbutton:SetOnClick(function() _G.TheFrontEnd:PushScreen(PopJournal(self.owner)) end)
+	self.mapcontrols.gf_journalbutton:SetScale(0.8)
+	self.mapcontrols.gf_journalbutton:SetPosition(0, 80)
+	self.mapcontrols.gf_journalbutton:SetTooltip(STRINGS.GF.HUD.JOURNAL.BUTTONS.OPEN_JOURNAL)
 	--updating effects hud data
 	--[[ if owner.replica.gfeffectable then
 		print("Effectable replica exists, updating hud effects on", owner)
@@ -58,6 +71,11 @@ AddClassPostConstruct( "widgets/controls", function(self)
 			self.gf_spellPanel:Hide()
 		end
 	end
+--[[ 
+	local PopJournal = require "screens/gf_questjournal"
+	owner:ListenForEvent("gfpushjournal", function(owner)
+		_G.TheFrontEnd:PushScreen(PopJournal(owner))
+	end) ]]
 end)
 
 require("constants")

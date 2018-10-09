@@ -9,16 +9,13 @@ end
 local GFSpellCaster = Class(function(self, inst)
     self.inst = inst
     --full spell list, all non-passive spells will be added to the player's panel
-    --and will be checked with creatures brain (if creature is setted as caster)
+    --and will be checked with creature's brain (if creature is a caster)
     self.spells = {} 
 
     self.spellsReadyTime = {}
     self.spellsRechargeDuration = {}
 
     self.lastCastTime = 0
-
-    self.onClient = inst:HasTag("player") --don't need to network things if the inst isn't a player
-    --self.onClient = inst._gfclientside ~= nil
 
     self.baseSpellPower = 1
     self.baseRecharge = 1
@@ -29,6 +26,9 @@ local GFSpellCaster = Class(function(self, inst)
     --set up custom sp and recharge modifiers
     self.rechargeExternal = SourceModifierList(self.inst) 
     self.spellPowerExternal = SourceModifierList(self.inst)
+
+    self.onClient = inst:HasTag("player") --don't need to do network things if the inst isn't a player
+    --self.onClient = inst._gfclientside ~= nil
 
     if self.onClient then
         local function ListenOnce(inst)
@@ -51,10 +51,10 @@ end
 --this function updates HUD when the weapon spell is changed
 function GFSpellCaster:ForceUpdateReplicaHUD()
     if self.onClient then
-        self.inst.replica.gfspellcaster._forceUpdateRecharges:push()
-        if not GFGetIsDedicatedNet() and self.inst == GFGetPlayer() then
+        self.inst.replica.gfspellcaster:PushSpellRecharges()
+        --[[ if not GFGetIsDedicatedNet() and self.inst == GFGetPlayer() then
             self.inst:PushEvent("gfforcerechargewatcher")
-        end
+        end ]]
     end
 end
 
@@ -156,7 +156,7 @@ function GFSpellCaster:CastSpell(spellname, target, pos, item, spellParams, noRe
     end
 
     if self.onClient then
-        self.inst.replica.gfspellcaster._forceUpdateRecharges:push()
+        self.inst.replica.gfspellcaster:PushSpellRecharges()
         if GFGetIsDedicatedNet() and self.inst == GFGetPlayer() then
             self.inst:PushEvent("gfforcerechargewatcher")
         end
@@ -222,7 +222,7 @@ function GFSpellCaster:GetSpellCount()
     return GetTableSize(self.spells)
 end
 
---you can get character's spell power to modify a damage for your spell 
+--you can get character's spell power to modify power of spell 
 function GFSpellCaster:GetSpellPower()
     return math.max(0, self.baseSpellPower * self.spellPowerExternal:Get())
 end
@@ -266,7 +266,7 @@ function GFSpellCaster:PreCastCheck(spellName)
         if not preCheck or type(preCheck) == "string" then
             --if STRINGS.CHARACTERS.GENERIC[preCheck] then
             if self.inst.components.talker then
-                self.inst.components.talker:Say(GetString(self.inst, "PRECAST_FAILED", preCheck), 2.5, false, true, false)
+                self.inst.components.talker:Say(GetActionFailString(self.inst, "GFCASTSPELL", preCheck or "GENERIC"), 2.5, false, true, false)
             end
 
             return false

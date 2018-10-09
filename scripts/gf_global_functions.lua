@@ -57,6 +57,35 @@ function GFDebugPrint(...)
     end
 end
 
+local validCustomReplication = 
+{
+    gfeffectable = true,
+    gfspellcaster = true,
+    gfquestgiver = true,
+    gfspellitem = true,
+    gfquestdoer = true,
+}
+
+local customReplicas = {}
+
+function GFCustomComponentReplication(inst, compName)
+    if validCustomReplication[compName] == nil then return end
+
+    if rawget(inst.replica, "_")[compName] ~= nil then
+        print("replica " .. compName .. " already exists! " ..debugstack_oneline(3))
+    end
+
+    local filename = compName .. "_replica"
+    local cmp = customReplicas[filename]
+    if cmp == nil then
+        cmp = require("components/" .. filename)
+        customReplicas[filename] = cmp
+    end
+
+    assert(cmp ~= nil, "replica ".. compName .. " does not exist!")
+    getmetatable(inst.replica)[compName] = cmp(inst)
+end
+
 function GFAddCustomSpell(name, route, id)
     id = (id and type(id) == "number") and id or #GFSpellIDToName + 1
     if GFSpellIDToName[id] ~= nil then
@@ -202,10 +231,12 @@ function GFMakeInventoryCastingItem(inst, spells)
 end
 
 function GFMakeQuestGiver(inst, quests)
-    inst:AddComponent("gfquestgiver")
-    if quests ~= nil and GFGetIsMasterSim() then
-        for _, v in pairs(quests) do
-            inst.components.gfquestgiver:AddQuest(v)
+    if GFGetIsMasterSim() then
+        inst:AddComponent("gfquestgiver")
+        if quests ~= nil then
+            for _, v in pairs(quests) do
+                inst.components.gfquestgiver:AddQuest(v)
+            end
         end
     end
 end

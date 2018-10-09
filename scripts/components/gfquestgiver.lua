@@ -1,38 +1,20 @@
 local allQuests = GFQuestList
 
-local function SetClientQuestCount(inst)
-    local self = inst.components.gfquestgiver
-    self.questCount = self._questCount:value()
-end
-
 local QSQuestGiver = Class(function(self, inst)
     self.inst = inst
-
     self.questCount = 0
-    self._questCount = net_smallbyte(inst.GUID, "QSQuestGiver._hasQuests", "qssetgiverdirty")
-
-    if not TheWorld.ismastersim then
-        inst:ListenForEvent("qssetgiverdirty", SetClientQuestCount)
-    else
-        self.questOfferList = {}
-        self.questCompleteList = {}
-        self.getAttentionFn = nil
-    end
+    self.questOfferList = {}
+    self.questCompleteList = {}
+    self.getAttentionFn = nil
 end)
 
 function QSQuestGiver:AddQuest(questName)
     if questName and allQuests[questName] ~= nil then
         self.questOfferList[questName] = true
-
-        --if not allQuests[questName].autoComplete then
         self.questCompleteList[questName] = true
-        --end 
 
-        --set local counter
-        self.questCount = self.questCount + 1
-        --and tell client about quest giver
-        self._questCount:set_local(0)
-        self._questCount:set(self.questCount)
+        self.questCount = self.questCount + 1 --set local counter
+        self.inst.replica.gfquestgiver:AddQuest() --and tell client about quest giver
 
         GFDebugPrint(("Quest %s added to %s"):format(questName, tostring(self.inst)))
     end
@@ -52,10 +34,7 @@ function QSQuestGiver:RemoveQuest(questName)
         self.questCompleteList[questName] = nil
 
         self.questCount = self.questCount - 1
-
-        self._questCount:set_local(0)
-        self._questCount:set(self.questCount)
-
+        self.inst.replica.gfquestgiver:RemoveQuest()
         --GFDebugPrint(("Quest %s removed from %s"):format(questName, tostring(self.inst)))
     end
 end
@@ -114,11 +93,11 @@ function QSQuestGiver:GetDebugString()
     local give = {}
     local pass = {}
 
-    for k, v in pairs(self.questOfferList) do
+    for k, v in pairs(self.questOfferList or {}) do
         table.insert(give, k)
     end
 
-    for k, v in pairs(self.questCompleteList) do
+    for k, v in pairs(self.questCompleteList or {}) do
         table.insert(pass, k)
     end
 

@@ -60,7 +60,7 @@ local GFSpellItem = Class(function(self, inst)
     end
 
     if not GFGetIsDedicatedNet() then 
-        inst:ListenForEvent("GFSpellItem._forceUpdateRecharges", function(inst) inst:PushEvent("gfforcerechargewatcher") end)
+        inst:ListenForEvent("GFSpellItem._forceUpdateRecharges", function(inst) inst:PushEvent("gfpushwatcher") end)
     end
 
     --need this tag for inventory tiles

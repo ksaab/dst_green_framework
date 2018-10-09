@@ -14,29 +14,20 @@ AddPrefabPostInit("world", function(world)
     end)
 end)
 
---[[Init player]]
-local function GFSetSpellsDirty(inst)
-    if inst._parent ~= nil then
-        inst._parent:PushEvent("gfsetspellsdirty")
-    end
-end
-
-local function GFSetRechargesDirty(inst)
-    if inst._parent ~= nil then
-        inst._parent:PushEvent("gfsetspellsdirty")
-    end
-end
-
-local function GFUpdateRecharges(inst)
-    if inst._parent ~= nil then
-        inst._parent:PushEvent("gfsetspellsdirty")
-    end
-end
-
 AddPrefabPostInit("player_classified", function(inst)
-    inst._spellString = _G.net_string(inst.GUID, "GFSpellCaster._spellString", "gfsetspellsdirty")
-    inst._spellRecharges = _G.net_string(inst.GUID, "GFSpellCaster._spellRecharges", "gfsetrechargesdirty")
-    inst._forceUpdateRecharges = _G.net_event(inst.GUID, "gfupdaterechargesdirty")
+    --spell casting system
+    inst._spellString = _G.net_string(inst.GUID, "GFSpellCaster._spellString", "gfsetspellsdirty") --all spells for player (these spell appear on the spell panel)
+    inst._spellRecharges = _G.net_string(inst.GUID, "GFSpellCaster._spellRecharges", "gfsetrechargesdirty") --all recharges for player (doesn't include any item recharges)
+    inst._forceUpdateRecharges = _G.net_event(inst.GUID, "gfupdaterechargesdirty") --trigger which forces updating for client interface
+
+    --quest system
+    inst._pushQuest = _G.net_string(inst.GUID, "GFQuestDoer._pushQuest", "gfquestpushdirty") --contains offered quest
+    inst._completeQuest = _G.net_string(inst.GUID, "GFQuestDoer._completeQuest", "gfquestcompletedirty") --contains completed quest, may be should be united with the previous one
+    inst._forceCloseDialog = _G.net_event(inst.GUID, "gfquestclosedialogdirty") --push event to the client, if a quest giver is to far
+    inst._infoLine = _G.net_string(inst.GUID, "GFQuestDoer._infoLine", "gfquestinfodirty") --sending an info about quest stages
+    inst._currQuestsList = _G.net_string(inst.GUID, "GFQuestDoer._currQuestsList", "gfquestlistdirty")
+
+    inst._questNoticeStream = _G.net_strstream(inst, "GFQuestDoer._questNoticeStream", "gfqueststreamdirty")
 
     local _oldOnEntityReplicated = nil
     if inst.OnEntityReplicated ~= nil then
@@ -44,15 +35,14 @@ AddPrefabPostInit("player_classified", function(inst)
         inst.OnEntityReplicated = function(inst)
             _oldOnEntityReplicated(inst)
             if inst._parent ~= nil then
-                inst._parent.replica["gfspellcaster"]:AttachClassified(inst)
+                if inst._parent.replica.gfspellcaster ~= nil then
+                    inst._parent.replica.gfspellcaster:AttachClassified(inst)
+                end
+                if inst._parent.components.gfquestdoer ~= nil then
+                    inst._parent.components.gfquestdoer:AttachClassified(inst)
+                end
             end
         end
-    end
-
-    if not _G.GFGetIsMasterSim() then
-        inst:ListenForEvent("gfsetspellsdirty", GFSetSpellsDirty)
-        inst:ListenForEvent("gfsetrechargesdirty", GFSetRechargesDirty)
-        inst:ListenForEvent("gfupdaterechargesdirty", GFUpdateRecharges)
     end
 end)
 
@@ -71,29 +61,16 @@ AddPlayerPostInit(function(player)
         player:AddComponent("gfeffectable")
         player:AddComponent("gfeventreactor")
 
-        --[[ local function ListenOnce()
-            if player.components.inventory then
-                local items = player.components.inventory:ReferenceAllItems()
-                for k, item in pairs(items) do
-                    if item.replica.gfspellitem then
-                        item.replica.gfspellitem:SetSpells()
-                        item.replica.gfspellitem:SetSpellRecharges()
-                        item.replica.gfspellitem._forceUpdateRecharges:push()
-                    end
-                end
-            end
-            player:RemoveEventCallback("gfplayerisready", ListenOnce)
-
-            --I don't know why, but attackrange doesn't update its value on the client-side
-            if player.replica.combat then
-                tmp = player.replica.combat._attackrange:value()
-                player.replica.combat._attackrange:set_local(0)
-                player.replica.combat._attackrange:set(tmp)
-            end
+        if player:HasTag("woodcutter") then 
+            print(("Removing \"polite\" tag from %s"):format(tostring(player)))
+            player:RemoveTag("polite") 
         end
+    end
 
-        player:ListenForEvent("gfplayerisready", ListenOnce) ]]
-    end 
+    player._teststream = _G.net_strstream(player, "player._teststream")
+    player:ListenForEvent("player._teststream", function(player) print(_G.GetTime(), player._teststream:value()) end)
+    --_G.GFCustomComponentReplication(player, "gfeffectable")
+    --_G.GFCustomComponentReplication(player, "gfspellcaster")
 end)
 
 --[[Init common]]
@@ -115,9 +92,7 @@ local invalidPrefabs =
 AddPrefabPostInitAny(function(inst) 
     local prefab = inst.prefab
     if inst:HasTag("FX") or inst:HasTag("NOCLICK") or inst:HasTag("player") or invalidPrefabs[prefab] then return end
-    if _G.GFQuestGivers[prefab] ~= nil then
-        _G.GFMakeQuestGiver(inst, _G.GFQuestGivers[prefab])
-    end
+    
     if _G.GFGetIsMasterSim() then
         inst:AddComponent("gfeffectable")
         inst:AddComponent("gfeventreactor")
@@ -127,5 +102,44 @@ AddPrefabPostInitAny(function(inst)
         if _G.GFCasterCreatures[prefab] ~= nil then
             _G.GFMakeCaster(inst, _G.GFEntitiesBaseSpells[prefab], _G.GFCasterCreatures[prefab])
         end
+        if _G.GFQuestGivers[prefab] ~= nil then
+            _G.GFMakeQuestGiver(inst, _G.GFQuestGivers[prefab])
+        end
     end
 end)
+
+--[[ AddPrefabPostInitAny(function(inst) 
+    local prefab = inst.prefab
+    local isMaster = _G.GFGetIsMasterSim()
+    if inst:HasTag("FX") or inst:HasTag("NOCLICK") or inst:HasTag("player") or invalidPrefabs[prefab] then return end
+    
+    if isMaster then
+        _G.GFCustomComponentReplication(inst, "gfeffectable")
+
+        --print("post init any " .. tostring(inst.replica._["gfeffectable"]))
+        --print(inst.replica.gfeffectable)
+        inst:AddComponent("gfeffectable")
+        inst:AddComponent("gfeventreactor")
+    end
+
+    if inst.replica.equippable and inst.components.replica.equipslot == _G.EQUIPSLOTS.HANDS then
+        _G.GFCustomComponentReplication(inst, "gfspellitem")
+        if isMaster then
+            _G.GFMakeInventoryCastingItem(inst, _G.GFEntitiesBaseSpells[prefab])
+        end
+    end
+
+    if _G.GFCasterCreatures[prefab] ~= nil then
+        if isMaster then
+            _G.GFMakeCaster(inst, _G.GFEntitiesBaseSpells[prefab], _G.GFCasterCreatures[prefab])
+        end
+        --_G.GFCustomComponentReplication(inst, "gfspellcaster")
+    end
+
+    if _G.GFQuestGivers[prefab] ~= nil then
+        _G.GFCustomComponentReplication(inst, "gfquestgiver")
+        if isMaster then
+            _G.GFMakeQuestGiver(inst, _G.GFQuestGivers[prefab])
+        end
+    end
+end) ]]

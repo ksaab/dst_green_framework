@@ -65,7 +65,7 @@ local SpellPanel = Class(Widget, function(self, owner)
     self.iconsPanel.icons = {}
     self.spellCount = 0
 
-    self.owner:ListenForEvent("gfupdatespellshud", function() OnUpdateSpellList(self) end, self.owner.classified)
+    self.owner:ListenForEvent("gfpushpanel", function() OnUpdateSpellList(self) end, self.owner.classified)
 end)
 
 return SpellPanel

@@ -4,8 +4,9 @@ local Widget = require "widgets/widget"
 local Image = require "widgets/image"
 local Text = require "widgets/text"
 
-local invalidText = STRINGS.GF.INVALID_TITLE
-local munitesLetter = STRINGS.GF.MINUTES_LETTER
+local INVALID_TITLE = STRINGS.GF.HUD.INVALID_LINES.INVALID_TITLE
+local INVALID_TEXT = STRINGS.GF.HUD.INVALID_LINES.INVALID_TEXT
+local MINUTES_LETTER = STRINGS.GF.HUD.MINUTES_LETTER
 
 local defaultAtlas = "images/gfdefaulticons.xml"
 local defaultImage = "defaultnegative.tex"
@@ -13,7 +14,7 @@ local defaultImage = "defaultnegative.tex"
 local function ConvertTimeToText(val)
     if val >= 60 then
         val = val / 60
-        return string.format("%i%s", val, munitesLetter)
+        return string.format("%i%s", val, MINUTES_LETTER)
     end
 
     return tostring(val)
@@ -53,8 +54,8 @@ function DebuffPanel:Update()
             self.debuffs[name].icon = self.debuffs[name]:AddChild(Image(effect.iconAtlas or defaultAtlas, effect.icon or defaultImage))
             --icon text
             self.debuffs[name]:SetTooltip(string.format("%s\n%s", 
-                effect.titleText or invalidText, 
-                effect.descText or invalidText
+                effect.titleText or INVALID_TITLE, 
+                effect.descText or INVALID_TEXT
             ))
             --icon timer
             if not effect.static then

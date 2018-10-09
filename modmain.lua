@@ -29,6 +29,8 @@ Assets =
     Asset("ATLAS", "images/gfdefaulticons.xml"),
     Asset("IMAGE", "images/gfspellhud.tex"),
     Asset("ATLAS", "images/gfspellhud.xml"),
+    Asset("IMAGE", "images/gfquestjournal.tex"),
+    Asset("ATLAS", "images/gfquestjournal.xml"),
 
     Asset("ANIM", "anim/gf_player_fast_cast.zip"),
     Asset("ANIM", "anim/gf_player_read_scroll.zip"),
@@ -55,7 +57,9 @@ end
 
 require "gf_global_functions"
 
+modimport "scripts/gf_tuning.lua"
 modimport "scripts/gf_strings.lua"
+modimport "scripts/gf_net_stream.lua"
 modimport "scripts/gf_spell_list.lua"
 modimport "scripts/gf_effect_list.lua"
 modimport "scripts/gf_affix_list.lua"
@@ -105,17 +109,23 @@ AddModRPCHandler("GreenFramework", "GFDISABLEPOINTER", function(inst)
 end)
 
 AddModRPCHandler("GreenFramework", "GFCLICKSPELLBUTTON", function(inst, spellName)
-    if inst.components.gfspellcaster then
+    if inst.components.gfspellcaster and spellName and type(spellName) == "string"then
         inst.components.gfspellcaster:HandleIconClick(spellName)
     end
 end)
 
 AddModRPCHandler("GreenFramework", "GFOFFERQUESTRESULT", function(inst, check, qName)
-    if check and qName then
+    if check and qName and type(qName) == "string" then
         --print("SERVER: Quest accepted", qName, "by", inst)
         inst.components.gfquestdoer:AcceptQuest(qName)
     else
         --print("SERVER: Quest declined", qName, "by", inst)
         inst.components.gfquestdoer:StopTrackGiver()
+    end
+end)
+
+AddModRPCHandler("GreenFramework", "GFCANCELQUEST", function(inst, qName)
+    if qName ~= nil and type(qName) == "string" then
+        inst.components.gfquestdoer:CancelQuest(qName)
     end
 end)

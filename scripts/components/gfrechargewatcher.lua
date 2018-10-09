@@ -36,9 +36,10 @@ local GFRechargeWatcher = Class(function(self, inst)
     self.iconList = {}
 
     inst:StartUpdatingComponent(self)
+    inst:ListenForEvent("gfpushwatcher", UpdateRechareable)
     inst:ListenForEvent("itemget", CheckItemBeforeUpdate)
-    inst:ListenForEvent("gfupdaterechargesdirty", UpdateRechareable)
-    inst:ListenForEvent("gfupdatespellshud", UpdateRechareable)
+    --inst:ListenForEvent("gfupdaterechargesdirty", UpdateRechareable)
+    --inst:ListenForEvent("gfupdatespellshud", UpdateRechareable)
 
     UpdateRechareable(inst)
     --self.inst:DoTaskInTime(3, UpdateRechareable)
