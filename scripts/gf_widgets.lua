@@ -31,7 +31,7 @@ AddClassPostConstruct( "widgets/controls", function(self)
 	self.gf_questDialog = self:AddChild( QuestDialog(owner) )
 	--quest informer
 	local QuestInformer = require "widgets/gf_questinformer"
-	self.gf_questInformer = self.top_root:AddChild( QuestInformer(owner) )
+	self.gf_questInformer = self.top_root:AddChild( QuestInformer(owner) ) 
 	--journal button
 	--local JournalButton = require "widgets/gf_journalbutton"
 	--self.mapcontrols.gf_questInformer = self.mapcontrols:AddChild( JournalButton(owner) )

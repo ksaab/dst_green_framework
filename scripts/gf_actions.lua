@@ -6,6 +6,22 @@ local spellList = GLOBAL.GFSpellList
 local GetString = GLOBAL.GetString
 local GetActionFailString = GLOBAL.GetActionFailString
 
+local function GetQuestReminderString(inst, qName)
+    local STR = STRINGS.GF.QUEST_REMINDERS
+    if type(inst) ~= "string" then inst = inst.prefab end
+    inst = string.upper(inst)
+    qName = string.upper(qName)
+
+    local STR
+    if STRINGS.CHARACTERS[inst] ~= nil and STRINGS.CHARACTERS[inst].QUEST_REMINDERS ~= nil then
+        STR = STRINGS.CHARACTERS[inst].QUEST_REMINDERS
+    else
+        STR = STRINGS.CHARACTERS.GENERIC.QUEST_REMINDERS
+    end
+
+    return STR[qName] ~= nil and STR[qName] or STR.DEFAULT_REMINDER
+end
+
 AddAction("GFCASTSPELL", STRINGS.ACTIONS.GFCASTSPELL, function(act)
     local doer = act.doer
     local spellName = act.spell
@@ -141,6 +157,63 @@ AddAction("GFTALKFORQUEST", STRINGS.ACTIONS.GFTALKFORQUEST, function(act)
         and doer.components.gfquestdoer ~= nil
         and giver.components.gfquestgiver ~= nil
         and (not giver.components.health or not giver.components.health:IsDead())
+    then
+        --check is character is busy
+        if (giver.components.combat ~= nil and giver.components.combat.target ~= nil) 
+            or (giver.components.burnable ~= nil and giver.components.burnable:IsBurning()) 
+            or (giver.components.freezable ~= nil and giver.components.freezable:IsFrozen()) 
+            or (giver.components.sleeper ~= nil and giver.components.sleeper:IsAsleep()) 
+        then
+            if doer.components.talker then
+                doer.components.talker:Say(GetActionFailString(doer, "GFTALKFORQUEST", "TARGETBUSY"))
+            end
+
+            return true --don't want to make player saying "can't do that"
+        end
+
+        local doerComp = doer.components.gfquestdoer
+        local giveComp = giver.components.gfquestgiver
+
+        if doerComp:GetQuestsNumber() >= TUNING.GW.QUESTS.MAX_QUESTS then
+            if doer.components.talker then
+                doer.components.talker:Say(GetActionFailString(doer, "GFTALKFORQUEST", "TOMANYQUESTS"))
+            end
+
+            return true --don't want to make player saying "can't do that"
+        end
+
+        local offer, notDone = giveComp:PickQuests(doer)
+        
+        if not offer then
+            if #notDone > 0 then
+                if doer.components.talker then
+                    doer.components.talker:Say(GetQuestReminderString(doer, notDone[math.random(#notDone)]))
+                end
+    
+                return true --don't want to make player saying "can't do that
+            end
+
+            if doer.components.talker then
+                doer.components.talker:Say(GetActionFailString(doer, "GFTALKFORQUEST", "NOQUESTS"))
+            end
+
+            return true --don't want to make player saying "can't do that"
+        end
+
+        doerComp:OfferQuests(offer, giveComp:GetDialogString(doer), giver)
+    end
+
+    return true
+end)
+
+--[[ AddAction("GFTALKFORQUEST", STRINGS.ACTIONS.GFTALKFORQUEST, function(act)
+    local giver = act.target
+    local doer = act.doer
+
+    if giver ~= nil 
+        and doer.components.gfquestdoer ~= nil
+        and giver.components.gfquestgiver ~= nil
+        and (not giver.components.health or not giver.components.health:IsDead())
         --and (not giver.components.health or not giver.components.health:IsDead())
     then
         --check is character is busy
@@ -179,8 +252,8 @@ AddAction("GFTALKFORQUEST", STRINGS.ACTIONS.GFTALKFORQUEST, function(act)
             end
             --find a good one, offering
             --GFDebugPrint(string.format("%s offers the quest %s to %s", tostring(giver), tostring(quest), tostring(doer)))
-            doer.components.gfquestdoer:OfferQuest(quest)
-            doer.components.gfquestdoer:TrackGiver(giver) --tracking giver
+            doer.components.gfquestdoer:OfferQuest(nil, quest, giver)
+           -- doer.components.gfquestdoer:TrackGiver(giver) --tracking giver
 
             return true --don't want to make player saying "can't do that"
         else
@@ -194,7 +267,7 @@ AddAction("GFTALKFORQUEST", STRINGS.ACTIONS.GFTALKFORQUEST, function(act)
     end
 
     return false
-end)
+end) ]]
 
 ACTIONS.GFTALKFORQUEST.distance = 10
 ACTIONS.GFTALKFORQUEST.priority = 10
@@ -297,7 +370,7 @@ end)
 AddComponentAction("SCENE", "gfquestgiver", function(inst, doer, actions, right)
     if right then
         if inst:IsValid() 
-            and (not inst.replica.health or not inst.replica.health:IsDead()) --quest give must be alive
+            and (not inst.replica.health or not inst.replica.health:IsDead()) --quest giver must be alive
             and inst.replica.gfquestgiver:HasQuests() --and have quests
         then
             table.insert(actions, ACTIONS.GFTALKFORQUEST)

@@ -110,16 +110,27 @@ function GFAddCustomEffect(name, route, id)
     GFEffectIDToName[id] = name
 end
 
-function GFAddCustomQuest(name, route, id)
-    --id = (id and type(id) == "number") and id or #GFQuestIDToName + 1
-    --if GFQuestIDToName[id] ~= nil then
-        --error(("Quest with id %i already exists"):format(id), 3)
-    --end
+function GFAddCustomQuest(name, route, modname, id)
+    --id for quest should be unique
+    id = (id and type(id) == "number") and id or #GFQuestIDToName + 1
+    if GFQuestIDToName[id] ~= nil then
+        error(("Quest with id %i already exists"):format(id), 3)
+    end
+
     GFQuestList[name] = require(route .. name)
-    --GFQuestList[name].name = name
-    --GFQuestList[name].id = id
-    --GFQuestNameToID[name] = id
-    --GFQuestIDToName[id] = name
+    local q = require(route .. name)
+    assert(q.name ~= nil, "Quest name isn't setted in " .. route .. name)
+    
+    GFQuestList[q.name] = q     --It's a "database" for quests
+    GFQuestList[q.name].id = id --unique ID for quest (works only in current session, may change in another)
+                                --id are used only for network things, all server/client stuff works with names
+
+    --well, it should help if the quest has an error
+    if modname ~= nil then
+        GFQuestList[q.name]._modname = modname
+    end
+
+    GFQuestIDToName[id] = q.name --cached quests IDs
 end
 
 function GFAddBaseAffixes(prefab, type, chance, ...)
@@ -162,13 +173,23 @@ function GFAddBaseSpells(prefab, ...)
     end 
 end
 
-function GFAddQuestGiver(prefab, ...)
+function GFAddQuestGiver(prefab, dialogStr, reactFn, markOffset)
     if GFQuestGivers[prefab] == nil then
         GFQuestGivers[prefab] = {}
     end
 
+    GFQuestGivers[prefab].dialogStr = dialogStr
+    GFQuestGivers[prefab].reactFn = reactFn
+    GFQuestGivers[prefab].markOffset = markOffset
+end
+
+function GFAddBaseQuests(prefab, ...)
+    if GFEntitiesBaseQuests[prefab] == nil then
+        GFEntitiesBaseQuests[prefab] = {}
+    end
+
     for i = 1, arg.n do
-        table.insert(GFQuestGivers[prefab], arg[i])
+        table.insert(GFEntitiesBaseQuests[prefab], arg[i])
     end 
 end
 
@@ -230,10 +251,15 @@ function GFMakeInventoryCastingItem(inst, spells)
     end
 end
 
-function GFMakeQuestGiver(inst, quests)
+function GFMakeQuestGiver(inst, data, quests)
     if GFGetIsMasterSim() then
         inst:AddComponent("gfquestgiver")
         if quests ~= nil then
+            if data ~= nil then
+                if data.reactFn ~= nil then inst.components.gfquestgiver:SetReactFn(data.reactFn) end
+                if data.stringFn ~= nil then inst.components.gfquestgiver.dialogStringFn = data.stringFn end
+                if data.dialogStr ~= nil then inst.components.gfquestgiver.dialogString = data.dialogStr end
+            end
             for _, v in pairs(quests) do
                 inst.components.gfquestgiver:AddQuest(v)
             end

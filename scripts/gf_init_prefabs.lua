@@ -21,13 +21,21 @@ AddPrefabPostInit("player_classified", function(inst)
     inst._forceUpdateRecharges = _G.net_event(inst.GUID, "gfupdaterechargesdirty") --trigger which forces updating for client interface
 
     --quest system
-    inst._pushQuest = _G.net_string(inst.GUID, "GFQuestDoer._pushQuest", "gfquestpushdirty") --contains offered quest
-    inst._completeQuest = _G.net_string(inst.GUID, "GFQuestDoer._completeQuest", "gfquestcompletedirty") --contains completed quest, may be should be united with the previous one
-    inst._forceCloseDialog = _G.net_event(inst.GUID, "gfquestclosedialogdirty") --push event to the client, if a quest giver is to far
-    inst._infoLine = _G.net_string(inst.GUID, "GFQuestDoer._infoLine", "gfquestinfodirty") --sending an info about quest stages
-    inst._currQuestsList = _G.net_string(inst.GUID, "GFQuestDoer._currQuestsList", "gfquestlistdirty")
+    --inst._pushQuest = _G.net_string(inst.GUID, "GFQuestDoer._pushQuest", "gfquestpushdirty") --contains offered quest
+    --inst._completeQuest = _G.net_string(inst.GUID, "GFQuestDoer._completeQuest", "gfquestcompletedirty") --contains completed quest, may be should be united with the previous one
+    --inst._forceCloseDialog = _G.net_event(inst.GUID, "gfquestclosedialogdirty") --push event to the client, if a quest giver is to far
+    --inst._infoLine = _G.net_string(inst.GUID, "GFQuestDoer._infoLine", "gfquestinfodirty") --sending an info about quest stages
+    --inst._currQuestsList = _G.net_string(inst.GUID, "GFQuestDoer._currQuestsList", "gfquestlistdirty")
 
-    inst._questNoticeStream = _G.net_strstream(inst, "GFQuestDoer._questNoticeStream", "gfqueststreamdirty")
+    --events
+    inst._gfQSCloseDialogEvent = _G.net_event(inst.GUID, "gfQSEventCDialogDirty") 
+    --syncs
+    inst._gfQSOfferString = _G.net_string(inst.GUID, "GFQuestDoer._gfQSOfferString", "gfQSOfferDirty")
+    inst._gfQSCompleteString = _G.net_string(inst.GUID, "GFQuestDoer._gfQSCompleteString", "gfQSCompleteDirty")
+    inst._gfQSCurrentString = _G.net_string(inst.GUID, "GFQuestDoer._gfQSCurrentString", "gfQSCurrentDirty")
+    --streams
+    inst._gfQSEventStream = _G.net_strstream(inst, "_GFQuestDoer._gfQSEventStream", "gfQSEventDirty")
+    inst._gfQSInfoStream = _G.net_strstream(inst, "_GFQuestDoer._gfQSInfoStream", "gfQSInfoDirty")
 
     local _oldOnEntityReplicated = nil
     if inst.OnEntityReplicated ~= nil then
@@ -69,6 +77,8 @@ AddPlayerPostInit(function(player)
 
     player._teststream = _G.net_strstream(player, "player._teststream")
     player:ListenForEvent("player._teststream", function(player) print(_G.GetTime(), player._teststream:value()) end)
+
+    player:PushEvent("gfQGUpdateQuests")
     --_G.GFCustomComponentReplication(player, "gfeffectable")
     --_G.GFCustomComponentReplication(player, "gfspellcaster")
 end)
@@ -103,7 +113,7 @@ AddPrefabPostInitAny(function(inst)
             _G.GFMakeCaster(inst, _G.GFEntitiesBaseSpells[prefab], _G.GFCasterCreatures[prefab])
         end
         if _G.GFQuestGivers[prefab] ~= nil then
-            _G.GFMakeQuestGiver(inst, _G.GFQuestGivers[prefab])
+            _G.GFMakeQuestGiver(inst, _G.GFQuestGivers[prefab], _G.GFEntitiesBaseQuests[prefab])
         end
     end
 end)

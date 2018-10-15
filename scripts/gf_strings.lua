@@ -24,6 +24,7 @@ STRINGS.CHARACTERS.GENERIC.ACTIONFAIL.GFTALKFORQUEST =
     NOQUESTS = "There is nothing intresting for me here.",
     TARGETBUSY = "It's not the best time.",
     TOMANYQUESTS = "My quest jouranl is full!",
+    REMINDQUEST = "I thing I've promise to help here.",
 }
 
 STRINGS.CHARACTERS.GENERIC.ACTIONFAIL.GFCASTSPELL =
@@ -59,6 +60,14 @@ STRINGS.GF.HUD =
         TITLE = "Journal",
         NOQUESTS = "Journal is empty",
     },
+    QUEST_INFORMER = 
+    {
+        QUEST_STARTED = "Quest strated.",
+        QUEST_ABANDONED = "Quest abandoned.",
+        QUEST_DONE = "done!",
+        QUEST_UNDONE = "conditions are no longer met.",
+        QUEST_FAILED = "failed!",
+    },
     CONTROLLER_DEFAULTS = 
     {
         LMB = "Cast",
@@ -69,7 +78,28 @@ STRINGS.GF.HUD =
         INVALID_TITLE = "<NO TITLE>",
         INVALID_TEXT = "<NO TEXT>",
     },
+    ERROR = "<ERROR>",
     MINUTES_LETTER = "m",
+}
+
+STRINGS.GF.QUEST_DIALOGS = 
+{
+    GF_DIALOG_TEST = "It's a test dialog",
+    DEFAULT = "Hello, can you help me?",
+    PIGMAN_DEFAULT = "Oink. Oink-oink! Oink. Oink-oink! Oink. Oink-oink! Oink. Oink-oink! Oink. Oink-oink! Oink. Oink-oink! Oink. Oink-oink! Oink. Oink-oink! Oink. Oink-oink! Oink. Oink-oink! Oink. Oink-oink! Oink. Oink-oink!",
+    SKELETON_DEFAULT = "Еhe skeleton looks at you with empty eyes",
+}
+
+STRINGS.CHARACTERS.GENERIC.QUEST_REMINDERS = 
+{
+    DEFAULT_REMINDER = "I think I've promised to help here.",
+    _EX_BRING_FIVE_ROCKS = "I've promised to bring some rocks.",
+}
+
+STRINGS.CHARACTERS.WOODIE.QUEST_REMINDERS = 
+{
+    DEFAULT_REMINDER = "Woodie: I think I've promised to help here.",
+    _EX_BRING_FIVE_ROCKS = "Woodie: I've promised to bring some rocks.",
 }
 
 STRINGS.GF.EFFECTS = {}

@@ -54,5 +54,6 @@ return
     minotaur = {"spring", -200},
     bishop_nightmare = {"waist", -200},			
     knight_nightmare = {"spring", -200},	
-    pigking = {"pigking_torso", -200},		
+    pigking = {"pigking_torso", -200},	
+    skeleton = {"headbase_skel", -200}	
 }

@@ -5,6 +5,18 @@ local TEMPLATES = require "widgets/redux/templates"
 local ALL_QUESTS = GFQuestList
 local MAX_LIFETIME = 5
 
+local INVALID_TITLE = STRINGS.GF.HUD.INVALID_LINES.INVALID_TITLE
+
+--TODO - rewrite this mess
+local QEVENTS = 
+{
+    [1] = STRINGS.GF.HUD.QUEST_INFORMER.QUEST_UNDONE,
+    [2] = STRINGS.GF.HUD.QUEST_INFORMER.QUEST_DONE,
+    [3] = STRINGS.GF.HUD.QUEST_INFORMER.QUEST_FAILED,
+    [4] = STRINGS.GF.HUD.QUEST_INFORMER.QUEST_STARTED,
+    [5] = STRINGS.GF.HUD.QUEST_INFORMER.QUEST_ABANDONED,
+}
+
 local QuestInformer = Class(Widget, function(self, owner)
     self.owner = owner
     Widget._ctor(self, "QuestInformer")
@@ -24,13 +36,19 @@ local QuestInformer = Class(Widget, function(self, owner)
         line:Hide()
     end
 
-    self.inst:ListenForEvent( "gfquestshowinfo", function(player, data) self:RefreshLines(data) end, self.owner)
+    self.inst:ListenForEvent( "gfQSInformerPush", function(player, data) self:RefreshLines(data) end, self.owner)
     self:StartUpdating()
 
     print("Quest informer was added to ", owner)
 end)
 
 function QuestInformer:RefreshLines(data)
+    if data == nil then return end
+
+    local qTitle = ALL_QUESTS[data.qName]:GetTitleString(self.owner)
+    local qString = data.qEvent ~= nil 
+        and (QEVENTS[data.qEvent + 1] or STRINGS.GF.HUD.ERROR)
+        or ALL_QUESTS[data.qName]:GetStatusString(self.owner)
     for i = self.lineCount, 2, -1 do
         local str = self.textLines[i - 1]:GetString()
         if str ~= "" then
@@ -46,7 +64,7 @@ function QuestInformer:RefreshLines(data)
         self:StartUpdating()
     end
 
-    local str = string.format("%s: %s", ALL_QUESTS[data.qName].title, data.qString)
+    local str = string.format("%s - %s", qTitle, qString)
     local line = self.textLines[1]
     line:SetString(str)
     line:Show()

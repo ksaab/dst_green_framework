@@ -1,52 +1,115 @@
-local allQuests = GFQuestList
+local ALL_QUESTS = GFQuestList
+
+local charSet = {}
+
+for i = 48,  57 do table.insert(charSet, string.char(i)) end
+for i = 97, 122 do table.insert(charSet, string.char(i)) end
+
+local function GenerateHash()
+    local str = {}
+    local num = #charSet
+    for i = 1, 4 do
+        str[i] = charSet[math.random(1, num)]
+    end
+
+    return table.concat(str)
+end
 
 local QSQuestGiver = Class(function(self, inst)
     self.inst = inst
+    self.hash = GenerateHash()
     self.questCount = 0
-    self.questOfferList = {}
-    self.questCompleteList = {}
+
+    self.offerList = {}
+    self.completeList = {}
+
+    self.dialogString = "DEFAULT"
+
     self.getAttentionFn = nil
 end)
 
 function QSQuestGiver:AddQuest(questName)
-    if questName and allQuests[questName] ~= nil then
-        self.questOfferList[questName] = true
-        self.questCompleteList[questName] = true
+    if questName == nil or ALL_QUESTS[questName] == nil then return end
 
-        self.questCount = self.questCount + 1 --set local counter
-        self.inst.replica.gfquestgiver:AddQuest() --and tell client about quest giver
+    table.insert(self.offerList, questName)
+    table.insert(self.completeList, questName)
 
-        GFDebugPrint(("Quest %s added to %s"):format(questName, tostring(self.inst)))
-    end
+    self.inst.replica.gfquestgiver:UpdateQuests()
+    --GFDebugPrint(("%s now offers and completes quest %s "):format(tostring(self.inst), questName))
 end
 
---giver can't offer the quest, but can complete it
-function QSQuestGiver:HideQuest(questName)
-    if questName and self.questOfferList[questName] then
-        self.questOfferList[questName] = nil
-        --GFDebugPrint(("Quest %s hided on %s"):format(questName, tostring(self.inst)))
-    end
+function QSQuestGiver:AddQuestToOffer(questName)
+    if questName == nil or ALL_QUESTS[questName] == nil then return end
+
+    table.insert(self.offerList, questName)
+    self.inst.replica.gfquestgiver:UpdateQuests()
+    --GFDebugPrint(("%s now offers quest %s "):format(tostring(self.inst), questName))
 end
 
-function QSQuestGiver:RemoveQuest(questName)
-    if questName and self.questOfferList[questName] then
-        self.questOfferList[questName] = nil
-        self.questCompleteList[questName] = nil
+function QSQuestGiver:AddQuestToComplete(questName)
+    if questName == nil or ALL_QUESTS[questName] == nil then return end
 
-        self.questCount = self.questCount - 1
-        self.inst.replica.gfquestgiver:RemoveQuest()
-        --GFDebugPrint(("Quest %s removed from %s"):format(questName, tostring(self.inst)))
+    table.insert(self.completeList, questName)
+    self.inst.replica.gfquestgiver:UpdateQuests()
+    --GFDebugPrint(("%s now completes quest %s "):format(tostring(self.inst), questName))
+end
+
+function QSQuestGiver:RemoveQuest(questName, offerOnly)
+    RemoveByValue(self.offerList, questName)
+    if offerOnly then
+        RemoveByValue(self.completeList, questName)
+        --GFDebugPrint(("%s now ONLY completes quest %s "):format(tostring(self.inst), questName))
+        return
     end
+    
+    self.inst.replica.gfquestgiver:UpdateQuests()
+    --GFDebugPrint(("%s now doesn't have quest %s "):format(tostring(self.inst), questName))
 end
 
 function QSQuestGiver:HasQuests()
-    return self.questCount > 0
+    return #(self.offerList) + #(self.completeList) > 0
+end
+
+function QSQuestGiver:PickQuests(doer)
+    local doercomp = doer.components.gfquestdoer
+    if not self:HasQuests() or doercomp == nil then return end
+
+    local picked = {}
+    local canComplete = {}
+    
+    for i = 1, #(self.offerList) do
+        local qName = self.offerList[i]
+        if doercomp:CheckQuest(qName) then
+            table.insert(picked, qName)
+        end
+    end
+
+    for i = 1, #(self.completeList) do
+        local qName = self.completeList[i]
+        if doercomp:HasQuest(qName) then
+            if doercomp:IsQuestDone(qName) then
+                table.insert(picked, qName)
+            else
+                table.insert(canComplete, qName)
+            end
+        end
+    end
+
+    return #picked > 0 and picked or nil, canComplete
+end
+
+function QSQuestGiver:IsCompleterFor(qName)
+    for _, v in pairs(self.completeList) do
+        if v == qName then return true end
+    end
+
+    return false
 end
 
 function QSQuestGiver:PickQuest(doer)
     if self:HasQuests() then
-        for qName, _ in pairs(self.questOfferList) do
-            local quest = allQuests[qName]
+        for qName, _ in pairs(self.offerList) do
+            local quest = ALL_QUESTS[qName]
             if quest ~= nil 
                 and doer.components.gfquestdoer:CheckQuest(qName)
                 and quest:CheckBeforeGiving(doer, self.inst) 
@@ -59,33 +122,36 @@ function QSQuestGiver:PickQuest(doer)
     return nil
 end
 
-function QSQuestGiver:QuestAccepted(qName, doer)
-    local quest = allQuests[qName]
-    if quest ~= nil then
-        if quest.unique then
-            self:HideQuest(qName)
-        end
+function QSQuestGiver:SetReactFn(fn)
+    local function _fn(inst, data) 
+        self.getAttentionFn(inst, data)
+    end
 
-        self.inst:PushEvent("gfqgiveraccept", {qName = qName, doer = doer})
-        quest:OnAcceptGiver(self.inst, doer)
+    if fn ~= nil then
+        self.getAttentionFn = fn
+        self.inst:ListenForEvent("gfQGGetAttention", _fn)
+    else
+        self.inst:RemoveEventCallback("gfQGGetAttention", _fn)
     end
 end
 
-function QSQuestGiver:QuestCompleted(qName, doer)
-    local quest = allQuests[qName]
-    if quest ~= nil then
-        if quest.unique then
-            self:RemoveQuest(qName)
-        end
+function QSQuestGiver:GetDialogString(doer)
+    return self.dialogStringFn ~= nil and self.dialogStringFn(doer) or self.dialogString 
+end
 
-        self.inst:PushEvent("gfqgivercompleted", {qName = qName, doer = doer})
-        quest:OnCompleteGiver(self.inst, doer)
+function QSQuestGiver:GetHash(doer)
+    return self.hash
+end
+
+function QSQuestGiver:OnEntitySleep()
+    if not GFGetIsDedicatedNet() and self:HasQuests() then
+        self.inst.replica.gfquestgiver:StopTrackingPlayer()
     end
 end
 
-function QSQuestGiver:GetAttention(doer)
-    if self.getAttentionFn ~= nil then
-        self.getAttentionFn(self.inst, doer)
+function QSQuestGiver:OnEntityWake()
+    if not GFGetIsDedicatedNet() and self:HasQuests() then
+        self.inst.replica.gfquestgiver:StartTrackingPlayer()
     end
 end
 
@@ -93,11 +159,11 @@ function QSQuestGiver:GetDebugString()
     local give = {}
     local pass = {}
 
-    for k, v in pairs(self.questOfferList or {}) do
+    for k, v in pairs(self.offerList or {}) do
         table.insert(give, k)
     end
 
-    for k, v in pairs(self.questCompleteList or {}) do
+    for k, v in pairs(self.completeList or {}) do
         table.insert(pass, k)
     end
 

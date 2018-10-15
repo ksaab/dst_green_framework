@@ -1,67 +1,16 @@
-local allQuests = GFQuestList
+local ALL_QUESTS = GFQuestList
+local QID_TO_NAME = GFQuestIDToName
 
---client methods
-local function QuestPushedDirty(classified)
-    if classified._parent == nil then return end
+local _r = require "components/gfquestdoer_r"
 
-    local qName = classified._pushQuest:value()
-    classified._parent:PushEvent("gfquestpush", {qName = qName})
-end
-
-local function QuestCompletedDirty(classified)
-    if classified._parent == nil then return end
-
-    local qName = classified._completeQuest:value()
-    classified._parent:PushEvent("gfquestcomplete", {qName = qName})
-end
-
-local function ForceCloseDialog(classified)
-    if classified._parent == nil then return end
-    classified._parent:PushEvent("gfquestclosedialog")
-end
-
-local function QuestShowInfo(classified)
-    if classified._parent == nil then return end
-    local strings = classified._infoLine:value():split(';')
-    classified._parent:PushEvent("gfquestshowinfo", {qName = strings[1], qString = strings[2]})
-end
-
-local function UpdateCurrQuestsList(classified)
-    if classified._parent == nil then return end
-    local strings = classified._currQuestsList:value():split(';')
-    local self = classified._parent.components.gfquestdoer
-
-    self.currentQuests = {}
-    for k, v in pairs(strings) do
-        local q = v:split("^")
-        print(q[1], q[2])
-        self.currentQuests[q[1]] = 
-        {
-            done = (q[2] ~= nil and tonumber(q[2]) == 1)
-        }
-    end
-end
-
-local function DeserealizeNoticeStream(classified)
-    if classified._parent == nil then return end
-
-    local strings = classified._questNoticeStream:value():split('^')
-    local self = classified._parent.components.gfquestdoer
-
-    for k, v in pairs(strings) do
-        print(k .. ": " .. v)
-    end
-end
-
---server methods
 local function TrackGiverFail(inst)
     inst.components.gfquestdoer:StopTrackGiver()
 
     if inst.player_classified ~= nil then
         if inst == GFGetPlayer() and not GFGetIsDedicatedNet() then
-            inst:PushEvent("gfquestclosedialog")
+            inst:PushEvent("gfQSCloseDialogPush")
         else
-            inst.player_classified._forceCloseDialog:push()
+            inst.player_classified._gfQSCloseDialogEvent:push()
         end
     end
 end
@@ -73,9 +22,16 @@ local function TrackGiver(inst, giver)
 end
 
 local function ResetQuests(self)
+    local needToUpdate = false
     for qName, rTime in pairs(self.completedQuests) do
-        if rTime ~= math.huge and rTime - GetTime() <= 0 then
-            self.completedQuests[qName] = nil
+        if rTime ~= -1  then
+            self.completedQuests[qName] = self.completedQuests[qName] - 1
+            if self.completedQuests[qName] == 0 then
+                needToUpdate = true
+                self.completedQuests[qName] = nil
+                self:PushCooldown(qName, false)
+                GFDebugPrint(("Cooldown on quest %s is ended for %s"):format(qName, tostring(self.inst)))
+            end
         end
     end
 end
@@ -86,221 +42,173 @@ local GFQuestDoer = Class(function(self, inst)
     self.currentQuests = {}
     self.completedQuests = {}
 
-    self.currQuestsList = ""
-
     --attaching classified on the server-side
     if GFGetIsMasterSim() and inst.player_classified ~= nil then
-        self.classified = inst.player_classified
+        self:AttachClassified(inst.player_classified)
     end
 
     self._questGiver = nil
+    self._questTracker = {}
     self._trackTask = nil
+    self._offeredQuest = nil
 
-    self:WatchWorldState("cycles", ResetQuests)
-    inst:ListenForEvent("death", TrackGiverFail)
+    if GFGetIsMasterSim() then
+        self:WatchWorldState("cycles", ResetQuests)
+        inst:ListenForEvent("death", TrackGiverFail)
+    end
 end)
 
---attaching classified on the client-side
-function GFQuestDoer:AttachClassified(classified)
-    if self.classified ~= nil then return end
-
-    self.classified = classified
-    --default things, like in the others replicatable components
-    self.ondetachclassified = function() self:DetachClassified() end
-    self.inst:ListenForEvent("onremove", self.ondetachclassified, classified)
-
-    if not GFGetIsMasterSim() then 
-        --collecting events directly from the classified prefab
-        self.inst:ListenForEvent("gfquestpushdirty", QuestPushedDirty, classified)
-        self.inst:ListenForEvent("gfquestcompletedirty", QuestCompletedDirty, classified)
-        self.inst:ListenForEvent("gfquestclosedialogdirty", ForceCloseDialog, classified)
-        self.inst:ListenForEvent("gfquestinfodirty", QuestShowInfo, classified)
-        self.inst:ListenForEvent("gfquestlistdirty", UpdateCurrQuestsList, classified)
-
-        self.inst:ListenForEvent("gfqueststreamdirty", DeserealizeNoticeStream, classified)
-    end
-end
-
-function GFQuestDoer:DetachClassified()
-    --default things, like in the others replicatable components
-    self.classified = nil
-    self.ondetachclassified = nil
-end
-
---server-client interface
-function GFQuestDoer:OfferQuest(qName)
-    if not GFGetIsMasterSim() then return end
-
-    if self.classified ~= nil then
-        if self.inst == GFGetPlayer() and not GFGetIsDedicatedNet() then
-            --refresh recharge-watcher on the host-side
-            self.inst:PushEvent("gfquestpush", {qName = qName})
-        else
-            --sending information about current spells to the client
-            --sending string which contains all spells enumerated with a separator
-            self.classified._pushQuest:set_local(qName)
-            self.classified._pushQuest:set(qName)
+function GFQuestDoer:OfferQuests(quests, strid, giver)
+    if self:CreateQuestDialog(quests, strid, giver) then
+        if giver ~= nil and not self:TrackGiver(giver) then 
+            GFDebugPrint("Can't track giver", tostring(giver))
+            return
+        end
+        for _, v in pairs(quests) do
+            self._questTracker[v] = true
         end
     else
-        GFDebugPrint(string.format("GFQuestDoer: something wrong %s doesn't have classified field", tostring(self.inst)))
+        GFDebugPrint("Nothing to offer")
     end
 end
 
---server-client interface
+function GFQuestDoer:OfferQuest(qName, strid, giver)
+    self:OfferQuests({qName}, strid, giver)
+end
+
 function GFQuestDoer:AcceptQuest(qName)
-    if not GFGetIsMasterSim() then return end
+    if not GFGetIsMasterSim() or ALL_QUESTS[qName] == nil or self.currentQuests[qName] ~= nil then return end
 
-    local quest = allQuests[qName]
-    if quest then
-        self.currentQuests[qName] = {}
-        self.currentQuests[qName].done = false
-        quest:OnAccept(self.inst, self._questGiver)
-
-        if self._questGiver ~= nil then
-            self._questGiver.components.gfquestgiver:QuestAccepted(qName, self.inst)
-        end
-
-        self:UpdateCurrentQuestsList()
-        self:StopTrackGiver()
+    local giverHash
+    if self._questGiver ~= nil then
+        giverHash = self._questGiver.components.gfquestgiver:GetHash()
     end
+
+    local _q = ALL_QUESTS[qName]
+    self.currentQuests[qName] = 
+    {
+        status = 0,
+        giverHash = giverHash or '0',
+    }
+
+    --updaing quest list on the cleint-side
+    self:UpdateQuestList(qName, 3)
+    _q:Accept(self.inst) --register quest's events
+    self:StopTrackGiver() --don't need to track a giver anymore
 end
 
---server-client interface
-function GFQuestDoer:CompleteQuest(qName, giver)
-    if not GFGetIsMasterSim() then return end
+function GFQuestDoer:CompleteQuest(qName)
+    if not GFGetIsMasterSim() or ALL_QUESTS[qName] == nil then return end
 
-    local quest = allQuests[qName]
-    if quest then
-        quest:OnComplete(self.inst, giver)
-        self.currentQuests[qName] = nil
-
-        if not quest.repeatable then
-            self.completedQuests[qName] = quest.cooldown ~= 0 and GetTime() + quest.cooldown or math.huge
-        end
-
-        if giver ~= nil then
-            giver.components.gfquestgiver:QuestCompleted(qName, self.inst)
-        end
-
-        if self.classified ~= nil then
-            if self.inst == GFGetPlayer() and not GFGetIsDedicatedNet() then
-                --refresh recharge-watcher on the host-side
-                self.inst:PushEvent("gfquestcomplete", {qName = qName})
-            else
-                --sending information about current spells to the client
-                --sending string which contains all spells enumerated with a separator
-                self.classified._completeQuest:set_local(qName)
-                self.classified._completeQuest:set(qName)
-                self:UpdateCurrentQuestsList()
-            end
-        else
-            GFDebugPrint(string.format("GFQuestDoer: something wrong %s doesn't have classified field", tostring(self.inst)))
-        end
-    end
-end
-
-function GFQuestDoer:CancelQuest(qName)
-    if GFGetIsMasterSim() then 
-        if allQuests[qName] ~= nil then
-            allQuests[qName]:OnCancel(self.inst)
-        end
-        self.currentQuests[qName] = nil
-        if self.inst ~= GFGetPlayer() or GFGetIsDedicatedNet() then
-            self:UpdateCurrentQuestsList()
-        end
-    elseif qName ~= nil then
-        SendModRPCToServer(MOD_RPC["GreenFramework"]["GFCANCELQUEST"], qName)
-    end
-end
-
---server-client interface
-function GFQuestDoer:SetQuestStatus(qName, qString)
-    qName = qName or "NO DATA" 
-    qString = tostring(qString or "NO DATA")
-
-    if self.classified ~= nil then
-        if self.inst == GFGetPlayer() and not GFGetIsDedicatedNet() then
-            --push data to informer for game's host
-            GFDebugPrint(qName .. qString)
-            self.inst:PushEvent("gfquestshowinfo", {qName = qName, qString = qString})
-        else
-            --push data to informer for clients
-            local str = string.format("%s;%s", qName, qString)
-            self.classified._infoLine:set_local(str)
-            self.classified._infoLine:set(str)
-
-            self.classified._questNoticeStream:push_string(str)
-        end
-    else
-        GFDebugPrint(string.format("GFQuestDoer: something wrong %s doesn't have classified field", tostring(self.inst)))
-    end
-end
-
---server-client interface
-function GFQuestDoer:UpdateCurrentQuestsList()
-    if not GFGetIsMasterSim() then return end
-
-    if self.classified ~= nil then
-        
-        if self.inst ~= GFGetPlayer() or GFGetIsDedicatedNet() then
-            --refresh recharge-watcher on the host-side
-            local str = {}
-            for qName, qData in pairs(self.currentQuests) do
-                table.insert(str, qName .. (qData.done == true and "^1" or "^0"))
-            end
-            
-            print("UpdateCurrentQuestsList")
-            self.classified._currQuestsList:set(table.concat(str, ";"))
-        end
-    else
-        GFDebugPrint(string.format("GFQuestDoer: something wrong %s doesn't have classified field", tostring(self.inst)))
-    end
-end
-
-function GFQuestDoer:QuestDone(qName, val, qString)
-    self.currentQuests[qName].done = val
-    if self.classified ~= nil then
-        if qString == nil then
-            qString = val and "quest done!" or "conditions are no longer met."
-        end
-        if self.inst == GFGetPlayer() and not GFGetIsDedicatedNet() then
-            --push data to informer for game's host
-            GFDebugPrint(qName .. tostring(qString))
-            self.inst:PushEvent("gfquestshowinfo", {qName = qName, qString = qString})
-        else
-            --push data to informer for clients
-            local str = string.format("%s;%s", qName, qString)
-            self.classified._infoLine:set_local(str)
-            self.classified._infoLine:set(str)
-            self:UpdateCurrentQuestsList()
-        end
-    else
-        GFDebugPrint(string.format("GFQuestDoer: something wrong %s doesn't have classified field", tostring(self.inst)))
-    end
-end
-
-function GFQuestDoer:ResetAllQuests(qName)
-    self.completedQuests[qName] = {}
-end
-
-function GFQuestDoer:CleanUpQuest(qName)
-    if self.completedQuests[qName] ~= nil 
-        and self.completedQuests[qName] ~= math.huge
-        and self.completedQuests[qName] - GetTime() <= 0
+    if not self:IsQuestDone(qName)
+        or not ALL_QUESTS[qName]:CheckBeforeComplete(self.inst) 
     then
+        GFDebugPrint(string.format("%s can't complete the quest %s", tostring(self.inst), qName))
+        return false
+    end
+
+    local _q = ALL_QUESTS[qName]
+    _q:Complete(self.inst) --unregister quest's events and run a reward fn
+
+    --set a cooldown for the quest if needed
+    if _q.norepeat then
+        self.completedQuests[qName] = -1
+        self:PushCooldown(qName, true)
+    elseif _q.cooldown > 0 then
+        self.completedQuests[qName] = _q.cooldown
+        self:PushCooldown(qName, true)
+    end
+
+    --updaing quest list on the cleint-side
+    self:UpdateQuestList(qName, 5)
+    self.currentQuests[qName] = nil
+
+    return true
+end
+
+function GFQuestDoer:AbandonQuest(qName)
+    if not GFGetIsMasterSim() then return end
+
+    --unregistering quest's events
+    if ALL_QUESTS[qName] ~= nil then
+        ALL_QUESTS[qName]:Abandon(self.inst)
+    end
+
+    --updaing quest list on the cleint-side
+    self:UpdateQuestList(qName, 4)
+    self.currentQuests[qName] = nil
+end
+
+function GFQuestDoer:SetQuestDone(qName, done)
+    local status = (done == nil or done == false) and 0 or 1
+    print(qName .. "now has status " .. tostring(status))
+    if self.currentQuests[qName].status ~= status then
+        self.currentQuests[qName].status = status
+        self:UpdateQuestInfo(qName, done)
+        self:UpdateQuestList(qName, status)
+    end
+end
+
+function GFQuestDoer:SetQuestFailed(qName)
+    if self.currentQuests[qName].status ~= 2 then
+        self.currentQuests[qName].status = 2
+        self:UpdateQuestInfo(qName, true)
+        self:UpdateQuestList(qName, 2)
+    end
+end
+
+GFQuestDoer.AttachClassified = _r.AttachClassified
+GFQuestDoer.DetachClassified = _r.DetachClassified
+GFQuestDoer.UpdateQuestList = _r.UpdateQuestList
+GFQuestDoer.UpdateQuestInfo = _r.UpdateQuestInfo
+GFQuestDoer.HandleButtonClick = _r.HandleButtonClick
+GFQuestDoer.CreateQuestDialog = _r.CreateQuestDialog
+GFQuestDoer.HandleButtonClick = _r.HandleButtonClick
+GFQuestDoer.PushCooldown = _r.PushCooldown
+
+function GFQuestDoer:GetQuestData(qName)
+    return self.currentQuests[qName]
+end
+
+function GFQuestDoer:ResetAllQuests(ignoreCurrent)
+    GFDebugPrint("Resetting all quests for" .. tostring(self.inst))
+    for qName, v in pairs(self.completedQuests) do
+        self:PushCooldown(qName, false)
         self.completedQuests[qName] = nil
     end
+
+    if not ignoreCurrent then
+        for qName, _ in pairs(self.currentQuests) do
+            --unregistering quest's events
+            if ALL_QUESTS[qName] ~= nil then
+                ALL_QUESTS[qName]:Abandon()
+            end
+
+            self.currentQuests[qName] = nil
+        end
+    end
+end
+
+function GFQuestDoer:CheckClientRequest(qName)
+    return self._questTracker[qName] ~= nil
 end
 
 function GFQuestDoer:CheckQuest(qName)
-    if not GFGetIsMasterSim() then return end
-    self:CleanUpQuest(qName)
-
     return self.currentQuests[qName] == nil and self.completedQuests[qName] == nil
+end
+
+function GFQuestDoer:HasQuest(qName)
+    return self.currentQuests[qName] ~= nil
+end
+
+function GFQuestDoer:IsQuestDone(qName)
+    return self.currentQuests[qName] ~= nil and self.currentQuests[qName].status == 1
 end
 
 function GFQuestDoer:TrackGiver(giver)
     self:StopTrackGiver()
+    if giver.components.gfquestgiver == nil then return false end
+
     self._questGiver = giver
 
     --checking distance
@@ -311,10 +219,14 @@ function GFQuestDoer:TrackGiver(giver)
     self.inst:ListenForEvent("newtarget", TrackGiverFail, self._questGiver)
 
     GFDebugPrint(("%s has started tracking %s"):format(tostring(self.inst), tostring(self._questGiver)))
+    return true
 end
 
 function GFQuestDoer:StopTrackGiver()
     if self._questGiver == nil then return end
+    if next(self._questTracker) ~= nil then
+        self._questTracker = {}
+    end
 
     self.inst:RemoveEventCallback("attacked", TrackGiverFail, self._questGiver)
     self.inst:RemoveEventCallback("death", TrackGiverFail, self._questGiver)
@@ -335,49 +247,10 @@ end
 
 function GFQuestDoer:OnSave()
     if not GFGetIsMasterSim() then return end
-
-    local savedata = 
-    {
-        completedQuests = {},
-        questsInProgress = {},
-    }
-
-    local currTime = GetTime()
-
-    for qName, qTime in pairs(self.completedQuests) do
-        savedata.completedQuests[qName] = qTime ~= math.huge and qTime - currTime or qTime
-    end
-
-    for qName, qData in pairs(self.currentQuests) do
-        if qData ~= nil then
-            local tmp = allQuests[qName]:OnSave(self.inst, qData)
-            if tmp then
-                savedata.questsInProgress[qName] = tmp
-            end
-        end
-    end
-
-    return {savedata = savedata}
 end
 
 function GFQuestDoer:OnLoad(data)
     if not GFGetIsMasterSim() or not data or not data.savedata then return end
-
-    if data.savedata.completedQuests then
-        local cQuests = data.savedata.completedQuests
-        local currTime = GetTime()
-        for qName, qTime in pairs(cQuests) do
-            self.completedQuests[qName] = currTime - qTime
-        end
-    end
-
-    if data.savedata.questsInProgress then
-        local cQuests = data.savedata.questsInProgress
-        for qName, qData in pairs(cQuests) do
-            self:AcceptQuest(qName)
-            allQuests[qName]:OnLoad(self.inst, qData)
-        end
-    end
 end
 
 function GFQuestDoer:GetDebugString()
@@ -385,11 +258,11 @@ function GFQuestDoer:GetDebugString()
     local pass = {}
 
     for k, v in pairs(self.currentQuests or {}) do
-        table.insert(give, k)
+        table.insert(give, string.format("%s - %i [%s]", k, v.status or -1, ALL_QUESTS[k]:GetStatusString(self.inst)))
     end
 
     for k, v in pairs(self.completedQuests or {}) do
-        table.insert(pass, string.format("%s:%i", k, v ~= math.huge and v - GetTime() or 0))
+        table.insert(pass, string.format("%s:%i", k, v))
     end
 
     return (#give > 0 or #pass > 0)

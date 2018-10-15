@@ -1042,8 +1042,8 @@ local gfmakeattention = _G.State
         inst.components.locomotor:Stop()
         inst.AnimState:PlayAnimation("emoteXL_waving" .. math.random(3))
         local act = inst:GetBufferedAction()
-        if act and act.target and act.target.components.gfquestgiver then
-            act.target.components.gfquestgiver:GetAttention(inst)
+        if act and act.target then
+            act.target:PushEvent("gfQGGetAttention", inst)
         end
 	end,
 

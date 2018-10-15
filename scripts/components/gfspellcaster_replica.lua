@@ -193,7 +193,11 @@ function GFSpellCaster:PreCastCheck(spellName)
         local preCheck = spellList[spellName]:PreCastCheck(self.inst)
         if not preCheck or type(preCheck) == "string" then
             if self.inst.components.talker then
-                self.inst.components.talker:Say(GetActionFailString(self.inst, "GFCASTSPELL", preCheck or "GENERIC"), 2.5, false, true, false)
+                if type(preCheck) == "string" then
+                    self.inst.components.talker:Say(GetActionFailString(self.inst, "GFCASTSPELL", preCheck or "GENERIC"), 2.5, false, true, false)
+                else
+                    self.inst.components.talker:Say(GetActionFailString(self.inst, "GFCASTSPELL", "GENERIC"), 2.5, false, true, false)
+                end
             end
 
             return false

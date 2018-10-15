@@ -10,10 +10,17 @@ local INVALID_TITLE = STRINGS.GF.HUD.INVALID_LINES.INVALID_TITLE
 local INVALID_TEXT = STRINGS.GF.HUD.INVALID_LINES.INVALID_TEXT
 
 local DONE_COLOUR = {0, 128/255, 0, 1}
+local FAILED_COLOUR = {128/255, 0, 0, 1}
+local QCOLOUS = 
+{
+    WHITE,
+    DONE_COLOUR,
+    FAILED_COLOUR,
+}
 
 local function CancelQuest(owner, qName)
     if qName and owner and owner.components.gfquestdoer then
-        owner.components.gfquestdoer:CancelQuest(qName)
+        owner.components.gfquestdoer:HandleButtonClick(qName, 2)
     end
 end
 
@@ -77,9 +84,9 @@ local QuestJournalScreen = Class(Screen, function(self, owner)
         if ALL_QUESTS[qName] ~= nil then
             self.strings[i] = 
             {
-                ALL_QUESTS[qName].title or INVALID_TITLE,
-                ALL_QUESTS[qName].goaltext or INVALID_TEXT,
-                v.done,
+                ALL_QUESTS[qName]:GetTitleString(self.owner),
+                ALL_QUESTS[qName]:GetStatusString(self.owner) or INVALID_TEXT,
+                v.status + 1,
                 qName,
             }
 
@@ -110,12 +117,13 @@ local QuestJournalScreen = Class(Screen, function(self, owner)
 
     local function ApplyFn(context, widget, data, index) 
         if data and not data.empty then 
-            widget.title:SetColour(data[3] == true and DONE_COLOUR or WHITE)
+            widget.title:SetColour(QCOLOUS[data[3]] or WHITE)
             widget.title:SetString(data[1] or "epmty")
             widget.goal:SetString(data[2] or "epmty")
             widget.cancelButton:Show()
             widget.cancelButton:SetOnClick(function() 
                 data[1] = data[1] .. " - cancelled"
+                data[3] = 3
                 CancelQuest(self.owner, data[4]) 
                 self.scroll:RefreshView()
             end)

@@ -21,6 +21,7 @@ PrefabFiles =
     "gf_cracklefx",
     "gf_dummies",
     "gf_reticules",
+    "gf_quest_mark",
 }
 
 Assets = 
@@ -53,6 +54,10 @@ end
 
 if not rawget(_G, "GFQuestGivers") then
     rawset(_G, "GFQuestGivers", {})
+end
+
+if not rawget(_G, "GFEntitiesBaseQuests") then
+    rawset(_G, "GFEntitiesBaseQuests", {})
 end
 
 require "gf_global_functions"
@@ -98,6 +103,12 @@ GFAddCasterCreature("pigman", PigmanFrindlyFireCheck)
 GFAddCasterCreature("bunnyman", PigmanFrindlyFireCheck)
 GFAddCasterCreature("knight", ChessFrindlyFireCheck)
 
+_G.GFAddQuestGiver("pigman", "PIGMAN_DEFAULT", function(inst, attracter) print(inst, "reacts on", attracter) end, 3)
+_G.GFAddQuestGiver("skeleton", "SKELETON_DEFAULT", function(inst, attracter) print(inst, "reacts on", attracter) end, 1)
+
+_G.GFAddBaseQuests("pigman", "_ex_bring_five_rocks", "_ex_bring_five_logs")
+_G.GFAddBaseQuests("skeleton", "_ex_kill_two_merms", "_ex_kill_five_spiders")
+
 AddModRPCHandler("GreenFramework", "GFPLAYEISRREADY", function(inst)
     inst:PushEvent("gfplayerisready")
 end)
@@ -114,18 +125,41 @@ AddModRPCHandler("GreenFramework", "GFCLICKSPELLBUTTON", function(inst, spellNam
     end
 end)
 
-AddModRPCHandler("GreenFramework", "GFOFFERQUESTRESULT", function(inst, check, qName)
-    if check and qName and type(qName) == "string" then
-        --print("SERVER: Quest accepted", qName, "by", inst)
-        inst.components.gfquestdoer:AcceptQuest(qName)
-    else
-        --print("SERVER: Quest declined", qName, "by", inst)
-        inst.components.gfquestdoer:StopTrackGiver()
-    end
-end)
+AddModRPCHandler("GreenFramework", "GFQUESTRPC", function(inst, event, qName)
 
-AddModRPCHandler("GreenFramework", "GFCANCELQUEST", function(inst, qName)
-    if qName ~= nil and type(qName) == "string" then
-        inst.components.gfquestdoer:CancelQuest(qName)
+    ------------------------
+    --events:
+    --0 - accept a quest
+    --1 - decline a quest
+    --2 - abandon a quest
+    --3 - complete 
+    ------------------------
+
+    if qName ~= nil 
+        and event ~= nil 
+        and type(event) == "number"
+        and type(qName) == "string" 
+        and inst.components.gfquestdoer ~= nil
+        --and _G.GFQuestList[qName] ~= nil
+    then
+        if event == 0 then
+            if inst.components.gfquestdoer:CheckClientRequest(qName) then
+                inst.components.gfquestdoer:AcceptQuest(qName)
+            else
+                print("PANIC: Getting invalid quest info from", inst)
+            end
+        elseif event == 1 then
+            inst.components.gfquestdoer:StopTrackGiver()
+        elseif event == 2 then
+            inst.components.gfquestdoer:AbandonQuest(qName)
+        elseif event == 3 then
+            if inst.components.gfquestdoer:CheckClientRequest(qName) and inst.components.gfquestdoer:IsQuestDone(qName) then
+                inst.components.gfquestdoer:CompleteQuest(qName)
+            else
+                print("PANIC: Getting invalid quest info from", inst)
+            end
+        end
+    else
+        print("wrong data for GFQUESTRPC ", qName, type(qName), event, type(event))
     end
 end)
