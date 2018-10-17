@@ -6,22 +6,6 @@ local spellList = GLOBAL.GFSpellList
 local GetString = GLOBAL.GetString
 local GetActionFailString = GLOBAL.GetActionFailString
 
-local function GetQuestReminderString(inst, qName)
-    local STR = STRINGS.GF.QUEST_REMINDERS
-    if type(inst) ~= "string" then inst = inst.prefab end
-    inst = string.upper(inst)
-    qName = string.upper(qName)
-
-    local STR
-    if STRINGS.CHARACTERS[inst] ~= nil and STRINGS.CHARACTERS[inst].QUEST_REMINDERS ~= nil then
-        STR = STRINGS.CHARACTERS[inst].QUEST_REMINDERS
-    else
-        STR = STRINGS.CHARACTERS.GENERIC.QUEST_REMINDERS
-    end
-
-    return STR[qName] ~= nil and STR[qName] or STR.DEFAULT_REMINDER
-end
-
 AddAction("GFCASTSPELL", STRINGS.ACTIONS.GFCASTSPELL, function(act)
     local doer = act.doer
     local spellName = act.spell
@@ -31,13 +15,17 @@ AddAction("GFCASTSPELL", STRINGS.ACTIONS.GFCASTSPELL, function(act)
             if doer.components.gfspellpointer then
                 doer.components.gfspellpointer:Disable()
             end
+            local result, reason = doer.components.gfspellcaster:PreCastCheck(spellName)
+            if not result then
+                if doer.components.talker then
+                    doer.components.talker:Say(GetActionFailString(doer, "GFCASTSPELL", reason or "GENERIC"), 2.5)
+                end
+                return true
+            end
             if not spellList[spellName]:CanBeCastedBy(doer) then
                 if doer.components.talker then
                     doer.components.talker:Say(GetActionFailString(doer, "GFCASTSPELL", "CAST_FAILED"), 2.5)
                 end
-                return true
-            end
-            if not doer.components.gfspellcaster:PreCastCheck(spellName) then
                 return true
             end
             return doer.components.gfspellcaster:CanCastSpell(spellName)
@@ -187,7 +175,7 @@ AddAction("GFTALKFORQUEST", STRINGS.ACTIONS.GFTALKFORQUEST, function(act)
         if not offer then
             if #notDone > 0 then
                 if doer.components.talker then
-                    doer.components.talker:Say(GetQuestReminderString(doer, notDone[math.random(#notDone)]))
+                    doer.components.talker:Say(_G.GetQuestReminderString(doer, notDone[math.random(#notDone)]))
                 end
     
                 return true --don't want to make player saying "can't do that

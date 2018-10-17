@@ -87,50 +87,82 @@ function GFCustomComponentReplication(inst, compName)
 end
 
 function GFAddCustomSpell(name, route, id)
+    GFDebugPrint(string.format("GF-CUSTOM-EFFECT: initializing spell %s%s", name, route))
+
     id = (id and type(id) == "number") and id or #GFSpellIDToName + 1
     if GFSpellIDToName[id] ~= nil then
         error(("Spell with id %i already exists"):format(id), 3)
     end
-    GFSpellList[name] = require(route .. name)
+
+    local s = require(route .. name)
+
+    if s.name ~= nil then
+        name = s.name
+    else
+        GFDebugPrint(string.format("GF: file %s doesn't have a quest name, setting it to the file name", name))
+    end
+
+    GFSpellList[name] = s
     GFSpellList[name].name = name
     GFSpellList[name].id = id
     GFSpellNameToID[name] = id
     GFSpellIDToName[id] = name
+
+    GFDebugPrint(("GF: SPELL %s created"):format(name))
 end
 
 function GFAddCustomEffect(name, route, id)
+    GFDebugPrint(string.format("GF-CUSTOM-SPELL: initializing effect %s%s", name, route))
+
     id = (id and type(id) == "number") and id or #GFEffectIDToName + 1
     if GFEffectIDToName[id] ~= nil then
         error(("Effect with id %i already exists"):format(id), 3)
     end
-    GFEffectList[name] = require(route .. name)
+
+    local e = require(route .. name)
+
+    if e.name ~= nil then
+        name = e.name
+    else
+        GFDebugPrint(string.format("GF: file %s doesn't have a quest name, setting it to the file name", name))
+    end
+
+    GFEffectList[name] = e
     GFEffectList[name].name = name
     GFEffectList[name].id = id
     GFEffectNameToID[name] = id
     GFEffectIDToName[id] = name
+
+    GFDebugPrint(("GF: EFFECT %s created"):format(name))
 end
 
 function GFAddCustomQuest(name, route, modname, id)
+    GFDebugPrint(string.format("GF-CUSTOM-QUEST: initializing quest %s%s", name, route))
     --id for quest should be unique
     id = (id and type(id) == "number") and id or #GFQuestIDToName + 1
     if GFQuestIDToName[id] ~= nil then
         error(("Quest with id %i already exists"):format(id), 3)
     end
 
-    GFQuestList[name] = require(route .. name)
     local q = require(route .. name)
-    assert(q.name ~= nil, "Quest name isn't setted in " .. route .. name)
+
+    if q.name ~= nil then
+        name = q.name
+    else
+        GFDebugPrint(string.format("GF: file %s doesn't have a quest name, setting it to the file name", name))
+    end
     
-    GFQuestList[q.name] = q     --It's a "database" for quests
-    GFQuestList[q.name].id = id --unique ID for quest (works only in current session, may change in another)
+    GFQuestList[name] = q     --It's a "database" for quests
+    GFQuestList[name].id = id --unique ID for quest (works only in current session, may change in another)
                                 --id are used only for network things, all server/client stuff works with names
 
     --well, it should help if the quest has an error
     if modname ~= nil then
-        GFQuestList[q.name]._modname = modname
+        GFQuestList[name]._modname = modname
     end
 
-    GFQuestIDToName[id] = q.name --cached quests IDs
+    GFQuestIDToName[id] = name --cached quests IDs
+    GFDebugPrint(("GF: QUEST %s created"):format(name))
 end
 
 function GFAddBaseAffixes(prefab, type, chance, ...)
@@ -149,9 +181,6 @@ function GFAddBaseAffixes(prefab, type, chance, ...)
     for i = 1, arg.n do
         table.insert(aff[type].list, arg[i])
     end
-    --[[ for k, v in pairs(arg) do
-        print(k, v)
-    end ]]
 end
 
 function GFAddCasterCreature(prefab, fn)
@@ -162,12 +191,7 @@ function GFAddBaseSpells(prefab, ...)
     if GFEntitiesBaseSpells[prefab] == nil then
         GFEntitiesBaseSpells[prefab] = {}
     end
-    
-    --[[ print("printing...")
-    for k, v in pairs(arg) do
-        print(k, v)
-        --table.insert(GFEntitiesBaseSpells[prefab], v)
-    end ]]
+
     for i = 1, arg.n do
         table.insert(GFEntitiesBaseSpells[prefab], arg[i])
     end 
@@ -407,6 +431,49 @@ function GFTestGlobalFunctions()
     print("GFGetPVPEnabled", GFGetPVPEnabled())
     print("GFGetWorld", GFGetWorld())
     print("GFGetPlayer", GFGetPlayer())
+end
+
+local function GetQuestReminderString(inst, qName)
+    local STR = STRINGS.GF.QUEST_REMINDERS
+    if type(inst) ~= "string" then inst = inst.prefab end
+    inst = string.upper(inst)
+    qName = string.upper(qName)
+
+    local STR
+    if STRINGS.CHARACTERS[inst] ~= nil and STRINGS.CHARACTERS[inst].QUEST_REMINDERS ~= nil then
+        STR = STRINGS.CHARACTERS[inst].QUEST_REMINDERS
+    else
+        STR = STRINGS.CHARACTERS.GENERIC.QUEST_REMINDERS
+    end
+
+    return STR[qName] ~= nil and STR[qName] or STR.DEFAULT_REMINDER
+end
+
+function GetEffectString(eName, param)
+    --local INVALID_TITLE = STRINGS.GF.HUD.INVALID_LINES.INVALID_TITLE
+    --local INVALID_TEXT = STRINGS.GF.HUD.INVALID_LINES.INVALID_TEXT
+    param = param ~= nil and string.upper(param) or "TITLE"
+    eName = string.upper(eName)
+    local STR = STRINGS.GF.EFFECTS[eName]
+    if STR ~= nil and STR[param] ~= nil then
+        return STR[param]
+    else
+        param = param == "TITLE" and STRINGS.GF.HUD.INVALID_LINES.INVALID_TITLE or STRINGS.GF.HUD.INVALID_LINES.INVALID_TEXT
+        return param
+    end
+end
+
+function GetQuestString(inst, qName, param)
+    param = param ~= nil and string.upper(param) or "TITLE"
+    qName = string.upper(qName)
+    local n = inst.prefab or "stranger"
+    local STR = string.gsub(STRINGS.GF.QUESTS[qName], "&name", n)
+    if STR ~= nil and STR[param] ~= nil then
+        return STR[param]
+    else
+        param = param == "TITLE" and STRINGS.GF.HUD.INVALID_LINES.INVALID_TITLE or STRINGS.GF.HUD.INVALID_LINES.INVALID_TEXT
+        return param
+    end
 end
 
 --rawset(_G, "GFTestGlobalFunctions", GFTestGlobalFunctions)

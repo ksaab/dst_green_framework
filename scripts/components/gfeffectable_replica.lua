@@ -1,135 +1,353 @@
 --Green Framework. Please, don't copy any files or functions from this mod, because it can break other mods based on the GF.
 
-local effectList = GFEffectList
-local effectNamesToID = GFEffectNameToID
-local effectIDToNames = GFEffectIDToName
+local ALL_EFFECTS = GFEffectList
+local ENAME_TO_ID = GFEffectNameToID
+local EID_TO_NAME = GFEffectIDToName
 
-local invalidString = "<NO INFO>"
+local INVALID_TITLE = STRINGS.GF.HUD.INVALID_LINES.INVALID_TITLE
+local INVALID_TEXT = STRINGS.GF.HUD.INVALID_LINES.INVALID_TEXT
 
-local function GenerateHudInfo(inst)
-    --reset info
+local function UpdateClassifiedEffect(inst, eName, timer, stacks)
     local self = inst.replica.gfeffectable
 
-    self.hudInfo.positive = {}
-    self.hudInfo.negative = {}
-
-    local postable = {}
-    local negtable = {}
-    local affixtable = {}
-    local enchtable = {}
-
-    for effectName, effect in pairs(self.effects) do
-        local type = effect.type
-        if type == 1 then
-            --positive effects
-            if effect.wantsIcon then self.hudInfo.positive[effectName] = effect end
-            if effect.wantsHover then table.insert(postable, effect.hoverText or invalidString) end
-        elseif type == 2 then
-            --negative effects
-            if effect.wantsIcon then self.hudInfo.negative[effectName] = effect end
-            if effect.wantsHover then table.insert(negtable, effect.hoverText or invalidString) end
-        elseif type == 3 then
-            --affixes
-            if effect.wantsHover then table.insert(affixtable, effect.hoverText or invalidString) end
-        elseif type == 4 then
-            --enchants
-            if effect.wantsHover then table.insert(enchtable, effect.hoverText or invalidString) end
-        elseif type ~= 0 then
-            GFDebugPrint(("GFEffectable Replica: effects %s has invalid type %i"):format(effectName, type))
+    if not GFGetIsMasterSim() then
+        if self.effects[eName] ~= nil then
+            self.effects[eName].expirationTime = GetTime() + timer
+            self.effects[eName].stacks = stacks
+        else
+            self.effects[eName] = 
+            {
+                expirationTime = GetTime() + timer,
+                stacks = stacks,
+                static = ALL_EFFECTS[eName].static == true,
+            }
         end
     end
 
-    self.hudInfo.positiveString = #postable > 0 and table.concat(postable, ", ") or nil
-    self.hudInfo.negativeString = #negtable > 0 and table.concat(negtable, ", ") or nil
-    self.hudInfo.affixString = #affixtable > 0 and table.concat(affixtable, ", ") or nil
-    self.hudInfo.enchantString = #enchtable > 0 and table.concat(enchtable, ", ") or nil
-
-    --print("Update hud info")
-    inst:PushEvent("gfupdateeffectshud")
+    ALL_EFFECTS[eName]:HUDOnUpdate(inst, self.effects[eName])
+    inst:PushEvent("gfEFUpdateIcon", {eName = eName, timer = timer, stacks = stacks})
 end
 
-local function DeserializeEffects(inst)
+local function RemoveClasifiedEffect(inst, eName)
     local self = inst.replica.gfeffectable
-    --GFDebugPrint("GFEffectable Replica: effects string: ", self._effectsList:value())
-    --if GFGetIsMasterSim() then return end
-    local effectsArray = self._effectsList:value():split(';')
-    local newEffects = {}
-    local currTime = GetTime()
-    for k, v in pairs(effectsArray) do
-        local effectsString = v:split(',')
-        local effectName = effectIDToNames[tonumber(effectsString[1])]
-        local effectStacks = tonumber(effectsString[2]) or 1
-        local effectRemain = tonumber(effectsString[3]) or 0
-        --local effectTotal = tonumber(effectsString[4]) or 0
-        newEffects[effectName] = true --set that the effect exists, nonexisting effects will be removed
 
-        local effect = self.effects[effectName]
-        
-        if effect == nil then
-            effect = effectList[effectName]()
-            self.effects[effectName] = effect
-            if effect.hudonapplyfn  and inst == GFGetPlayer() then
-                effect:hudonapplyfn(inst)
-            end
-        else
-            if effect.hudonrefreshfn and inst == GFGetPlayer() --[[and effect.stacks ~= effectStacks]] then
-                effect:hudonrefreshfn(inst)
-            end
-        end
-        effect.expirationTime = effect.static and 0 or effectRemain + currTime
-        effect.stacks = effectStacks
+    if not GFGetIsMasterSim() then
+        self.effects[eName] = nil
     end
 
-    for effName, effect in pairs(self.effects) do
-        --removing nonexistent effects
-        if not newEffects[effName] then
-            if effect.hudonremovefn and inst == GFGetPlayer() then
-                effect:hudonremovefn(inst)
+    ALL_EFFECTS[eName]:HUDOnRemove(inst)
+    inst:PushEvent("gfEFRemoveIcon", {eName = eName})
+end
+
+local function DoDeserealizeEventStream(classified)
+    if classified._parent == nil then return end
+    --local self = classified._parent.replica.gfeffectable
+
+    local eventsArray = classified._gfEFEventStream:value():split('^')
+    for i = 1, #eventsArray do
+        local eventData = eventsArray[i]:split(';')
+        if #eventData >= 2 then --don't need to process invalid strings
+            local eName = EID_TO_NAME[tonumber(eventData[2])]
+            print("eName", eName)
+            if eName ~= nil then
+                if eventData[1] == '1' or eventData[1] == '2' then --create a new icon for effect
+                    UpdateClassifiedEffect(classified._parent, eName, tonumber(eventData[3] or 0), tonumber(eventData[4] or 1))
+                elseif eventData[1] == '3' then --remove an icon
+                    RemoveClasifiedEffect(classified._parent, eName)
+                end
             end
-            self.effects[effName] = nil
+        end
+    end
+end
+
+local function DeserealizeEventStream(classified)
+    if classified._parent ~= nil and classified._parent == ThePlayer then
+        classified:DoTaskInTime(0, DoDeserealizeEventStream)
+    end
+end
+
+local function DeserializeStaticHovers(inst)
+    local self = inst.replica.gfeffectable
+
+    --if GFGetIsMasterSim() then self:GenerateHoverStrings(true) return end
+
+    local effectsArray = self._staticEString:value():split(';')
+    local currEffects = {}
+
+    for _, eID in pairs(effectsArray) do
+        local eName = EID_TO_NAME[tonumber(eID)]
+        currEffects[eName] = true --set that the effect exists, nonexisting effects will be removed
+        local eData = self.effects[eName]
+
+        if eData == nil then
+            eData = {}
+            eData.expirationTime = 0
+            eData.stacks = 1
+            eData.static = ALL_EFFECTS[eName].static
+            self.effects[eName] = eData
         end
     end
 
-    GenerateHudInfo(inst)
+    --removing nonexistent effects
+    for eName, _ in pairs(self.effects) do
+        if ALL_EFFECTS[eName].type >= 3 and not currEffects[eName] then
+            self.effects[eName] = nil
+        end
+    end
+
+    self:GenerateHoverStrings(true)
+end
+
+local function DeserializeActiveHovers(inst)
+    local self = inst.replica.gfeffectable
+
+    --if GFGetIsMasterSim() then self:GenerateHoverStrings(false) return end
+
+    local effectsArray = self._activeEString:value():split(';')
+    local currEffects = {}
+
+    for _, eID in pairs(effectsArray) do
+        local eName = EID_TO_NAME[tonumber(eID)]
+        currEffects[eName] = true --set that the effect exists, nonexisting effects will be removed
+        local eData = self.effects[eName]
+        local eInst = ALL_EFFECTS[eName]
+
+        if eData == nil then
+            eData = {}
+            eData.expirationTime = 0
+            eData.stacks = 1
+            if eInst.static then eData.static = true end
+            self.effects[eName] = eData
+        end
+    end
+
+    --removing nonexistent effects
+    for eName, _ in pairs(self.effects) do
+        if ALL_EFFECTS[eName].type < 3 and not currEffects[eName] then
+            self.effects[eName] = nil
+        end
+    end
+
+    self:GenerateHoverStrings(false)
 end
 
 local GFEffectable = Class(function(self, inst)
     self.inst = inst
     self.effects = {}
+
+    --don't want to calculate hover for the hoverer widget every tick
+    --will create them when effects are updated
     self.hudInfo = 
     {
-        positive = {},
-        negative = {},
         positiveString = "",
         negativeString = "",
         affixString = "",
         enchantString = "",
     }
 
-    self._effectsList = net_string(inst.GUID, "GFEffectable._effectsList", "gfeffectsupdated")
+    if self.classified == nil and inst.player_classified ~= nil then
+        self:AttachClassified(inst.player_classified)
+    end
+
+    self._task = nil
+
+    --1)static - for affixes and enchants - this effects shouldn't update often
+    --2)active - for buffs and debuffs - this effects may update very often
+    self._staticEString = net_string(inst.GUID, "GFEffectable._staticEString", "gfEFStaticDirty")
+    self._activeEString = net_string(inst.GUID, "GFEffectable._activeEString", "gfEFActiveDirty")
+
     if not GFGetIsMasterSim() then
-        inst:ListenForEvent("gfeffectsupdated", DeserializeEffects)
-    elseif not GFGetIsDedicatedNet() then
-        inst:ListenForEvent("gfeffectsupdated", GenerateHudInfo)
+        inst:ListenForEvent("gfEFStaticDirty", DeserializeStaticHovers)
+        inst:ListenForEvent("gfEFActiveDirty", DeserializeActiveHovers)
     end
 end)
 
-function GFEffectable:UpdateEffectsList()
-    local comp = self.inst.components.gfeffectable
+----------------------------------------------------
+--classified methods (both sides)-------------------
+----------------------------------------------------
+
+function GFEffectable:AttachClassified(classified)
+    if self.classified ~= nil then return end
+
+    self.classified = classified
+    --default things, like in the others replicatable components
+    self.ondetachclassified = function() self:DetachClassified() end
+    self.inst:ListenForEvent("onremove", self.ondetachclassified, classified)
+
+    if not GFGetIsMasterSim() then
+        self.inst:ListenForEvent("gfEFEventDirty", DeserealizeEventStream, classified)
+    end
+end
+
+function GFEffectable:DetachClassified()
+    --default things, like in the others replicatable components
+    self.classified = nil
+    self.ondetachclassified = nil
+end
+
+----------------------------------------------------
+--server-only methods-------------------------------
+----------------------------------------------------
+
+function GFEffectable:UpdateReplicaEffects(static)
+    --replica effects are needed only for hovers
+    --so client should know aonly about the presense of them
     local str = {}
-    local currTime = GetTime()
-    self.effects = comp.effects
-    for effectName, effect in pairs(comp.effects) do
-        if effect.type ~= 0 then --0 is the server only effect type
-            local expTime = (effect.static or effect.aura) and 0 or effect.expirationTime - currTime
-            --print(string.format("%i,%i,%.2f", effectNamesToID[effectName], effect.stacks, expTime))
-            table.insert(str, string.format("%i,%i,%.2f", effectNamesToID[effectName], effect.stacks, expTime))
+    for eName, _ in pairs(self.effects) do
+        local eInst = ALL_EFFECTS[eName]
+        local type = eInst.type
+        if static then
+            if type == 3 or type == 4 then table.insert(str, ENAME_TO_ID[eName]) end
+        else
+            if type == 1 or type == 2 then table.insert(str, ENAME_TO_ID[eName]) end
         end
     end
 
-    local setstr = table.concat(str, ';')
-    self._effectsList:set_local(setstr)
-    self._effectsList:set(setstr)
+    --use 2 net strings:
+    --1)static - for affixes and enchants - this effects shouldn't update often
+    --2)active - for buffs and debuffs - this effects may update very often
+
+    if static then
+        str = table.concat(str, ';')
+        self._staticEString:set_local(str)
+        self._staticEString:set(str)
+
+        if not GFGetIsDedicatedNet() then
+            self:GenerateHoverStrings(true) --generating hover strings for the host player
+        end
+    else
+        str = table.concat(str, ';')
+        self._activeEString:set_local(str)
+        self._activeEString:set(str)
+
+        if not GFGetIsDedicatedNet() then
+            self:GenerateHoverStrings(false) --generating hover strings for the host player
+        end
+    end
 end
+
+function GFEffectable:ApplyEffect(eName)
+    local eInst = ALL_EFFECTS[eName]
+    if GFGetIsMasterSim() and eInst.type ~= 0 then
+        self.effects = self.inst.components.gfeffectable.effects 
+
+        if eInst.pushToReplica then
+            self:UpdateReplicaEffects(eInst.type >= 3)
+        end
+
+        if self.classified ~= nil and eInst.pushToClassified then
+            if self.inst == ThePlayer and not GFGetIsDedicatedNet() then
+                --if inst is the not dedicated host-player, don't need to push net variable
+                print("host event")
+                eInst:HUDOnUpdate(self.inst, self.effects[eName])
+                self.inst:PushEvent("gfEFUpdateIcon", {eName = eName})
+            else
+                --tell the player-client about a new effect
+                local eData = self.effects[eName]
+                local expTime = eInst.static == true and 0 or eData.expirationTime - GetTime()
+                self.classified._gfEFEventStream:push_string(string.format("1;%i;%.2f;%i", ENAME_TO_ID[eName], expTime, eData.stacks))
+            end
+        end
+    end
+
+    --GFDebugPrint(("%s applies %s"):format(tostring(self.inst), eName))
+end
+
+function GFEffectable:RefreshEffect(eName)
+    --replica effects (hovers) don't need to be refreshed, 
+    --because client should know only about the presense of a effect
+    local eInst = ALL_EFFECTS[eName]
+    if GFGetIsMasterSim() and self.classified ~= nil and eInst.type ~= 0 and eInst.pushToClassified then
+        --but always client should know full information about classified effects (icon)
+        self.effects = self.inst.components.gfeffectable.effects
+        if self.inst == ThePlayer and not GFGetIsDedicatedNet() then
+            --if inst is the not dedicated host-player, don't need to push net variable
+            eInst:HUDOnUpdate(self.inst, self.effects[eName])
+            self.inst:PushEvent("gfEFUpdateIcon", {eName = eName})
+        else
+            --tell the player-client that the effect was updated
+            local eData = self.effects[eName]
+            local expTime = eInst.static == true and 0 or eData.expirationTime - GetTime()
+            self.classified._gfEFEventStream:push_string(string.format("2;%i;%.2f;%i", ENAME_TO_ID[eName], expTime, eData.stacks))
+        end
+    end
+
+    --GFDebugPrint(("%s refreshes %s"):format(tostring(self.inst), eName))
+end
+
+function GFEffectable:RemoveEffect(eName)
+    local eInst = ALL_EFFECTS[eName]
+    if GFGetIsMasterSim() and eInst.type ~= 0 then
+        self.effects = self.inst.components.gfeffectable.effects
+
+        if eInst.pushToReplica then
+            self:UpdateReplicaEffects(eInst.type >= 3)
+        end
+
+        if self.classified ~= nil and eInst.pushToClassified then
+            if self.inst == ThePlayer and not GFGetIsDedicatedNet() then
+                --if inst is the not dedicated host-player, don't need to push net variable
+                eInst:HUDOnRemove(self.inst)
+                self.inst:PushEvent("gfEFRemoveIcon", {eName = eName})
+            else
+                --tell the player-client that the effect was removed
+                self.classified._gfEFEventStream:push_string(string.format("3;%i", ENAME_TO_ID[eName]))--;%.2f,%i", ENAME_TO_ID[eName], expTime, eData.stacks))
+            end
+        end
+    end
+
+    --GFDebugPrint(("%s removes %s"):format(tostring(self.inst), eName))
+end
+
+----------------------------------------------------
+--both-sides methods--------------------------------
+----------------------------------------------------
+
+function GFEffectable:GenerateHoverStrings(static)
+    local tmp1, tmp2 = {}, {}
+    
+    for eName, _ in pairs(self.effects) do
+        local eInst = ALL_EFFECTS[eName]
+        local type = eInst.type
+        if static then
+            if type == 3 then
+                table.insert(tmp1, GetEffectString(eName, "hover"))
+            elseif type == 4 then
+                table.insert(tmp2, GetEffectString(eName, "hover"))
+            end
+        else
+            if type == 1 then
+                table.insert(tmp1, GetEffectString(eName, "hover"))
+            elseif type == 2 then
+                table.insert(tmp2, GetEffectString(eName, "hover"))
+            end
+        end
+    end
+
+    if static then
+        self.hudInfo.affixString    = #tmp1 > 0 and table.concat(tmp1, ", ") or nil
+        self.hudInfo.enchantString  = #tmp2 > 0 and table.concat(tmp2, ", ") or nil
+    else
+        self.hudInfo.positiveString = #tmp1 > 0 and table.concat(tmp1, ", ") or nil
+        self.hudInfo.negativeString = #tmp2 > 0 and table.concat(tmp2, ", ") or nil
+    end
+end
+
+function GFEffectable:HasEffect(eName)
+    if self.inst.components.gfeffectable then
+        return self.inst.components.gfeffectable:HasEffect(eName)
+    else
+        return self.effects[eName] ~= nil
+    end
+end
+
+function GFEffectable:GetRemainTime(eName)
+    if self.inst.components.gfeffectable then
+        return self.inst.components.gfeffectable:GetRemainTime(eName)
+    else
+        return self.effects[eName] ~= nil and math.max(self.effects[eName].expirationTime - GetTime(), 0) or 0
+    end
+end
+
 
 return GFEffectable

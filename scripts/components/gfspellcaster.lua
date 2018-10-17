@@ -9,7 +9,7 @@ end
 local GFSpellCaster = Class(function(self, inst)
     self.inst = inst
     --full spell list, all non-passive spells will be added to the player's panel
-    --and will be checked with creature's brain (if creature is a caster)
+    --and will be checked with creature's brain (if the creature is a caster)
     self.spells = {} 
 
     self.spellsReadyTime = {}
@@ -240,7 +240,7 @@ function GFSpellCaster:GetValidAiSpell()
         end
     end
 
-    --creatures usually doesn't carry a weapon, but this allow to check it
+    --creatures usually doesn't carry a weapon, but this allows to check it
     --not used now... commented
     --[[if self.inst.components.inventory then
         local item = self.inst.components.inventory:GetEquippedItem(EQUIPSLOTS.HANDS)
@@ -262,11 +262,10 @@ end
 
 function GFSpellCaster:PreCastCheck(spellName)
     if spellName and spellList[spellName] then
-        local preCheck = spellList[spellName]:PreCastCheck(self.inst)
-        if not preCheck or type(preCheck) == "string" then
-            --if STRINGS.CHARACTERS.GENERIC[preCheck] then
+        local result, reason = spellList[spellName]:PreCastCheck(self.inst)
+        if not result then
             if self.inst.components.talker then
-                self.inst.components.talker:Say(GetActionFailString(self.inst, "GFCASTSPELL", preCheck or "GENERIC"), 2.5, false, true, false)
+                self.inst.components.talker:Say(GetActionFailString(self.inst, "GFCASTSPELL", reason or "GENERIC"), 2.5, false, true, false)
             end
 
             return false

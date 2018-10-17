@@ -43,10 +43,10 @@ local GFQuestDoer = Class(function(self, inst)
     self.completedQuests = {}
 
     --attaching classified on the server-side
-    if GFGetIsMasterSim() and inst.player_classified ~= nil then
+    if self.classified == nil and inst.player_classified ~= nil then
         self:AttachClassified(inst.player_classified)
     end
-
+    
     self._questGiver = nil
     self._questTracker = {}
     self._trackTask = nil

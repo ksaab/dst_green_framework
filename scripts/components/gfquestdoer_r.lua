@@ -137,8 +137,6 @@ local function DoDeserealizeInformerStream(classified)
 end
 
 local function DeserealizeInformerStream(classified)
-    if classified._parent == nil then return end
-    -- need to delay execution to keep in sync with DeserealizeEventStream result
     classified:DoTaskInTime(0, DoDeserealizeInformerStream)
 end
 

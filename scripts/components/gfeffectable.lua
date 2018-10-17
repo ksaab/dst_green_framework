@@ -1,6 +1,6 @@
 --Green Framework. Please, don't copy any files or functions from this mod, because it can break other mods based on the GF.
 
-local effectList = GFEffectList
+local ALL_EFFECTS = GFEffectList
 local affixList = GFEntitiesBaseAffixes
 
 local function RemoveEffectsOnDeath(inst)
@@ -68,7 +68,7 @@ end
 local function TryAddAffix(inst)
     local self = inst.components.gfeffectable
     if self and self.isNew then
-        for affixType, affixData in pairs(self.affixes) do
+        for affixType, affixData in pairs(affixList[inst.prefab]) do
             if math.random() < affixData.chance then
                 local aff = affixData.list[math.random(#(affixData.list))]
                 --GFDebugPrint(("Add [%s-type] affix [%s] to %s"):format(affixType, aff, tostring(self.inst)))
@@ -85,28 +85,19 @@ local GFEffectable = Class(function(self, inst)
 
     self.isNew = true
 
-    self.eliteChanceMult = 1
-    self.eliteEnabled = self.eliteChanceMult > 0
-    self.affixes = affixList[inst.prefab]
-
     --set data for effect fx
-    self.effectsfx = {}
     self.followSymbol = "body"
     self.followYOffset = -200
 
     self.isUpdating = false
-    
-    --inst:AddTag("gfeffectable")
-
-    inst:ListenForEvent("death", RemoveEffectsOnDeath)
 
     if inst.components.combat then
         SetFollowSymbol(self)
     end
-    if self.eliteEnabled and self.affixes ~= nil then
+
+    if affixList[inst.prefab] then
         inst:DoTaskInTime(0, TryAddAffix)
     end
-    --inst:StartUpdatingComponent(self)
 
     if inst:HasTag("player") then
         local function ListenOnce(inst)
@@ -117,6 +108,8 @@ local GFEffectable = Class(function(self, inst)
 
         inst:ListenForEvent("gfplayerisready", ListenOnce)--, TheWorld)
     end
+
+    inst:ListenForEvent("death", RemoveEffectsOnDeath)
 end)
 
 function GFEffectable:ChangeResist(resist, value)
@@ -133,11 +126,6 @@ function GFEffectable:GetResist(resist)
 end
 
 function GFEffectable:CheckResists(effect)
-    if effect.checkfn and not effect:checkfn(self.inst) then  --effect check (maybe the target doesn't have the required component)
-        --GFDebugPrint(("GFEffectable: effects %s can not be applied to %s"):format(effect.name, tostring(self.inst)))
-        return false
-    end
-    
     if not effect.ignoreResist then --check for resists
         for tag, value in pairs(effect.tags) do
             if self.resists[tag] and self.resists[tag] ~= 0 then
@@ -153,172 +141,145 @@ function GFEffectable:CheckResists(effect)
     return true
 end
 
-function GFEffectable:ApplyEffect(effectName, effectParam)
-    local effectLink = effectList[effectName]
-    if effectLink == nil then 
-        --effect isn't valid
-        --GFDebugPrint(("GFEffectable: effect with name %s not found"):format(effectName))
-        return false
-    end
+function GFEffectable:ApplyEffect(eName, eParams)
+    if eName == nil or ALL_EFFECTS[eName] == nil or not ALL_EFFECTS[eName]:Check(self.inst) then return false end
 
-    effectParam = effectParam or {} --set to empty if nil
-    local effect
+    eParams = eParams or {} --set to empty if nil
+    local eInst = ALL_EFFECTS[eName]
 
-    if self.effects[effectName] then
+    if self.effects[eName] ~= nil then
         --effect already exists on entity
-        effect = self.effects[effectName]
-        if not effect.nonRefreshable --not all effects are refresheable
-            and self:CheckResists(effect) --check resists and other stuff
-        then 
-            effect:Refresh(self.inst, effectParam)
-            if not effect.aura then
-                if not effect.static then
-                    self.inst:PushEvent("gfeffectrefreshed", {effect = effect})
-                end
-                
-                self.inst.replica.gfeffectable:UpdateEffectsList()
+        local eData = self.effects[eName]
+        if eInst.nonRefreshable then return false end --not all effects are refresheable --and self:CheckResists(effect) --check resists and other stuff
 
-                --update user interface for host, clients call this from the replica 
-                if self.inst == GFGetPlayer() and effect.hudonrefreshfn then
-                    effect:hudonrefreshfn(self.inst)
-                end
-            end
+        eInst:Refresh(self.inst, eData, eParams) --refreshing the existing effect
+        if not eInst.static then self.inst:PushEvent("gfEFEffectRefreshed", {eName = eName, eData = eData}) end
 
-            return true
+        GFDebugPrint(("%s refreshes %s"):format(tostring(self.inst), eName))
+        self.inst.replica.gfeffectable:RefreshEffect(eName)
+    else--if self:CheckResists(effect) then
+        local eData = {}
+        self.effects[eName] = eData
+        eInst:Apply(self.inst, self.effects[eName], eParams)
+        if not eInst.static then self.inst:PushEvent("gfEFEffectApplied", {eName = eName, eData = eData}) end
+
+        if not eInst.static then --static effects are permanent modificators, so don't need to update
+            self.inst:StartUpdatingComponent(self)
+            self.isUpdating = true
         end
-    else
-        --applying the new effect
-        effect = effectLink(effectParam)
-        if self:CheckResists(effect) then --check resists and other stuff
-            effect:Apply(self.inst, effectParam)
-            self.effects[effectName] = effect
-            if not effect.static then
-                self.inst:PushEvent("gfeffectapplied", {effect = effect})
-            end
-            self.inst.replica.gfeffectable:UpdateEffectsList()
 
-            if effect.applyPrefab then
-                local fx = SpawnPrefab(effect.applyPrefab)
-                if fx and fx.Follower ~= nil then
-                    local yof = effect.applyPrefabOffset and self.followYOffset or 0
-                    fx.Transform:SetPosition(self.inst.Transform:GetWorldPosition())
-                    fx.Follower:FollowSymbol(self.inst.GUID, self.followSymbol, 0, yof + (fx.yOffset or 0), 0)
-                    fx.entity:SetParent(self.inst.entity)
-                    if fx.ApplyFX ~= nil then
-                        fx:ApplyFX()
-                    end
-                elseif fx ~= nil then
-                    fx:DoTaskInTime(0, fx.Remove)
+        if eInst.fx ~= nil then
+            local obj = SpawnPrefab(eInst.fx)
+            if obj ~= nil then
+                if obj.Follower ~= nil then
+                    obj.Follower:FollowSymbol(self.inst.GUID, self.followSymbol, 0, self.followYOffset, 0)
+                    eData.fx = obj
+                else
+                    obj:Remove()
                 end
             end
-
-            if effect.followPrefab then
-                local fx = SpawnPrefab(effect.followPrefab)
-                if fx and fx.Follower ~= nil then
-                    local yof = effect.followPrefabOffset and self.followYOffset or 0
-                    fx.Transform:SetPosition(self.inst.Transform:GetWorldPosition())
-                    fx.Follower:FollowSymbol(self.inst.GUID, self.followSymbol, 0, yof + (fx.yOffset or 0), 0)
-                    fx.entity:SetParent(self.inst.entity)
-                    self.effectsfx[effectName] = fx
-                    if fx.StartFollowFX ~= nil then
-                        fx:StartFollowFX()
-                    end
-                elseif fx ~= nil then
-                    fx:DoTaskInTime(0, fx.Remove)
-                end
-            end
-
-            --update user interface for host, clients call this from the replica 
-            if self.inst == GFGetPlayer() and effect.hudonapplyfn then
-                effect:hudonapplyfn(self.inst)
-            end
-
-            if not effect.static--[[ and not self.isUpdating]] then --static effects are permanent modificators, so don't need to update
-                self.inst:StartUpdatingComponent(self)
-                self.isUpdating = true
-            end
-
-            return true
         end
+
+        GFDebugPrint(("%s now is affected by %s"):format(tostring(self.inst), eName))
+        self.inst.replica.gfeffectable:ApplyEffect(eName)
     end
-
-    return false
+    
+    return true
 end
 
---this wasn't tested, but should work
-function GFEffectable:ConsumeStacks(effectName, value)
-    if effectName == nil or self.effects[effectName] == nil then return end
-    self.effects[effectName]:ConsumeStack(inst, value)
-    if self.effects[effectName] ~= nil then
-        self.inst.replica.gfeffectable:UpdateEffectsList()
-        if self.effects[effectName].hudonrefreshfn then
-            self.effects[effectName]:hudonrefreshfn(self.inst)
-        end
-    end
+function GFEffectable:ConsumeStacks(eName, value)
+    if eName == nil or ALL_EFFECTS[eName] == nil or self.effects[eName] == nil then return false end
+
+    local eInst = ALL_EFFECTS[eName]
+    eInst:ConsumeStacks(self.inst, self.effects[eName], value or 1)
 end
 
-function GFEffectable:RemoveEffect(effectName, reason)
-    reason = reason or "expire"
+function GFEffectable:RemoveEffect(eName, reason)
+    if eName == nil or ALL_EFFECTS[eName] == nil or self.effects[eName] == nil then return false end
 
-    local effect = self.effects[effectName]
-    if effect == nil then return end --effect doesn't exist on entity
+    reason = reason or "unknown"
+    local eInst = ALL_EFFECTS[eName]
+    local eData = self.effects[eName]
 
-    if self.effectsfx[effectName] and self.effectsfx[effectName]:IsValid() then
-        if self.effectsfx[effectName].StopFollowFX and reason ~= "death" then
-            self.effectsfx[effectName]:StopFollowFX()
-        else
-            self.effectsfx[effectName]:Remove()
-        end
-        self.effectsfx[effectName] = nil
-    end
+    --killing fx
+    if eData.fx ~= nil and eData.fx:IsValid() then eData.fx:Remove() end
 
-    effect:Remove(self.inst)
-    self.effects[effectName] = nil
-    self.inst.replica.gfeffectable:UpdateEffectsList()
+    eInst:Remove(self.inst, eData, reason)
+    self.effects[eName] = nil
+    self.inst.replica.gfeffectable:RemoveEffect(eName)
+    if not eInst.static then self.inst:PushEvent("gfEFEffectRemoved", {eName = eName, reason = reason}) end
 
-    --update user interface for host, clients call this from the replica 
-    if self.inst == GFGetPlayer() and effect.hudonremovefn then
-        effect:hudonremovefn(self.inst)
-    end
-
-    if not effect.static then
-        self.inst:PushEvent("gfeffectremoved", {effect = effect, reason = reason}) 
-    end
+    GFDebugPrint(("%s is no longer affected by %s, reason %s "):format(tostring(self.inst), eName, reason))
 end
 
 function GFEffectable:RemoveAllEffects(removeStatic, reason)
-    for effectName, effect in pairs(self.effects) do
-        if removeStatic or not effect.static then
-            self:RemoveEffect(effectName, reason)
+    for eName, _ in pairs(self.effects) do
+        local eInst = ALL_EFFECTS[eName]
+        if removeStatic or not eInst.static then
+            self:RemoveEffect(eName, reason)
         end
     end
 end
 
 function GFEffectable:RemoveAllEffectsWithTag(tag, reason)
-    if tag == nil then return end
-    for effectName, effect in pairs(self.effects) do
-        if effect.tags[tag] ~= nil then
-            self:RemoveEffect(effectName, reason)
+    if tag == nil then return false end
+
+    for eName, _ in pairs(self.effects) do
+        if ALL_EFFECTS[eName]:HasTag(tag) then
+            self:RemoveEffect(eName, reason)
         end
     end
 end
 
-function GFEffectable:EffectExists(effectName)
-    if effectName == nil then return end
-    return self.effects[effectName] or false
+function GFEffectable:GetTimer(eName)
+    if eName ~= nil and self.effects[eName] ~= nil then
+        local eData = self.effects[eName]
+        return math.max(0, eData.expirationTime - GetTime()), eData.expirationTime - eData.applicationTime
+    end
+
+    return 0, 0
 end
 
-function GFEffectable:EffectRemainTime(effectName)
-    if effectName == nil then return end
-    return self.effects[effectName] and math.max(0, self.effects[effectName].expirationTime - GetTime()) or 0
+--[[ function GFEffectable:GetRemainTime(eName)
+    if eName ~= nil and self.effects[eName] ~= nil then
+        return math.max(0, self.effects[eName].expirationTime - GetTime())
+    end
+
+    return 0
+end ]]
+
+function GFEffectable:GetStacks(eName)
+    if eName ~= nil and self.effects[eName] ~= nil then
+        return self.effects[eName].stacks
+    end
+
+    return 0
 end
 
-function GFEffectable:GetEffectsCount()
+function GFEffectable:HasEffect(eName)
+    return eName ~= nil and self.effects[eName] ~= nil or false
+end
+
+function GFEffectable:HasEffectWithTag(tag)
+    if tag == nil then return false end
+
+    for eName, _ in pairs(self.effects) do
+        if ALL_EFFECTS[eName]:HasTag(tag) then
+            return true, eName
+        end
+    end
+end
+
+function GFEffectable:GetRemainTime(eName)
+    return self:HasEffect(eName) and math.max(0, self.effects[eName].expirationTime - GetTime()) or 0
+end
+
+function GFEffectable:GetNumberEffects()
     local all = 0
     local nonStatic = 0
-    for effectName, effect in pairs(self.effects) do
+    for eName, _ in pairs(self.effects) do
         all = all + 1
-        if not effect.static then
+        if not ALL_EFFECTS[eName].static then
             nonStatic = nonStatic + 1
         end
     end
@@ -326,21 +287,25 @@ function GFEffectable:GetEffectsCount()
     return all, nonStatic
 end
 
+--------------------------------------------------------
+--ingame methods----------------------------------------
+--------------------------------------------------------
+
 function GFEffectable:OnUpdate(dt)
     local currTime = GetTime()
     local needToStopUpdating = true
-    for effectName, effect in pairs(self.effects) do
-        if effect.updateable then
-            --call the effect onupdate funtion when it's needed
-            if currTime >= effect.updateTime then
-                effect:Update(self.inst)
-                effect.updateTime = currTime + effect.tickPeriod
+    for eName, eData in pairs(self.effects) do
+        local eInst = ALL_EFFECTS[eName]
+        if eInst.updateable then
+            --call the effect the onupdate function when it's needed
+            if currTime >= eData.nextTick then
+                eInst:Update(self.inst, eData)
             end
         end
 
-        if not effect.static then
-            if currTime >= effect.expirationTime then
-                self:RemoveEffect(effectName, "expire")
+        if not eInst.static then
+            if currTime >= eData.expirationTime then
+                self:RemoveEffect(eName, "expire")
             end
             needToStopUpdating = false
         end
@@ -353,17 +318,17 @@ function GFEffectable:OnUpdate(dt)
 end
 
 function GFEffectable:OnEntitySleep()
-    for effectName, effect in pairs(self.effects) do
-        if effect.aura then
-            effect:OnSleep(self.inst)
+    for eName, eData in pairs(self.effects) do
+        if ALL_EFFECTS[eName].sleeper then
+            ALL_EFFECTS[eName]:OnSleep(self.inst, eData)
         end
     end
 end
 
 function GFEffectable:OnEntityWake()
-    for effectName, effect in pairs(self.effects) do
-        if effect.aura then
-            effect:OnWake(self.inst)
+    for eName, eData in pairs(self.effects) do
+        if ALL_EFFECTS[eName].sleeper then
+            ALL_EFFECTS[eName]:OnWake(self.inst, eData)
         end
     end
 end
@@ -371,15 +336,15 @@ end
 function GFEffectable:OnSave(data)
     local savetable = {}
     local currTime = GetTime()
-    for effectName, effect in pairs(self.effects) do
-        if effect.savable then
-            local remain = effect.expirationTime - currTime
-            if effect.static or (effect.expirationTime ~= nil and remain > 0) then
-                savetable[effectName] = 
+    for eName, eData in pairs(self.effects) do
+        local eInst = ALL_EFFECTS[eName]
+        if eInst.savable then
+            local remain = eData.expirationTime - currTime
+            if eInst.static or (eData.expirationTime ~= nil and remain > 0) then
+                savetable[eName] = 
                 {
                     remain = remain,
-                    --total = effect.expirationTime - effect.applicationTime,
-                    stacks = effect.stacks,
+                    stacks = eData.stacks,
                 }
             end
         end
@@ -392,11 +357,11 @@ function GFEffectable:OnLoad(data)
     self.isNew = false
     if data ~= nil and data.savedata ~= nil then 
         local savedata = data.savedata
-        for k, v in pairs(savedata) do
-            self:ApplyEffect(k, 
+        for eName, eData in pairs(savedata) do
+            self:ApplyEffect(eName, 
                 {
-                    duration = v.remain, 
-                    stacks = v.stacks,
+                    duration = eData.remain, 
+                    stacks = eData.stacks,
                 })
         end
     end
@@ -405,10 +370,12 @@ end
 function GFEffectable:GetDebugString()
     local currTime = GetTime()
     local str = {}
-    for effectName, effect in pairs(self.effects) do
-        local timer = effect.static and "static" or string.format("%.2f/%.2f", 
-            effect.expirationTime - currTime, effect.expirationTime - effect.applicationTime)
-        table.insert(str, string.format("[%s(%i) %s]", effectName, effect.stacks, timer))
+    for eName, dData in pairs(self.effects) do
+        local timer = ALL_EFFECTS[eName].static 
+            and "static" 
+            or string.format("%.2f/%.2f", 
+                dData.expirationTime - currTime, dData.expirationTime - dData.applicationTime)
+        table.insert(str, string.format("[%s(%i) %s]", eName, dData.stacks, timer))
     end
 
     local res = {}
@@ -423,8 +390,8 @@ function GFEffectable:GetDebugString()
         resstr = "none"
     end
 
-    local a, n = self:GetEffectsCount()
-    return string.format("upd: %s effects %i (%i): %s, resists: %s", tostring(self.isUpdating), a, n, table.concat(str, ", "), resstr)
+    local a, n = self:GetNumberEffects()
+    return string.format("%s effects %i (%i): %s, resists: %s", tostring(self.isUpdating), a, n, table.concat(str, ", "), resstr)
 end
 
 

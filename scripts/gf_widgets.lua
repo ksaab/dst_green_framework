@@ -15,14 +15,20 @@ AddClassPostConstruct( "widgets/controls", function(self)
 	--[[init new widgets]]
 	local owner = self.owner
 	if owner == nil or owner ~= _G.GFGetPlayer() then return end
+	local EffectsPanel = require "widgets/gf_effects_panel"
+	self.gf_buffPanel = self.bottom_root:AddChild( EffectsPanel(owner) )
+	self.gf_buffPanel:SetPanel(-450, 150, true, 65)
+
+	self.gf_debuffPanel = self.bottom_root:AddChild( EffectsPanel(owner) )
+	self.gf_debuffPanel:SetPanel(450, 150, false, -65)
 	--positive effects panel
-	local BuffPanel = require "widgets/gf_buffpanel"
-	self.gf_buffPanel = self.bottom_root:AddChild( BuffPanel(owner) )
-	self.gf_buffPanel:SetPosition(-450, 150, 0)
+	--local BuffPanel = require "widgets/gf_buffpanel"
+	--self.gf_buffPanel = self.bottom_root:AddChild( BuffPanel(owner) )
+	--self.gf_buffPanel:SetPosition(-450, 150, 0)
 	--negative effects panel
-	local DebuffPanel = require "widgets/gf_debuffpanel"
-	self.gf_debuffPanel = self.bottom_root:AddChild( DebuffPanel(owner) )
-	self.gf_debuffPanel:SetPosition(450, 150, 0)
+	--local DebuffPanel = require "widgets/gf_debuffpanel"
+	--self.gf_debuffPanel = self.bottom_root:AddChild( DebuffPanel(owner) )
+	--self.gf_debuffPanel:SetPosition(450, 150, 0)
 	--spell panel
 	local SpellPanel = require "widgets/gf_spellpanel"
 	self.gf_spellPanel = self.bottom_root:AddChild( SpellPanel(owner) )
@@ -54,6 +60,13 @@ AddClassPostConstruct( "widgets/controls", function(self)
 	else
 		print(owner, "doesn't have the effectable relpica...")
 	end ]]
+
+	local PanelOne = require "widgets/gf_effects_panel"
+	self.PanelOne = self.bottom_root:AddChild( PanelOne(owner) )
+	self.PanelOne:SetPanel(-450, 150, true, 65)
+
+	self.PanelTwo = self.bottom_root:AddChild( PanelOne(owner) )
+	self.PanelTwo:SetPanel(450, 150, false, -65)
 
 	--[[show/hide spell panel]]
 	local _oldShowCraftingAndInventory = self.ShowCraftingAndInventory

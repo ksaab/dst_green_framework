@@ -87,7 +87,7 @@ STRINGS.GF.QUEST_DIALOGS =
     GF_DIALOG_TEST = "It's a test dialog",
     DEFAULT = "Hello, can you help me?",
     PIGMAN_DEFAULT = "Oink. Oink-oink! Oink. Oink-oink! Oink. Oink-oink! Oink. Oink-oink! Oink. Oink-oink! Oink. Oink-oink! Oink. Oink-oink! Oink. Oink-oink! Oink. Oink-oink! Oink. Oink-oink! Oink. Oink-oink! Oink. Oink-oink!",
-    SKELETON_DEFAULT = "Еhe skeleton looks at you with empty eyes",
+    SKELETON_DEFAULT = "The skeleton looks at you with empty eyes",
 }
 
 STRINGS.CHARACTERS.GENERIC.QUEST_REMINDERS = 

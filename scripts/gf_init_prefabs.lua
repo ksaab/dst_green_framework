@@ -37,17 +37,32 @@ AddPrefabPostInit("player_classified", function(inst)
     inst._gfQSEventStream = _G.net_strstream(inst, "_GFQuestDoer._gfQSEventStream", "gfQSEventDirty")
     inst._gfQSInfoStream = _G.net_strstream(inst, "_GFQuestDoer._gfQSInfoStream", "gfQSInfoDirty")
 
+    --effects
+    inst._gfEFEventStream = _G.net_strstream(inst, "GFEffectable._gfEFEventStream", "gfEFEventDirty")
+
     local _oldOnEntityReplicated = nil
     if inst.OnEntityReplicated ~= nil then
         _oldOnEntityReplicated = inst.OnEntityReplicated
         inst.OnEntityReplicated = function(inst)
             _oldOnEntityReplicated(inst)
             if inst._parent ~= nil then
+                for k, v in pairs(inst._parent.replica._) do
+                    print(k, v)
+                end
+                if inst._parent.replica.gfeffectable ~= nil then
+                    inst._parent.replica.gfeffectable:AttachClassified(inst)
+                else
+                    print("PANIC: no replica for gfeffectable")
+                end
                 if inst._parent.replica.gfspellcaster ~= nil then
                     inst._parent.replica.gfspellcaster:AttachClassified(inst)
+                else
+                    print("PANIC: no replica for gfspellcaster")
                 end
                 if inst._parent.components.gfquestdoer ~= nil then
                     inst._parent.components.gfquestdoer:AttachClassified(inst)
+                else
+                    print("PANIC: no replica for gfquestdoer")
                 end
             end
         end

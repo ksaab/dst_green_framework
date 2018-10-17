@@ -9,7 +9,7 @@ end
 
 local Spell = Class(function(self, name)
     --both side
-    self.name = name or "name_not_setted" --spell name
+    self.name = name --spell name
     self.title = nil --a title for the hoverer widget
     --self.description = nil --not used
     self.iconAtals = nil
@@ -62,8 +62,6 @@ local Spell = Class(function(self, name)
                                 --args (self, caster, target, pos)
     self.aicheckfn = nil    --AI call this fn from the brain
                             --args (self, caster)
-
-    GFDebugPrint(("Spell: spell %s created"):format(self.name))
 end)
 
 
@@ -134,7 +132,8 @@ function Spell:PreCastCheck(inst)
     end ]]
     
     if self.preCastCheckFn then
-        return self:preCastCheckFn(inst)
+        local result, reason = self:preCastCheckFn(inst)
+        return result, reason
     end
 
     return true

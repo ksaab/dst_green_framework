@@ -58,8 +58,8 @@ local GFSpellCaster = Class(function(self, inst)
     self.spellsRechargeDuration = {}
 
     --attaching classified on the server-side
-    if GFGetIsMasterSim() and inst.player_classified ~= nil then
-        self.classified = inst.player_classified
+    if self.classified == nil and inst.player_classified ~= nil then
+        self:AttachClassified(inst.player_classified)
     end
 end)
 
@@ -191,13 +191,10 @@ end
 function GFSpellCaster:PreCastCheck(spellName)
     if spellName and spellList[spellName] then
         local preCheck = spellList[spellName]:PreCastCheck(self.inst)
-        if not preCheck or type(preCheck) == "string" then
+        local result, reason = spellList[spellName]:PreCastCheck(self.inst)
+        if not result then
             if self.inst.components.talker then
-                if type(preCheck) == "string" then
-                    self.inst.components.talker:Say(GetActionFailString(self.inst, "GFCASTSPELL", preCheck or "GENERIC"), 2.5, false, true, false)
-                else
-                    self.inst.components.talker:Say(GetActionFailString(self.inst, "GFCASTSPELL", "GENERIC"), 2.5, false, true, false)
-                end
+                self.inst.components.talker:Say(GetActionFailString(self.inst, "GFCASTSPELL", reason or "GENERIC"), 2.5, false, true, false)
             end
 
             return false
