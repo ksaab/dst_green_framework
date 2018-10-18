@@ -44,8 +44,6 @@ end)
 ACTIONS.GFCASTSPELL.distance = math.huge
 ACTIONS.GFCASTSPELL.priority = 10
 ACTIONS.GFCASTSPELL.instant = false
---ACTIONS.GFCASTSPELL.forced = true
---ACTIONS.GFCASTSPELL.canforce = true
 STRINGS.ACTIONS.GFCASTSPELL = STRINGS.ACTIONS._GFCASTSPELL
 ACTIONS.GFCASTSPELL.strfn = function(act)
     local spell = act.doer.components.gfspellpointer and act.doer.components.gfspellpointer.currentSpell or nil
@@ -193,69 +191,6 @@ AddAction("GFTALKFORQUEST", STRINGS.ACTIONS.GFTALKFORQUEST, function(act)
 
     return true
 end)
-
---[[ AddAction("GFTALKFORQUEST", STRINGS.ACTIONS.GFTALKFORQUEST, function(act)
-    local giver = act.target
-    local doer = act.doer
-
-    if giver ~= nil 
-        and doer.components.gfquestdoer ~= nil
-        and giver.components.gfquestgiver ~= nil
-        and (not giver.components.health or not giver.components.health:IsDead())
-        --and (not giver.components.health or not giver.components.health:IsDead())
-    then
-        --check is character is busy
-        if giver.components.combat ~= nil and giver.components.combat.target ~= nil then
-            if doer.components.talker then
-                doer.components.talker:Say(GetActionFailString(doer, "GFTALKFORQUEST", "TARGETBUSY"))
-            end
-
-            return true --don't want to make player saying "can't do that"
-        end
-
-        local giveComp = giver.components.gfquestgiver
-        local doerComp = doer.components.gfquestdoer
-
-        --checking completed quests
-        local cList = giveComp.questCompleteList --all quests which the target are able to complete
-        for qName, qData in pairs(doerComp.currentQuests) do
-            if qData.done and cList[qName] ~= nil then
-                --GFDebugPrint(string.format("%s completes the quest %s for %s", tostring(giver), tostring(quest), tostring(doer)))
-                doer.components.gfquestdoer:CompleteQuest(qName, giver)
-
-                return true --don't want to make player saying "can't do that"
-            end
-        end
-
-        --there are not completed quest, looking for one to offer
-        local quest = giver.components.gfquestgiver:PickQuest(doer)
-        if quest ~= nil then
-            --checking for a free quest slot in player's journal
-            if doer.components.gfquestdoer:GetQuestsNumber() >= TUNING.GW.QUESTS.MAX_QUESTS then
-                if doer.components.talker then
-                    doer.components.talker:Say(GetActionFailString(doer, "GFTALKFORQUEST", "TOMANYQUESTS"))
-                end
-    
-                return true --don't want to make player saying "can't do that"
-            end
-            --find a good one, offering
-            --GFDebugPrint(string.format("%s offers the quest %s to %s", tostring(giver), tostring(quest), tostring(doer)))
-            doer.components.gfquestdoer:OfferQuest(nil, quest, giver)
-           -- doer.components.gfquestdoer:TrackGiver(giver) --tracking giver
-
-            return true --don't want to make player saying "can't do that"
-        else
-            --this character can't give or pass the quest
-            if doer.components.talker then
-                doer.components.talker:Say(GetActionFailString(doer, "GFTALKFORQUEST", "NOQUESTS"))
-            end
-
-            return true --don't want to make player saying "can't do that"
-        end
-    end
-
-    return false
-end) ]]
 
 ACTIONS.GFTALKFORQUEST.distance = 10
 ACTIONS.GFTALKFORQUEST.priority = 10
