@@ -74,8 +74,6 @@ local QuestJournalScreen = Class(Screen, function(self, owner)
     if self.owner.components.gfquestdoer == nil then print("QuestJournalScreen: gfquestdoer component isn't valid!") return end
     
     self.strings = {}
-    --local hasQuests = true
-    --for i = 1, 25 do self.strings[i] = "string number " .. tostring(i) end
     
     local hasQuests = false
     local i = 1
@@ -84,8 +82,10 @@ local QuestJournalScreen = Class(Screen, function(self, owner)
         if ALL_QUESTS[qName] ~= nil then
             self.strings[i] = 
             {
-                ALL_QUESTS[qName]:GetTitleString(self.owner),
-                ALL_QUESTS[qName]:GetStatusString(self.owner) or INVALID_TEXT,
+                GetQuestString(self.owner, qName, "title"),
+                string.format(GetQuestString(self.owner, qName, "status"), 
+                    unpack(ALL_QUESTS[qName]:GetStatusData(self.owner))
+                ),
                 v.status + 1,
                 qName,
             }

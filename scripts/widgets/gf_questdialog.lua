@@ -185,9 +185,9 @@ function QuestDialog:ShowChoiseDialog(data)
             lines[i] = window:AddChild(TEMPLATES.StandardButton(
                 function() 
                     self:CloseDialog()
-                    self.owner:PushEvent("gfQSCompleteDialogPush", {qName = _q:GetName(self.owner)}) 
+                    self.owner:PushEvent("gfQSCompleteDialogPush", {qName = cQuests[i]}) 
                 end, 
-                _q:GetTitleString(self.owner), 
+                GetQuestString(self.owner, cQuests[i], "title"), 
                 {200, 40}
             ))
             offset = offset - 30
@@ -204,9 +204,9 @@ function QuestDialog:ShowChoiseDialog(data)
             lines[i] = window:AddChild(TEMPLATES.StandardButton(
                 function() 
                     self:CloseDialog()
-                    self.owner:PushEvent("gfQSDialogPush", {qName = _q:GetName(self.owner)}) 
+                    self.owner:PushEvent("gfQSDialogPush", {qName = gQuests[j]}) 
                 end, 
-                _q:GetTitleString(self.owner), 
+                GetQuestString(self.owner, gQuests[j], "title"),  
                 {200, 40}
             ))
             offset = offset - 30
@@ -249,9 +249,12 @@ function QuestDialog:ShowAcceptDialog(data)
     window.title:Show()
     window.body:Show()
     window.goal:Show()
-    window.title:SetString(qData:GetTitleString(self.owner))
+    window.title:SetString(GetQuestString(self.owner, qName, "title"))
+    window.body:SetString(GetQuestString(self.owner, qName, "desc"))
+    window.goal:SetString(GetQuestString(self.owner, qName, "goal"))
+    --[[ window.title:SetString(qData:GetTitleString(self.owner))
     window.body:SetString(qData:GetDescriptionString(self.owner))
-    window.goal:SetString(qData:GetGoalString(self.owner))
+    window.goal:SetString(qData:GetGoalString(self.owner)) ]]
 end
 
 function QuestDialog:ShowCompleteDialog(data)
@@ -277,8 +280,8 @@ function QuestDialog:ShowCompleteDialog(data)
 
     window.title:Show()
     window.body:Show()
-    window.title:SetString(qData:GetTitleString(self.owner))
-    window.body:SetString(qData:GetCompletionString(self.owner))
+    window.title:SetString(GetQuestString(self.owner, qName, "title"))
+    window.body:SetString(GetQuestString(self.owner, qName, "completion"))
 end
 
 

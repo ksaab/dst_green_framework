@@ -43,12 +43,11 @@ local QuestInformer = Class(Widget, function(self, owner)
 end)
 
 function QuestInformer:RefreshLines(data)
-    if data == nil then return end
+    if data == nil or data.qName == nil then return end
 
-    local qTitle = ALL_QUESTS[data.qName]:GetTitleString(self.owner)
     local qString = data.qEvent ~= nil 
         and (QEVENTS[data.qEvent + 1] or STRINGS.GF.HUD.ERROR)
-        or ALL_QUESTS[data.qName]:GetStatusString(self.owner)
+        or GetQuestString(self.owner, data.qName, "status")
     for i = self.lineCount, 2, -1 do
         local str = self.textLines[i - 1]:GetString()
         if str ~= "" then
@@ -64,7 +63,10 @@ function QuestInformer:RefreshLines(data)
         self:StartUpdating()
     end
 
-    local str = string.format("%s - %s", qTitle, qString)
+    local str = string.format("%s - %s", 
+        GetQuestString(self.owner, data.qName, "title"), 
+        string.format(qString, unpack(ALL_QUESTS[data.qName]:GetStatusData(self.owner)))
+    )
     local line = self.textLines[1]
     line:SetString(str)
     line:Show()

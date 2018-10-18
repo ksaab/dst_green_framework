@@ -68,36 +68,12 @@ function Quest:Abandon(doer)
     GFDebugPrint(("%s has abandoned the quest — %s!"):format(tostring(doer), self.name))
 end
 
-function Quest:GetStatusString(doer)
-    return self.StatusStringFn ~= nil and self:StatusStringFn(doer) or STRINGS.GF.HUD.ERROR
+function Quest:GetStatusData(doer)
+    return self.StatusDataFn ~= nil and self:StatusDataFn(doer) or {}
 end
 
-function Quest:GetTitleString(doer)
-    return self.GetTitleFn ~= nil and self:GetTitleFn(doer) or (self.title or INVALID_TITLE)
-end
-
-function Quest:GetDescriptionString(doer)
-    return self.GetDescriptionFn ~= nil and self:GetDescriptionFn(doer) or (self.description or INVALID_TEXT)
-end
-
-function Quest:GetCompletionString(doer)
-    return self.GetCompletionFn ~= nil and self:GetCompletionFn(doer) or (self.completion or INVALID_TEXT)
-end
-
-function Quest:GetGoalString(doer)
-    return self.goaltext
-end
-
-function Quest:GetRewardString(doer)
-    return self.reardstr
-end
-
-function Quest:GetName(doer)
+function Quest:GetName()
     return self.name
-end
-
-function Quest:GetID()
-    return self.id
 end
 
 function Quest:OnSave(doer, data)

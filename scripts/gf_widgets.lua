@@ -8,87 +8,38 @@ local STRINGS = _G.STRINGS
 local defaultLMBAction = STRINGS.GF.HUD.CONTROLLER_DEFAULTS.LMB
 local defaultRMBAction = STRINGS.GF.HUD.CONTROLLER_DEFAULTS.RMB
 
+--screens
+local PopJournal = require "screens/gf_questjournal"
+
+--widgets
+local EffectsPanel = require "widgets/gf_effects_panel"
+local SpellPanel = require "widgets/gf_spellpanel"
+local QuestDialog = require "widgets/gf_questdialog"
+local QuestInformer = require "widgets/gf_questinformer"
+local ImageButton = require "widgets/imagebutton"
+
 --icons for effects
 AddClassPostConstruct( "widgets/controls", function(self)
 	print("Init widgets for", self.owner)
-
 	--[[init new widgets]]
 	local owner = self.owner
 	if owner == nil or owner ~= _G.GFGetPlayer() then return end
-	local EffectsPanel = require "widgets/gf_effects_panel"
-	self.gf_buffPanel = self.bottom_root:AddChild( EffectsPanel(owner) )
-	self.gf_buffPanel:SetPanel(-450, 150, true, 65)
+	
+	self.gfBuffPanel = self.bottom_root:AddChild(EffectsPanel(owner))
+	self.gfBuffPanel:SetPanel(-450, 150, true, 65)
+	self.gfDebuffPanel = self.bottom_root:AddChild(EffectsPanel(owner))
+	self.gfDebuffPanel:SetPanel(450, 150, false, -65)
 
-	self.gf_debuffPanel = self.bottom_root:AddChild( EffectsPanel(owner) )
-	self.gf_debuffPanel:SetPanel(450, 150, false, -65)
-	--positive effects panel
-	--local BuffPanel = require "widgets/gf_buffpanel"
-	--self.gf_buffPanel = self.bottom_root:AddChild( BuffPanel(owner) )
-	--self.gf_buffPanel:SetPosition(-450, 150, 0)
-	--negative effects panel
-	--local DebuffPanel = require "widgets/gf_debuffpanel"
-	--self.gf_debuffPanel = self.bottom_root:AddChild( DebuffPanel(owner) )
-	--self.gf_debuffPanel:SetPosition(450, 150, 0)
-	--spell panel
-	local SpellPanel = require "widgets/gf_spellpanel"
-	self.gf_spellPanel = self.bottom_root:AddChild( SpellPanel(owner) )
-	--quest dialog
-	local QuestDialog = require "widgets/gf_questdialog"
-	self.gf_questDialog = self:AddChild( QuestDialog(owner) )
-	--quest informer
-	local QuestInformer = require "widgets/gf_questinformer"
-	self.gf_questInformer = self.top_root:AddChild( QuestInformer(owner) ) 
-	--journal button
-	--local JournalButton = require "widgets/gf_journalbutton"
-	--self.mapcontrols.gf_questInformer = self.mapcontrols:AddChild( JournalButton(owner) )
+	self.inv.gfSpellPanel = self.inv:AddChild(SpellPanel(owner))
 
-	local ImageButton = require "widgets/imagebutton"
-	local PopJournal = require "screens/gf_questjournal"
-	self.mapcontrols.gf_journalbutton = self.mapcontrols:AddChild(ImageButton("images/gfquestjournal.xml", "journalbutton.tex", "journalbutton.tex", nil, nil, nil, {1,1}, {0,0}))
-	self.mapcontrols.gf_journalbutton:SetOnClick(function() _G.TheFrontEnd:PushScreen(PopJournal(self.owner)) end)
-	self.mapcontrols.gf_journalbutton:SetScale(0.8)
-	self.mapcontrols.gf_journalbutton:SetPosition(0, 80)
-	self.mapcontrols.gf_journalbutton:SetTooltip(STRINGS.GF.HUD.JOURNAL.BUTTONS.OPEN_JOURNAL)
-	--updating effects hud data
-	--[[ if owner.replica.gfeffectable then
-		print("Effectable replica exists, updating hud effects on", owner)
-		for k, v in pairs(owner.replica.gfeffectable.effects) do
-			if v.hudonapplyfn then
-				v:hudonapplyfn(owner)
-			end
-		end
-	else
-		print(owner, "doesn't have the effectable relpica...")
-	end ]]
+	self.gfQuestDialog = self:AddChild(QuestDialog(owner))
+	self.gfQuestInformer = self.top_root:AddChild(QuestInformer(owner)) 
 
-	local PanelOne = require "widgets/gf_effects_panel"
-	self.PanelOne = self.bottom_root:AddChild( PanelOne(owner) )
-	self.PanelOne:SetPanel(-450, 150, true, 65)
-
-	self.PanelTwo = self.bottom_root:AddChild( PanelOne(owner) )
-	self.PanelTwo:SetPanel(450, 150, false, -65)
-
-	--[[show/hide spell panel]]
-	local _oldShowCraftingAndInventory = self.ShowCraftingAndInventory
-	function self:ShowCraftingAndInventory()
-		_oldShowCraftingAndInventory(self)
-		if self.gf_spellPanel ~= nil and self.gf_spellPanel.spellCount > 0 then
-			self.gf_spellPanel:Show()
-		end
-	end
-
-	local _oldHideCraftingAndInventory = self.HideCraftingAndInventory
-	function self:HideCraftingAndInventory()
-		_oldHideCraftingAndInventory(self)
-		if self.gf_spellPanel ~= nil then
-			self.gf_spellPanel:Hide()
-		end
-	end
---[[ 
-	local PopJournal = require "screens/gf_questjournal"
-	owner:ListenForEvent("gfpushjournal", function(owner)
-		_G.TheFrontEnd:PushScreen(PopJournal(owner))
-	end) ]]
+	self.mapcontrols.gfJournalButton = self.mapcontrols:AddChild(ImageButton("images/gfquestjournal.xml", "journalbutton.tex", "journalbutton.tex", nil, nil, nil, {1,1}, {0,0}))
+	self.mapcontrols.gfJournalButton:SetOnClick(function() _G.TheFrontEnd:PushScreen(PopJournal(self.owner)) end)
+	self.mapcontrols.gfJournalButton:SetScale(0.8)
+	self.mapcontrols.gfJournalButton:SetPosition(0, 80)
+	self.mapcontrols.gfJournalButton:SetTooltip(STRINGS.GF.HUD.JOURNAL.BUTTONS.OPEN_JOURNAL)
 end)
 
 require("constants")

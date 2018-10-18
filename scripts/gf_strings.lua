@@ -82,6 +82,18 @@ STRINGS.GF.HUD =
     MINUTES_LETTER = "m",
 }
 
+STRINGS.GF.QUESTS = 
+{
+    _EX_KILL_FIVE_SPIDERS = 
+    {
+        TITLE = "Pesky spiders.",
+        DESC = "This spiders annoy me. &name, please, take them away from here.",
+        COMPLETION = "Thanks, &name. Take this. Don't ask where I stored it.",
+        GOAL = "Kill five spiders",
+        STATUS = "Spiders killed: %s/%s",
+    },
+}
+
 STRINGS.GF.QUEST_DIALOGS = 
 {
     GF_DIALOG_TEST = "It's a test dialog",

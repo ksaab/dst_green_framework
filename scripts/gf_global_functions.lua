@@ -463,13 +463,28 @@ function GetEffectString(eName, param)
     end
 end
 
+function GetSpellString(eName, param)
+    --local INVALID_TITLE = STRINGS.GF.HUD.INVALID_LINES.INVALID_TITLE
+    --local INVALID_TEXT = STRINGS.GF.HUD.INVALID_LINES.INVALID_TEXT
+    param = param ~= nil and string.upper(param) or "TITLE"
+    eName = string.upper(eName)
+    local STR = STRINGS.GF.SPELLS[eName]
+    if STR ~= nil and STR[param] ~= nil then
+        return STR[param]
+    else
+        param = param == "TITLE" and STRINGS.GF.HUD.INVALID_LINES.INVALID_TITLE or STRINGS.GF.HUD.INVALID_LINES.INVALID_TEXT
+        return param
+    end
+end
+
 function GetQuestString(inst, qName, param)
     param = param ~= nil and string.upper(param) or "TITLE"
     qName = string.upper(qName)
-    local n = inst.prefab or "stranger"
-    local STR = string.gsub(STRINGS.GF.QUESTS[qName], "&name", n)
+    --local n = inst.prefab or "stranger"
+    local STR = STRINGS.GF.QUESTS[qName]
     if STR ~= nil and STR[param] ~= nil then
-        return STR[param]
+        local n = inst.name ~= nil and string.gsub(inst.name, "^%l", string.upper) or "Stranger"
+        return string.gsub(STR[param], "&name", n)
     else
         param = param == "TITLE" and STRINGS.GF.HUD.INVALID_LINES.INVALID_TITLE or STRINGS.GF.HUD.INVALID_LINES.INVALID_TEXT
         return param

@@ -131,7 +131,12 @@ function GFSpellItem:GetItemSpellName()
 end
 
 function GFSpellItem:GetItemSpellTitle()
-    return self.itemSpell and self.itemSpell.title or ""
+    local str = ""
+    if self.itemSpell ~= nil then
+        str = GetSpellString(self.itemSpell.name, "title")
+        str = str == STRINGS.GF.HUD.INVALID_LINES.INVALID_TITLE and "" or str
+    end
+    return str
 end
 
 function GFSpellItem:GetItemSpell()

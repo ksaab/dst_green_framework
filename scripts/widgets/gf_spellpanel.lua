@@ -19,7 +19,6 @@ local function OnUpdateSpellList(self)
         if not spell.passive then
             count = count + 1
             iconsPanel.icons[count] = iconsPanel:AddChild(SpellButton(self.owner, spell))
-            --local btn = self.panel.icons[i]
             iconsPanel.icons[count]:SetPosition(70 + 78 * (count - 1), -12, 0)
         end
     end
@@ -44,20 +43,16 @@ local function OnUpdateSpellList(self)
     end
 
     self.spellCount = count
-    --GFDebugPrint(("SpellPanel: Updated, num of skills = %i"):format(count))
 end
 
 local SpellPanel = Class(Widget, function(self, owner)
 	self.owner = owner
     Widget._ctor(self, "SpellPanel")
-    
-    --[[self:SetHAnchor(ANCHOR_LEFT)
-    self:SetVAnchor(ANCHOR_BOTTOM)
-    self:MoveToBack()
-    self:SetScaleMode(SCALEMODE_PROPORTIONAL)]]
 
-    self:SetScale(0.55)
-    self:SetPosition(-460, 85, 0)
+    self:SetPosition(-750, 170)
+	self:MoveToBack()
+	self:SetScale(0.9)
+
     self:Hide()
 
     self.iconsPanel = self:AddChild(Image("images/gfspellhud.xml", "gf_spell_panel_left.tex"))

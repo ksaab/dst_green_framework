@@ -22,6 +22,11 @@ local function InfoString(self, doer)
     return (qData ~= nil and qData.count ~= nil) and string.format("killed: %i/%i", qData.count, requredNumber) or STRINGS.GF.HUD.ERROR
 end
 
+local function InfoData(self, doer)
+    local qData = doer.components.gfquestdoer:GetQuestData(questName)
+    return {qData.count or 0, requredNumber}
+end
+
 local function QuestTrack2(doer, data)
     print(requredCreature)
     if data and data.victim and data.victim.prefab == requredCreature then
@@ -69,6 +74,7 @@ local Quest = Class(GFQuest, function(self)
     self.goaltext = "Kill 5 spiders"
 
     self.StatusStringFn = InfoString
+    self.StatusDataFn = InfoData
 
     --flags
     self.norepeat = false

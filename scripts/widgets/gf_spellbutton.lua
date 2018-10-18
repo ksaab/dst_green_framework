@@ -42,7 +42,10 @@ local SpellButton = Class(Button, function(self, owner, spell)
             --self.icon:SetScale(0.7)
         end
 
-        self:SetTooltip(string.format("%s", spell.title or INVALID_TITLE))
+        self:SetTooltip(string.format("%s\n%s", 
+            GetSpellString(spell.name, "title"), 
+            GetSpellString(spell.name, "desc")
+        ))
     end
 
     self:SetOnClick(function() OnClick(self) end)
