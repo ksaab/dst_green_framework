@@ -28,13 +28,13 @@ end)
 
 function GFEventReactor:AddReaction(name, data)
     if data == nil or name == nil then 
-        GFDebugPrint("GFEventReactor: failed to attach reaction, name or data is invalid")
+        --GFDebugPrint("GFEventReactor: failed to attach reaction, name or data is invalid")
         return
     end
 
     local react = Reaction(name, data)
     if react.fail then
-        GFDebugPrint("GFEventReactor: reaction isn't valid")
+        --GFDebugPrint("GFEventReactor: reaction isn't valid")
         react = nil
         return
     end

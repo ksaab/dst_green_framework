@@ -56,12 +56,14 @@ end
 
 function QSQuestGiver:RemoveQuest(questName, offerOnly)
     RemoveByValue(self.offerList, questName)
-    if offerOnly then
-        RemoveByValue(self.completeList, questName)
-        --GFDebugPrint(("%s now ONLY completes quest %s "):format(tostring(self.inst), questName))
-        return
-    end
+    RemoveByValue(self.completeList, questName)
     
+    self.inst.replica.gfquestgiver:UpdateQuests()
+    --GFDebugPrint(("%s now doesn't have quest %s "):format(tostring(self.inst), questName))
+end
+
+function QSQuestGiver:HideQuest(questName)
+    RemoveByValue(self.offerList, questName)
     self.inst.replica.gfquestgiver:UpdateQuests()
     --GFDebugPrint(("%s now doesn't have quest %s "):format(tostring(self.inst), questName))
 end
@@ -122,6 +124,18 @@ function QSQuestGiver:PickQuest(doer)
     return nil
 end
 
+function QSQuestGiver:OnQuestAccepted(qName, doer)
+    local qInst = ALL_QUESTS[qName]
+    if qInst.uniqe then self:HideQuest(qName) end
+    qInst:GiverAccept(self.inst, doer)
+end
+
+function QSQuestGiver:OnQuestCompleted(qName, doer)
+    local qInst = ALL_QUESTS[qName]
+    if qInst.uniqe then self:RemoveQuest(qName) end
+    qInst:GiverComplete(self.inst, doer)
+end
+
 function QSQuestGiver:SetReactFn(fn)
     local function _fn(inst, data) 
         self.getAttentionFn(inst, data)
@@ -167,7 +181,7 @@ function QSQuestGiver:GetDebugString()
         table.insert(pass, k)
     end
 
-    return #give > 0 and #pass > 0
+    return (#give > 0 or #pass > 0)
         and string.format("give:[%s]; pass:[%s]", table.concat(give, ", "), table.concat(pass, ", ")) 
         or "none"
 end

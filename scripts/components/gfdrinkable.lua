@@ -10,6 +10,18 @@ function GFDrinkable:SetOnDrunkFn(fn)
     self.onDrunkFn = fn
 end
 
+function GFDrinkable:SetCheckFn(fn)
+    self.checkDrunkFn = fn
+end
+
+function GFDrinkable:CheckBeforeDrunk(drinker)
+    if drinker ~= nil and self.checkDrunkFn ~= nil then
+        local c, r = self.checkDrunkFn(drinker, self.inst)
+        return c, r
+    end
+    return true
+end
+
 function GFDrinkable:OnDrunk(drinker)
     --print("drinked")
     if self.onDrunkFn ~= nil then

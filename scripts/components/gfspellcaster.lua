@@ -1,19 +1,12 @@
 --Green Framework. Please, don't copy any files or functions from this mod, because it can break other mods based on the GF.
 
-local spellList = GFSpellList
-
-local function GetSpell(spellname)
-    return spellname and spellList[spellname] or nil
-end
+local ALL_SPELLS = GFSpellList
 
 local GFSpellCaster = Class(function(self, inst)
     self.inst = inst
-    --full spell list, all non-passive spells will be added to the player's panel
-    --and will be checked with creature's brain (if the creature is a caster)
-    self.spells = {} 
 
-    self.spellsReadyTime = {}
-    self.spellsRechargeDuration = {}
+    self.spells = {}
+    self.spellData = {}
 
     self.lastCastTime = 0
 
@@ -23,12 +16,10 @@ local GFSpellCaster = Class(function(self, inst)
     self.modifiers = {} --has no handle for now, but can be used to modify spell power
     self.friendlyFireCheckFn = nil
 
-    --set up custom sp and recharge modifiers
     self.rechargeExternal = SourceModifierList(self.inst) 
     self.spellPowerExternal = SourceModifierList(self.inst)
 
     self.onClient = inst:HasTag("player") --don't need to do network things if the inst isn't a player
-    --self.onClient = inst._gfclientside ~= nil
 
     if self.onClient then
         local function ListenOnce(inst)
@@ -40,71 +31,42 @@ local GFSpellCaster = Class(function(self, inst)
 
         inst:ListenForEvent("gfplayerisready", ListenOnce)--, TheWorld)
     end
+
+    if self.onClient and self.inst.replica.gfspellcaster then 
+        self.inst.replica.gfspellcaster.spells = self.spells
+        self.inst.replica.gfspellcaster.spellData = self.spellData
+    end
 end)
 
-function GFSpellCaster:ForceUpdateReplicaSpells()
+-----------------------------------------
+--Safe methods---------------------------
+-----------------------------------------
+
+--set component
+function GFSpellCaster:AddSpell(sName)
+    if sName == nil or ALL_SPELLS[sName] == nil then return false end
+
+    self.spells[sName] = true
     if self.onClient then
-        self.inst.replica.gfspellcaster:SetSpells()
+        self.inst.replica.gfspellcaster:AddSpell(sName)
     end
 end
 
---this function updates HUD when the weapon spell is changed
-function GFSpellCaster:ForceUpdateReplicaHUD()
+function GFSpellCaster:AddSpells(spells)
+    if spells == nil then return false end
+    for i = 1, #spells do
+        self:AddSpell(spells[i])
+    end
+end
+
+function GFSpellCaster:RemoveSpell(sName)
+    self.spells[sName] = nil
     if self.onClient then
-        self.inst.replica.gfspellcaster:PushSpellRecharges()
-        --[[ if not GFGetIsDedicatedNet() and self.inst == GFGetPlayer() then
-            self.inst:PushEvent("gfforcerechargewatcher")
-        end ]]
+        self.inst.replica.gfspellcaster:RemoveSpell(sName)
     end
 end
 
---use this function to add spells to the entity
---AddSpell("spellname") or AddSpell({"spellname1, spellname2, ..."})
-function GFSpellCaster:AddSpell(spellStr)
-    if spellStr == nil then 
-        print("GFSpellCaster: spell params are nil...")
-        return false 
-    end
-
-    if type(spellStr) == "table" then
-        for k, spellName in pairs(spellStr) do
-            if not self.spells[spellName] then
-                local spell = GetSpell(spellName)
-                if spell then
-                    self.spells[spellName] = spell
-                end
-            end
-        end
-    else
-        if not self.spells[spellStr] then
-            local spell = GetSpell(spellStr)
-            if spell then
-                self.spells[spellStr] = spell
-            end
-        end
-    end
-
-    if self.onClient then
-        self.inst.replica.gfspellcaster:SetSpells()
-    end
-    
-    return true
-end
-
---use this function to remove spells from the entity
---nonUpdateReplica should be setted if couple of spell are removed
---to prevent multiple replica updates (but the replica need to be updated on the last removed spell or 
---with the ForceUpdateReplicaSpells function)
-function GFSpellCaster:RemoveSpell(spellName, nonUpdateReplica)
-    if spellName then
-        self.spells[spellName] = nil
-    end
-
-    if not nonUpdateReplica and self.onClient then
-        self.inst.replica.gfspellcaster:SetSpells()
-    end
-end
-
+--custom modifiers
 function GFSpellCaster:SetModifier(name, value)
     self.modifiers[name] = self.modifiers[name] ~= nil and self.modifiers[name] + value or 1 + value
 end
@@ -113,72 +75,65 @@ function GFSpellCaster:GetModifier(name)
     return self.modifiers[name] or 1
 end
 
-function GFSpellCaster:PushRecharge(spellname, recharge)
-    --GFDebugPrint(("GFSpellCaster: spell %s recharge started on %s, duration %.2f"):format(spellname, tostring(self.inst), recharge))
-    self.spellsReadyTime[spellname] = GetTime() + recharge
-    self.spellsRechargeDuration[spellname] = recharge
+--recharge
+function GFSpellCaster:PushRecharge(sName, duration)
+    if sName == nil or ALL_SPELLS[sName] == nil then return false end
+
+    local sData = 
+    {
+        endTime = GetTime() + duration,
+        startTime = GetTime()
+    }
+
+    self.spellData[sName] = sData
+
     if self.onClient then
-        self.inst.replica.gfspellcaster:SetSpellRecharges()
+        self.inst.replica.gfspellcaster:PushRecharge(sName, sData.endTime - GetTime(), GetTime() - sData.startTime)
     end
 
-    self.inst:PushEvent("gfrechargestarted", {spell = spellname})
+    self.inst:PushEvent("gfSCRechargeStarted", {sName = sName})
 end
 
-function GFSpellCaster:ReduceRecharge(spellname, reduceTime, nonUpdateReplica)
-    --GFDebugPrint(("GFSpellCaster: spell %s recharge started on %s, duration %.2f"):format(spellname, tostring(self.inst), recharge))
-    self.spellsRechargeDuration[spellname] = self.spellsRechargeDuration[spellname] - reduceTime
-    if self.onClient and not nonUpdateReplica then
-        self.inst.replica.gfspellcaster:SetSpellRecharges()
+function GFSpellCaster:ReduceRecharge(sName, reduce)
+    if sName == nil or ALL_SPELLS[sName] == nil or self.spellData[sName] == nil then return false end
+    
+    local sData = self.spellData[sName]
+    sData.endTime = sData.endTime - reduce
+    
+    if self.onClient then
+        self.inst.replica.gfspellcaster:PushRecharge(sName, sData.endTime - GetTime(), GetTime() - sData.startTime)
     end
 end
 
-function GFSpellCaster:CastSpell(spellname, target, pos, item, spellParams, noRecharge)
-    local spell = GetSpell(spellname)
-    if spell == nil then
-        GFDebugPrint(("GFSpellCaster: attemp to cast invalid spell %s"):format(spellname or "none"))
-        return false
-    end
+--main
+function GFSpellCaster:CastSpell(sName, target, pos, item, spellParams, noRecharge)
+    if sName == nil or ALL_SPELLS[sName] == nil then return end
 
-    if not spell:DoCastSpell(self.inst, target, pos, item, spellParams) then
-        GFDebugPrint(("GFSpellCaster: spell %s cast failed"):format(spellname))
-        return false
-    end
+    local sInst = ALL_SPELLS[sName]
+
+    if not sInst:DoCastSpell(self.inst, target, pos, item, spellParams) then return false end
 
     if not noRecharge then
-        local doerRecharge = spell:GetDoerRecharge(self.inst)
+        local doerRecharge = sInst:GetDoerRecharge(self.inst)
         if doerRecharge > 0 then
-            self:PushRecharge(spellname, doerRecharge * self.baseRecharge * self.rechargeExternal:Get())
+            self:PushRecharge(sName, doerRecharge * self.baseRecharge * self.rechargeExternal:Get())
+        else
+            self.inst.replica.gfspellcaster:ForceRechargesDirty()
         end
     end
 
     if item and item.components.gfspellitem then
-        item.components.gfspellitem:OnCastDone(spellname, self.inst)
-    end
-
-    if self.onClient then
-        self.inst.replica.gfspellcaster:PushSpellRecharges()
-        if GFGetIsDedicatedNet() and self.inst == GFGetPlayer() then
-            self.inst:PushEvent("gfforcerechargewatcher")
-        end
+        item.components.gfspellitem:OnCastDone(sName, self.inst)
     end
 
     self.lastCastTime = GetTime()
 
-    self.inst:PushEvent("gfspellcastsuccess", {spell = spell, target = target, pos = pos, item = item, params = spellParams})
+    self.inst:PushEvent("gfSCCastSuccess", {sName = sName, target = target, pos = pos, item = item, params = spellParams})
 
     return true
 end
 
---[[ function GFSpellCaster:DoPostCast(data)
-    if data.spell and spellList[data.spell] and spellList[data.spell]:HasPostCast() then
-        if spellList[data.spell]:DoPostCast(self.inst, data.target, data.pos, data.invobject) then
-            self.inst:PushEvent("gfpostcastsuccess", {spell = data.spell, target = data.target, pos = data.pos})
-        end
-    end
-end ]]
-
---the main problem for spells is to find a correct target to prevent injuring a friend
---(ex: pigman-shaman shouldn't hit other pigman or a player-leader with the lightning spell)
+--friendlyfier
 function GFSpellCaster:SetIsTargetFriendlyFn(fn)
     self.isTargetFriendlyfn = fn
 end
@@ -191,28 +146,25 @@ function GFSpellCaster:IsTargetFriendly(target)
     return false
 end
 
---this fn checks casts from the player's spell panel
-function GFSpellCaster:IsSpellValidForCaster(spellName)
-    return self.spells[spellName] ~= nil
-        and self:CanCastSpell(spellName)
-end
+function GFSpellCaster:CanCastSpell(sName)
+    if sName == nil or ALL_SPELLS[sName] == nil then return false end
 
-function GFSpellCaster:CanCastSpell(spellname)
-    --if not spellList[spellname]:CanBeCasted(self.inst) then return false end
-    if spellList[spellname].passive then return false end
-    
-    if self.spellsReadyTime[spellname] ~= nil then
-        return GetTime() > self.spellsReadyTime[spellname]
-    else
-        return true
+    if not ALL_SPELLS[sName].passive then
+        return self.spellData[sName] == nil or GetTime() > self.spellData[sName].endTime
     end
 end
 
-function GFSpellCaster:GetSpellRecharge(spellname)
+function GFSpellCaster:IsSpellValidForCaster(sName)
+    return self.spells[sName] ~= nil and self:CanCastSpell(sName)
+end
+
+--get component info
+function GFSpellCaster:GetSpellRecharge(sName)
     local r, t = 0, 0
-    if self.spellsReadyTime[spellname] then
-        t = self.spellsRechargeDuration[spellname]
-        r = math.max(0, self.spellsReadyTime[spellname] - GetTime())
+    local sData = self.spellData[sName]
+    if sData then
+        t = sData.endTime - sData.startTime 
+        r = math.max(0, sData.endTime - GetTime())
     end
 
     return r, t
@@ -222,19 +174,21 @@ function GFSpellCaster:GetSpellCount()
     return GetTableSize(self.spells)
 end
 
---you can get character's spell power to modify power of spell 
 function GFSpellCaster:GetSpellPower()
     return math.max(0, self.baseSpellPower * self.spellPowerExternal:Get())
 end
 
---pick a spell for creatures 
+-----------------------------------------
+--Unsafe methods-------------------------
+-----------------------------------------
+
 function GFSpellCaster:GetValidAiSpell()
     if self.lastCastTime + 1.5 > GetTime() then return end
-    for spellName, spell in pairs(self.spells) do
-        if self:CanCastSpell(spellName) then
-            local spellData = spell:AICheckFn(self.inst)
+    for sName, _ in pairs(self.spells) do
+        if self:CanCastSpell(sName) then
+            local spellData = ALL_SPELLS[sName]:AICheckFn(self.inst)
             if spellData then
-                spellData.spell = spellName
+                spellData.spell = sName
                 return spellData
             end
         end
@@ -245,9 +199,9 @@ function GFSpellCaster:GetValidAiSpell()
     --[[if self.inst.components.inventory then
         local item = self.inst.components.inventory:GetEquippedItem(EQUIPSLOTS.HANDS)
         if item and item.components.gfspellitem then
-            itemSpell = item.components.gfspellitem:GetItemSpellName()
+            itemSpell = item.components.gfspellitem:GetCurrentSpell()
             if self:CanCastSpell(itemSpell) and item.components.gfspellitem:CanCastSpell(itemSpell) then
-                local spellData = spellList[spell]:AICheckFn(self.inst)
+                local spellData = ALL_SPELLS[spell]:AICheckFn(self.inst)
                 if spellData then
                     spellData.spell = itemSpell
                     spellData.invobject = item
@@ -260,9 +214,9 @@ function GFSpellCaster:GetValidAiSpell()
     return false
 end
 
-function GFSpellCaster:PreCastCheck(spellName)
-    if spellName and spellList[spellName] then
-        local result, reason = spellList[spellName]:PreCastCheck(self.inst)
+function GFSpellCaster:PreCastCheck(sName)
+    if sName and ALL_SPELLS[sName] then
+        local result, reason = ALL_SPELLS[sName]:PreCastCheck(self.inst)
         if not result then
             if self.inst.components.talker then
                 self.inst.components.talker:Say(GetActionFailString(self.inst, "GFCASTSPELL", reason or "GENERIC"), 2.5, false, true, false)
@@ -275,49 +229,38 @@ function GFSpellCaster:PreCastCheck(spellName)
     end
 end
 
-function GFSpellCaster:HandleIconClick(spellName)
+function GFSpellCaster:HandleIconClick(sName)
     local inst = self.inst
-    if spellName 
-        and spellList[spellName] 
+    if sName 
+        and ALL_SPELLS[sName] 
         and not (inst:HasTag("playerghost") or inst:HasTag("corpse"))
         and not inst:HasTag("busy")
         and (not inst.components.rider or not inst.components.rider:IsRiding())
-        and self:IsSpellValidForCaster(spellName)
-        and self:PreCastCheck(spellName)
+        and self:IsSpellValidForCaster(sName)
+        and self:PreCastCheck(sName)
     then
-        if spellList[spellName].instant then
+        if ALL_SPELLS[sName].instant then
             local act = BufferedAction(inst, inst, ACTIONS.GFCASTSPELL)
-            act.spell = spellName
+            act.spell = sName
             inst:ClearBufferedAction()
-            --inst:PushBufferedAction(act)
             inst.components.locomotor:PushAction(act, true, true)
         elseif inst.components.gfspellpointer then
-            inst.components.gfspellpointer:Enable(spellName)
+            inst.components.gfspellpointer:Enable(sName)
         end
     end
 end
 
---don't need to update the component now...
---[[ function GFSpellCaster:OnUpdate(dt)
-    local str = {}
-    for k, v in pairs(self.spellsReadyTime) do
-        local cooldown = v - GetTime()
-        if cooldown > 0 then
-            table.insert(str, ("%s ready in %.2f"):format(k, cooldown))
-        end
-    end
-    if #str > 0 then
-        print(table.concat(str))
-    end
-end ]]
+-----------------------------------------
+--Ingame methods-------------------------
+-----------------------------------------
 
 function GFSpellCaster:OnSave(data)
     local savetable = {}
     local currTime = GetTime()
-    for spellName, val in pairs(self.spellsReadyTime) do
-        local rech = val - currTime
+    for sName, sData in pairs(self.spellData) do
+        local rech = sData.endTime - currTime
         if rech > 15 then --don't need to save short coodlwns
-            savetable[spellName] = {r = rech, t = self.spellsRechargeDuration[spellName]}
+            savetable[sName] = {r = rech, t = currTime - sData.startTime}
         end
     end
 
@@ -328,13 +271,16 @@ function GFSpellCaster:OnLoad(data)
     if data ~= nil and data.savedata ~= nil then 
         local savedata = data.savedata
         local currTime = GetTime()
-        for spellName, rech in pairs(savedata) do
-            self.spellsReadyTime[spellName] = rech.r + currTime
-            self.spellsRechargeDuration[spellName] = rech.t
-        end
+        for sName, rech in pairs(savedata) do
+            self.spellData[sName] = 
+            {
+                endTime = rech.r + currTime,
+                startTime = currTime - rech.t,
+            }
 
-        if self.onClient then
-            self.inst.replica.gfspellcaster:SetSpellRecharges()
+            if self.onClient then
+                self.inst.replica.gfspellcaster:PushRecharge(sName, rech.r, rech.t)
+            end
         end
     end
 end
@@ -342,13 +288,23 @@ end
 function GFSpellCaster:GetDebugString()
     local str = {}
     local currTime = GetTime()
-    for k, v in pairs(self.spells) do
-        local cd = self.spellsReadyTime[k] ~= nil and self.spellsReadyTime[k] - currTime or -1
-        cd = cd > 0 and string.format("%.2f/%.2f", cd, self.spellsRechargeDuration[k]) or "ready"
-        table.insert(str, string.format("[%s %s]", k, cd))
+    local selfSpells = {}
+    for sName, v in pairs(self.spells) do
+        table.insert(selfSpells, sName)
     end
 
-    return #str > 0 and table.concat(str, ", ") or "none"
+    selfSpells = #selfSpells > 0 and table.concat(selfSpells, ", ") or ""
+
+    local cd = {}
+    for sName, sData in pairs(self.spellData) do
+        if sData.endTime > currTime then
+            table.insert(cd, string.format("[%s %.2f/%.2f]", sName, sData.endTime - currTime, sData.endTime - sData.startTime))
+        end
+    end
+
+    cd = #cd > 0 and table.concat(cd, " ") or ""
+
+    return selfSpells .. cd
 end
 
 return GFSpellCaster

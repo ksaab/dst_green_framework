@@ -36,8 +36,9 @@ local GFRechargeWatcher = Class(function(self, inst)
     self.iconList = {}
 
     inst:StartUpdatingComponent(self)
-    inst:ListenForEvent("gfpushwatcher", UpdateRechareable)
+    inst:ListenForEvent("gfRWPush", UpdateRechareable)
     inst:ListenForEvent("itemget", CheckItemBeforeUpdate)
+    --inst:ListenForEvent("equip", CheckItemBeforeUpdate)
     --inst:ListenForEvent("gfupdaterechargesdirty", UpdateRechareable)
     --inst:ListenForEvent("gfupdatespellshud", UpdateRechareable)
 
@@ -50,14 +51,15 @@ function GFRechargeWatcher:UpdateRechareableList()
     self.itemList = {}
     self.iconList = {}
     local function CheckHUD()
-        for k, icon in pairs(inst.HUD.controls.gf_spellPanel.iconsPanel.icons) do
+        local icons = inst.HUD.controls.inv.gfSpellPanel:GetIcons()
+        for k, icon in pairs(icons) do
             if icon.spell ~= nil then
                 local remain, total = inst.replica.gfspellcaster:GetSpellRecharge(icon.spell)
                 if remain > 0 then
                     icon:RechargeStarted()
                     table.insert(self.iconList, {icon = icon, remain = remain, total = total})
                     --GFDebugPrint(("GFRechargeWatcher: %s adding %s [%.2f/%.2f] to recharge list."):format(tostring(inst),
-                        --tostring(icon), remain, total))
+                    --    tostring(icon), remain, total))
                 end
             end
         end
@@ -68,7 +70,7 @@ function GFRechargeWatcher:UpdateRechareableList()
             local scr = item.replica.gfspellitem
             if scr then
                 item:PushEvent("rechargechange", { percent = 1 })
-                local spell = item.replica.gfspellitem:GetItemSpellName()
+                local spell = item.replica.gfspellitem:GetCurrentSpell()
                 if spell then
                     local remain, total = item.replica.gfspellitem:GetSpellRecharge(spell)
                     local oremain, ototal = inst.replica.gfspellcaster:GetSpellRecharge(spell)
@@ -77,7 +79,7 @@ function GFRechargeWatcher:UpdateRechareableList()
                         total = total >= ototal and total or ototal 
                         table.insert(self.itemList, {item = item, remain = remain, total = total})
                         --GFDebugPrint(("GFRechargeWatcher: %s adding %s [%.2f/%.2f] to recharge list."):format(tostring(inst),
-                            --tostring(item), remain, total))
+                        --    tostring(item), remain, total))
                     end
                 end
             end
@@ -98,7 +100,7 @@ function GFRechargeWatcher:UpdateRechareableList()
         end
     end
 
-    if inst.HUD and inst.HUD.controls and inst.HUD.controls.gf_spellPanel and inst.HUD.controls.gf_spellPanel.iconsPanel.icons then
+    if inst.HUD and inst.HUD.controls and inst.HUD.controls.inv and inst.HUD.controls.inv.gfSpellPanel then
         CheckHUD()
     end
 end

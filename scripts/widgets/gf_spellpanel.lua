@@ -4,46 +4,9 @@ local Widget = require "widgets/widget"
 local SpellButton = require "widgets/gf_spellbutton"
 local Image = require "widgets/image"
 local Text = require "widgets/text"
+local SpellPanelBG = require "widgets/gf_spellpanel_bg"
 
-local function OnUpdateSpellList(self)
-    local iconsPanel = self.iconsPanel
-    iconsPanel:KillAllChildren()
-    iconsPanel.icons = {}
-
-    local gfsc = self.owner.replica.gfspellcaster
-    if not gfsc then return end
-
-    local count = 0
-
-    for spellName, spell in pairs(gfsc.spells) do
-        if not spell.passive then
-            count = count + 1
-            iconsPanel.icons[count] = iconsPanel:AddChild(SpellButton(self.owner, spell))
-            iconsPanel.icons[count]:SetPosition(70 + 78 * (count - 1), -12, 0)
-        end
-    end
-
-    if count <= 0 then
-        self:Hide()
-    else
-        self:Show()
-        iconsPanel.right = iconsPanel:AddChild(Image("images/gfspellhud.xml", "gf_spell_panel_right.tex"))
-        iconsPanel.right:SetHRegPoint(ANCHOR_LEFT)
-        iconsPanel.right:SetPosition(78 * (count - 1) + 70, 0, 0)
-        iconsPanel.right:MoveToBack()
-        if count > 1 then
-            iconsPanel.segments = {}
-            for i = 1, count - 1 do
-                iconsPanel.segments[i] = iconsPanel:AddChild(Image("images/gfspellhud.xml", "gf_spell_panel_element.tex"))
-                iconsPanel.segments[i]:SetHRegPoint(ANCHOR_LEFT)
-                iconsPanel.segments[i]:SetPosition(78 * (i - 1) + 70, 0, 0)
-                iconsPanel.segments[i]:MoveToBack()
-            end
-        end
-    end
-
-    self.spellCount = count
-end
+local ALL_SPELLS = GFSpellList
 
 local SpellPanel = Class(Widget, function(self, owner)
 	self.owner = owner
@@ -55,12 +18,70 @@ local SpellPanel = Class(Widget, function(self, owner)
 
     self:Hide()
 
-    self.iconsPanel = self:AddChild(Image("images/gfspellhud.xml", "gf_spell_panel_left.tex"))
-    self.iconsPanel:SetHRegPoint(ANCHOR_LEFT)
-    self.iconsPanel.icons = {}
-    self.spellCount = 0
+    self.body = self:AddChild(SpellPanelBG(owner))
+    --self.body:SetHRegPoint(ANCHOR_LEFT)
+    self.body.icons = {}
 
-    self.owner:ListenForEvent("gfpushpanel", function() OnUpdateSpellList(self) end, self.owner.classified)
+    self.owner:ListenForEvent("gfSCPanelAdd", function(owner, data) self:AddSpell(data) end, self.owner)
+    self.owner:ListenForEvent("gfSCPanelRemove", function(owner, data) self:RemoveSpell(data) end, self.owner)
 end)
+
+function SpellPanel:AddSpell(data)
+    if data == nil or data.sName == nil then return end
+
+    self:Show()
+
+    local size = 1
+    local names = {}
+    for sName, icon in pairs(self.body.icons) do
+        size = size + 1
+        table.insert(names, sName)
+    end
+
+    local sName = data.sName
+
+    self.body:SetSize(size)
+    self.body.icons[sName] = self.body:AddChild(SpellButton(self.owner, sName))
+
+    table.insert(names, data.sName)
+    table.sort(names)
+
+    local i = 0
+    for _, sName in pairs(names) do
+        self.body.icons[sName]:SetPosition(78 * i + 36, -12, 0)
+        i = i + 1
+    end
+end
+
+function SpellPanel:RemoveSpell(data)
+    if data == nil or data.sName == nil or self.body.icons[data.sName] == nil then return end
+
+    local size = 0
+    local names = {}
+    for sName, icon in pairs(self.body.icons) do
+        if sName ~= data.sName then
+            size = size + 1
+            table.insert(names, sName)
+        end
+    end
+
+    self.body:SetSize(size)
+    self.body.icons[data.sName]:Kill()
+    self.body.icons[data.sName] = nil
+
+    table.sort(names)
+
+    local i = 0
+    for _, sName in pairs(names) do
+        self.body.icons[sName]:SetPosition(78 * i + 36, -12, 0)
+        i = i + 1
+    end
+
+    if #names == 0 then self:Hide() end
+end
+
+function SpellPanel:GetIcons()
+    return self.body.icons
+end
 
 return SpellPanel

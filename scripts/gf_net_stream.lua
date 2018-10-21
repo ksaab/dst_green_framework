@@ -7,7 +7,7 @@ local function _debug(inst)
 end
 
 local NetStream = Class(function(self, inst, id, event, period, separator)
-    print("net stream:", inst, id)
+    print("net stream initialized:", inst, id)
     _G.assert(inst ~= nil and id ~= nil, "net stream requires instance and unique id")
     self.inst = inst
     self.event = event or id
@@ -20,10 +20,10 @@ local NetStream = Class(function(self, inst, id, event, period, separator)
     self._value = _G.net_string(inst.GUID, id, self.event)
     self._task = nil
 
-    inst:ListenForEvent(self.event, function()
+    --[[ inst:ListenForEvent(self.event, function()
         print(string.format("string stream variable %s.%s has got the value %s", 
             tostring(inst), self.event, self:value()))
-    end)
+    end) ]]
 end)
 
 function NetStream:DoTick()

@@ -127,7 +127,7 @@ function EffectsPanel:UpdateIcon(data)
         ))
         --timer for non-static
         if not eInst.static then
-            self.icons[eName].timer = self.icons[eName]:AddChild(Text(UIFONT, 45, ConvertTimeToText(timer)))
+            self.icons[eName].timer = self.icons[eName]:AddChild(Text(UIFONT, 35, ConvertTimeToText(timer)))
             self.icons[eName].timer:SetPosition(0, -5, 0)
         end
 

@@ -1,150 +1,156 @@
 --Green Framework. Please, don't copy any files or functions from this mod, because it can break other mods based on the GF.
 
-local spellList = GFSpellList
-local spellNamesToID = GFSpellNameToID
-local spellIDToNames = GFSpellIDToName
+local ALL_SPELLS = GFSpellList
+local SNAME_TO_ID = GFSpellNameToID
+local SID_TO_NAME = GFSpellIDToName
 
-local function SliceSpellString(inst)
+local function DeserializeSpellsString(inst)
     local self = inst.replica.gfspellitem
-    --GFDebugPrint(inst, self._spellString:value())
-    local spells = self._spellString:value():split(';')
+    local spellArr = self._spellString:value():split(';')
+
     self.spells = {}
-    for _, v in pairs(spells) do
-        local spellName = spellIDToNames[tonumber(v)]
-        self.spells[spellName] = spellList[spellName]
+    for _, sID in pairs(spellArr) do
+        local sName = SID_TO_NAME[tonumber(sID)]
+        if sName ~= nil then
+            self.spells[sName] = true
+        end
     end
 end
 
-local function SetItemSpellDirty(inst)
-    local self = inst.replica.gfspellitem
-    local val = self._itemSpell:value()
-    if val == 0 then
-        self.itemSpell = nil
-    else
-        self.itemSpell = spellList[spellIDToNames[val]]
+local function DeserializeRechargesString(inst)
+    local self  = inst.replica.gfspellitem
+    local rechArr = self._rechargesString:value():split('^')
+
+    self.spellData = {}
+    local currTime = GetTime()
+    for _, rData in pairs(rechArr) do
+        local rech = rData:split(';')
+        local sName = SID_TO_NAME[tonumber(rech[1])]
+        if sName ~= nil then
+            self.spellData[sName] = 
+            {
+                startTime = currTime - tonumber(rech[3]),
+                endTime = currTime + tonumber(rech[2]),
+            }
+        end
     end
 end
 
-local function SetRechargesDirty(inst)
+local function SetCurrentSpell(inst)
     local self = inst.replica.gfspellitem
-    --GFDebugPrint("GFSpellItemReplica: recharge", inst, self._spellRecharges:value())
-    local spellArray = self._spellRecharges:value():split(';')
-    for k, v in pairs(spellArray) do
-        local recharges = v:split(',')
-        recharges[1] = spellIDToNames[tonumber(recharges[1])]
-        self.spellsReadyTime[recharges[1]] = GetTime() + tonumber(recharges[2])
-        self.spellsRechargeDuration[recharges[1]] = tonumber(recharges[3] or recharges[2])
+    local sName = SID_TO_NAME[self._currentSpell:value()]
+    if sName ~= nil then
+        self.currentSpell = sName
     end
 end
 
 local GFSpellItem = Class(function(self, inst)
     self.inst = inst
     
-    self.spells = {} --full spell list
-    self.itemSpell = nil --current active spell
-   
-    --item spell recharges
-    self.spellsReadyTime = {}
-    self.spellsRechargeDuration = {}
+    self.spells = {} --all spells
+    self.spellData = {} --current active spell
+    self.currentSpell = nil
     
     --net variables
-    self._itemSpell = net_int(inst.GUID, "GFSpellItem._itemSpell", "gfsetitemspellactive")
-    self._spellString = net_string(inst.GUID, "GFSpellItem._spellString", "gfsetitemspells")
-    self._spellRecharges = net_string(inst.GUID, "GFSpellItem._spellRecharges", "gfsetitemspellrecharges")
-    self._forceUpdateRecharges = net_event(inst.GUID, "GFSpellItem._forceUpdateRecharges")
+    self._currentSpell = net_int(inst.GUID, "GFSpellItem._itemSpell", "gfSICurrentDirty")
+    self._spellString = net_string(inst.GUID, "GFSpellItem._spellString", "GFSISpellsDirty")
+    self._rechargesString = net_string(inst.GUID, "GFSpellItem._spellRecharges", "gfSERechargesDirty")
 
-    if not TheWorld.ismastersim then 
-        inst:ListenForEvent("gfsetitemspells", SliceSpellString)
-        inst:ListenForEvent("gfsetitemspellactive", SetItemSpellDirty)
-        inst:ListenForEvent("gfsetitemspellrecharges", SetRechargesDirty)
+    --self._forceUpdateRecharges = net_event(inst.GUID, "GFSpellItem._forceUpdateRecharges")
+
+    if not GFGetIsMasterSim() then 
+        inst:ListenForEvent("gfSICurrentDirty", SetCurrentSpell)
+        inst:ListenForEvent("GFSISpellsDirty", DeserializeSpellsString)
+        inst:ListenForEvent("gfSERechargesDirty", DeserializeRechargesString)
     end
 
-    if not GFGetIsDedicatedNet() then 
-        inst:ListenForEvent("GFSpellItem._forceUpdateRecharges", function(inst) inst:PushEvent("gfpushwatcher") end)
+    --[[ if not GFGetIsDedicatedNet() then 
+        inst:ListenForEvent("GFSpellItem._forceUpdateRecharges", function(inst) inst:PushEvent("gfRWPush") end)
+    end ]]
+
+    if GFGetIsMasterSim() and self.inst.components.gfspellitem ~= nil then 
+        self.spells = self.inst.components.gfspellitem.spells
+        self.spellData = self.inst.components.gfspellitem.spellData
     end
 
-    --need this tag for inventory tiles
     inst:AddTag("rechargeable")
 end)
 
-function GFSpellItem:SetSpells()
-    if not TheWorld.ismastersim then return end
+-----------------------------------------
+--Safe methods---------------------------
+-----------------------------------------
 
-    local splstr = {}
-    for spellName, spell in pairs(self.inst.components.gfspellitem.spells) do
-        self.spells[spellName] = spell
-        table.insert(splstr, spellNamesToID[spellName])
-    end
+function GFSpellItem:CanCastSpell(sName)
+    if sName == nil or ALL_SPELLS[sName] == nil then return false end
 
-    local setstr = table.concat(splstr, ';')
-    self._spellString:set_local(setstr)
-    self._spellString:set(setstr)
-end
-
-function GFSpellItem:SetItemSpell(spellname)
-    if not TheWorld.ismastersim then return end
-
-    self.itemSpell = spellname ~= "" and spellList[spellname] or nil
-    self._itemSpell:set_local(spellname ~= "" and spellNamesToID[spellname] or 0)
-    self._itemSpell:set(spellname ~= "" and spellNamesToID[spellname] or 0)
-end
-
-function GFSpellItem:SetSpellRecharges()
-    if not TheWorld.ismastersim then return end
-
-    local splstr = {}
-    local totals = self.inst.components.gfspellitem.spellsRechargeDuration
-    for k, v in pairs(self.inst.components.gfspellitem.spellsReadyTime) do
-        local remain = v - GetTime()
-        self.spellsReadyTime[k] = v
-        self.spellsRechargeDuration[k] = totals[k]
-        table.insert(splstr, ("%s,%.2f,%.2f"):format(spellNamesToID[k], v - GetTime(), totals[k]))
-    end
-
-    local setstr = table.concat(splstr, ';')
-    self._spellRecharges:set_local(setstr)
-    self._spellRecharges:set(setstr)
-end
-
-function GFSpellItem:CanCastSpell(spellname)
-    if spellList[spellname].passive then return false end --passive spells can be casted only with DoCastSpell()
-    
-    if self.spellsReadyTime[spellname] ~= nil then
-        return GetTime() > self.spellsReadyTime[spellname]
-    else
-        return true
+    if not ALL_SPELLS[sName].passive then
+        return self.spells[sName] ~= nil 
+            and (self.spellData[sName] == nil or GetTime() > self.spellData[sName].endTime)
     end
 end
 
-function GFSpellItem:GetSpellRecharge(spellname)
+function GFSpellItem:GetSpellRecharge(sName)
     local r, t = 0, 0
-    if self.spellsReadyTime[spellname] then
-        t = self.spellsRechargeDuration[spellname]
-        r = math.max(0, self.spellsReadyTime[spellname] - GetTime())
+    local sData = self.spellData[sName]
+    if sData then
+        t = sData.endTime - sData.startTime 
+        r = math.max(0, sData.endTime - GetTime())
     end
 
     return r, t
 end
 
-function GFSpellItem:GetItemSpellName()
-    return self.itemSpell and self.itemSpell.name or nil
-end
-
-function GFSpellItem:GetItemSpellTitle()
-    local str = ""
-    if self.itemSpell ~= nil then
-        str = GetSpellString(self.itemSpell.name, "title")
-        str = str == STRINGS.GF.HUD.INVALID_LINES.INVALID_TITLE and "" or str
-    end
-    return str
-end
-
-function GFSpellItem:GetItemSpell()
-    return self.itemSpell
+function GFSpellItem:GetCurrentSpell()
+    return self.currentSpell
 end
 
 function GFSpellItem:GetSpellCount()
     return GetTableSize(self.spells)
+end
+
+function GFSpellItem:GetItemSpellTitle()
+    local str = ""
+    if self.currentSpell ~= nil then
+        str = GetSpellString(self.currentSpell, "title", true)
+    end
+
+    return str
+end
+
+-----------------------------------------
+--unsafe methods-------------------------
+-----------------------------------------
+
+function GFSpellItem:UpdateSpells()
+    local str = {}
+    for sName, v in pairs(self.spells) do
+        table.insert(str, SNAME_TO_ID[sName])
+    end
+
+    str = table.concat(str, ';')
+    self._spellString:set_local(str)
+    self._spellString:set(str)
+end
+
+function GFSpellItem:UpdateRecharges()
+    local str = {}
+    local currTime = GetTime()
+    for sName, sData in pairs(self.spellData) do
+        if sData.endTime > currTime then
+            table.insert(str, string.format("%i;%.2f;%.2f", 
+                SNAME_TO_ID[sName], sData.endTime - currTime, currTime - sData.startTime))
+        end
+    end
+
+    str = table.concat(str, '^')
+    self._rechargesString:set_local(str)
+    self._rechargesString:set(str)
+end
+
+function GFSpellItem:UpdateCurrentSpell(sName)
+    self.currentSpell = sName
+    self._currentSpell:set_local(0)
+    self._currentSpell:set(SNAME_TO_ID[sName] or 0)
 end
 
 

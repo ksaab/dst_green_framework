@@ -5,6 +5,7 @@ local ACTIONS = GLOBAL.ACTIONS
 local spellList = GLOBAL.GFSpellList
 local GetString = GLOBAL.GetString
 local GetActionFailString = GLOBAL.GetActionFailString
+--local GetQuestReminderString = GLOBAL.GetQuestReminderString
 
 AddAction("GFCASTSPELL", STRINGS.ACTIONS.GFCASTSPELL, function(act)
     local doer = act.doer
@@ -59,7 +60,7 @@ AddAction("GFSTARTSPELLTARGETING", STRINGS.ACTIONS.GFSTARTSPELLTARGETING, functi
     local item = act.invobject
     if doer and doer.components.gfspellpointer and doer.components.gfspellcaster then
         if item and item.components.gfspellitem then
-            local itemSpell = item.components.gfspellitem:GetItemSpellName()
+            local itemSpell = item.components.gfspellitem:GetCurrentSpell()
             if item.components.gfspellitem:CanCastSpell(itemSpell) 
                 and doer.components.gfspellcaster:PreCastCheck(itemSpell)
             then
@@ -94,8 +95,8 @@ AddAction("GFCHANGEITEMSPELL", STRINGS.ACTIONS.GFCHANGEITEMSPELL, function(act)
     if act.invobject ~= nil
         and act.invobject.components.gfspellitem ~= nil
     then
-        if act.invobject.components.gfspellitem:ChangeSpell() then
-            --print(("GFCHANGEITEMSPELL: Change spell for %s to %s"):format(tostring(act.invobject), act.invobject.components.gfspellitem:GetItemSpellName()))
+        if act.invobject.components.gfspellitem:SwitchSpell() then
+            --print(("GFCHANGEITEMSPELL: Change spell for %s to %s"):format(tostring(act.invobject), act.invobject.components.gfspellitem:GetCurrentSpell()))
             if act.doer then
                 if act.doer.components.gfspellcaster then
                     act.doer.components.gfspellcaster:ForceUpdateReplicaHUD()
@@ -173,7 +174,7 @@ AddAction("GFTALKFORQUEST", STRINGS.ACTIONS.GFTALKFORQUEST, function(act)
         if not offer then
             if #notDone > 0 then
                 if doer.components.talker then
-                    doer.components.talker:Say(_G.GetQuestReminderString(doer, notDone[math.random(#notDone)]))
+                    doer.components.talker:Say(GLOBAL.GetQuestReminderString(doer, notDone[math.random(#notDone)]))
                 end
     
                 return true --don't want to make player saying "can't do that
@@ -212,7 +213,7 @@ AddComponentAction("POINT", "gfspellitem", function(inst, doer, pos, actions, ri
     local spell
 
     if right and not gfsp:IsEnabled() then
-        spellName = inst.replica.gfspellitem:GetItemSpellName()
+        spellName = inst.replica.gfspellitem:GetCurrentSpell()
         if spellName ~= nil then
             spell = spellList[spellName]
             if spell 
@@ -246,7 +247,7 @@ AddComponentAction("EQUIPPED", "gfspellitem", function(inst, doer, target, actio
     local spell
 
     if right and not gfsp:IsEnabled() then
-        spellName = inst.replica.gfspellitem:GetItemSpellName()
+        spellName = inst.replica.gfspellitem:GetCurrentSpell()
         if spellName ~= nil then
             spell = spellList[spellName]
             if spell 

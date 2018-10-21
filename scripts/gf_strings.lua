@@ -19,6 +19,11 @@ STRINGS.ACTIONS._GFCASTSPELL =
     SHOOT = "Shoot",
 }
 
+STRINGS.CHARACTERS.GENERIC.ACTIONFAIL.GFDRINKIT = 
+{
+    GENERIC = "I won't drink this!",
+}
+
 STRINGS.CHARACTERS.GENERIC.ACTIONFAIL.GFTALKFORQUEST = 
 {
     NOQUESTS = "There is nothing intresting for me here.",
@@ -91,6 +96,14 @@ STRINGS.GF.QUESTS =
         COMPLETION = "Thanks, &name. Take this. Don't ask where I stored it.",
         GOAL = "Kill five spiders",
         STATUS = "Spiders killed: %s/%s",
+    },
+    _EX_BRING_FIVE_LOGS = 
+    {
+        TITLE = "Pig need home",
+        DESC = "Cold nights. I need home. You bring trees.",
+        COMPLETION = "Love home. You good.",
+        GOAL = "Bring five logs",
+        STATUS = "Logs: %s/%s",
     },
 }
 

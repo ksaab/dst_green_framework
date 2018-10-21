@@ -54,18 +54,28 @@ end
 
 function Quest:Accept(doer)
     if self.AcceptFn then self:AcceptFn(doer) end
-    GFDebugPrint(("%s has accepted the quest — %s!"):format(tostring(doer), self.name))
+    --GFDebugPrint(("%s has accepted the quest — %s!"):format(tostring(doer), self.name))
 end
 
-function Quest:Complete(doer)
-    if self.CompleteFn then self:CompleteFn(doer) end
-    if self.RewardFn then self:RewardFn(doer) end
-    GFDebugPrint(("%s has completed the quest — %s!"):format(tostring(doer), self.name))
+function Quest:Complete(doer, giver)
+    if self.CompleteFn then self:CompleteFn(doer, giver) end
+    if self.RewardFn then self:RewardFn(doer, giver) end
+    --GFDebugPrint(("%s has completed the quest — %s!"):format(tostring(doer), self.name))
 end
 
 function Quest:Abandon(doer)
     if self.AbandonFn then self:AbandonFn(doer) end
-    GFDebugPrint(("%s has abandoned the quest — %s!"):format(tostring(doer), self.name))
+    --GFDebugPrint(("%s has abandoned the quest — %s!"):format(tostring(doer), self.name))
+end
+
+function Quest:GiverComplete(giver, doer)
+    if self.GiverCompleteFn then self:GiverCompleteFn(giver, doer) end
+    --GFDebugPrint(("%s has completed the quest — %s!"):format(tostring(doer), self.name))
+end
+
+function Quest:GiverAccept(giver, doer)
+    if self.GiverAcceptFn then self:GiverAcceptFn(giver, doer) end
+    --GFDebugPrint(("%s has completed the quest — %s!"):format(tostring(doer), self.name))
 end
 
 function Quest:GetStatusData(doer)

@@ -16,9 +16,9 @@ end)
 
 AddPrefabPostInit("player_classified", function(inst)
     --spell casting system
-    inst._spellString = _G.net_string(inst.GUID, "GFSpellCaster._spellString", "gfsetspellsdirty") --all spells for player (these spell appear on the spell panel)
-    inst._spellRecharges = _G.net_string(inst.GUID, "GFSpellCaster._spellRecharges", "gfsetrechargesdirty") --all recharges for player (doesn't include any item recharges)
-    inst._forceUpdateRecharges = _G.net_event(inst.GUID, "gfupdaterechargesdirty") --trigger which forces updating for client interface
+    --inst._spellString = _G.net_string(inst.GUID, "GFSpellCaster._spellString", "gfsetspellsdirty") --all spells for player (these spell appear on the spell panel)
+    --inst._spellRecharges = _G.net_string(inst.GUID, "GFSpellCaster._spellRecharges", "gfsetrechargesdirty") --all recharges for player (doesn't include any item recharges)
+    --inst._forceUpdateRecharges = _G.net_event(inst.GUID, "gfupdaterechargesdirty") --trigger which forces updating for client interface
 
     --quest system
     --inst._pushQuest = _G.net_string(inst.GUID, "GFQuestDoer._pushQuest", "gfquestpushdirty") --contains offered quest
@@ -32,13 +32,17 @@ AddPrefabPostInit("player_classified", function(inst)
     --syncs
     inst._gfQSOfferString = _G.net_string(inst.GUID, "GFQuestDoer._gfQSOfferString", "gfQSOfferDirty")
     inst._gfQSCompleteString = _G.net_string(inst.GUID, "GFQuestDoer._gfQSCompleteString", "gfQSCompleteDirty")
-    inst._gfQSCurrentString = _G.net_string(inst.GUID, "GFQuestDoer._gfQSCurrentString", "gfQSCurrentDirty")
+    --inst._gfQSCurrentString = _G.net_string(inst.GUID, "GFQuestDoer._gfQSCurrentString", "gfQSCurrentDirty")
     --streams
-    inst._gfQSEventStream = _G.net_strstream(inst, "_GFQuestDoer._gfQSEventStream", "gfQSEventDirty")
-    inst._gfQSInfoStream = _G.net_strstream(inst, "_GFQuestDoer._gfQSInfoStream", "gfQSInfoDirty")
+    inst._gfQSEventStream = _G.net_strstream(inst, "GFQuestDoer._gfQSEventStream", "gfQSEventDirty")
+    inst._gfQSInfoStream = _G.net_strstream(inst, "GFQuestDoer._gfQSInfoStream", "gfQSInfoDirty")
 
     --effects
     inst._gfEFEventStream = _G.net_strstream(inst, "GFEffectable._gfEFEventStream", "gfEFEventDirty")
+
+    --caster
+    inst._gfSCForceRechargesEvent = _G.net_event(inst.GUID, "gfSCForceRechargesEvent") 
+    inst._gfSCSpellStream = _G.net_strstream(inst, "GFSpellCaster._gfSCSpellStream", "gfSCEventDirty")
 
     local _oldOnEntityReplicated = nil
     if inst.OnEntityReplicated ~= nil then
@@ -46,23 +50,14 @@ AddPrefabPostInit("player_classified", function(inst)
         inst.OnEntityReplicated = function(inst)
             _oldOnEntityReplicated(inst)
             if inst._parent ~= nil then
-                for k, v in pairs(inst._parent.replica._) do
-                    print(k, v)
-                end
                 if inst._parent.replica.gfeffectable ~= nil then
                     inst._parent.replica.gfeffectable:AttachClassified(inst)
-                else
-                    print("PANIC: no replica for gfeffectable")
                 end
                 if inst._parent.replica.gfspellcaster ~= nil then
                     inst._parent.replica.gfspellcaster:AttachClassified(inst)
-                else
-                    print("PANIC: no replica for gfspellcaster")
                 end
                 if inst._parent.components.gfquestdoer ~= nil then
                     inst._parent.components.gfquestdoer:AttachClassified(inst)
-                else
-                    print("PANIC: no replica for gfquestdoer")
                 end
             end
         end
@@ -88,10 +83,17 @@ AddPlayerPostInit(function(player)
             print(("Removing \"polite\" tag from %s"):format(tostring(player)))
             player:RemoveTag("polite") 
         end
+
+        player:ListenForEvent("gfRefuseDrink", function(player, data) 
+            if player.components.talker ~= nil then
+                local reason = data ~= nil and data.reason or "GENERIC"
+                player.components.talker:Say(_G.GetActionFailString(player, "GFDRINKIT", reason or "GENERIC"), 2.5)
+            end
+        end)
     end
 
-    player._teststream = _G.net_strstream(player, "player._teststream")
-    player:ListenForEvent("player._teststream", function(player) print(_G.GetTime(), player._teststream:value()) end)
+    --player._teststream = _G.net_strstream(player, "player._teststream")
+    --player:ListenForEvent("player._teststream", function(player) print(_G.GetTime(), player._teststream:value()) end)
 
     player:PushEvent("gfQGUpdateQuests")
     --_G.GFCustomComponentReplication(player, "gfeffectable")

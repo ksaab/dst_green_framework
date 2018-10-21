@@ -1,6 +1,6 @@
 --Green Framework. Please, don't copy any files or functions from this mod, because it can break other mods based on the GF.
 
-rawset(_G, "GFVersion", 1.2)
+rawset(_G, "GFVersion", 1.3)
 
 local GFIsTogether = _G.TheNet ~= nil and true or false
 rawset(_G, "GFIsTogether", GFIsTogether)
@@ -248,7 +248,7 @@ function GFMakeCaster(inst, spells, friendfn)
                 inst.components.gfspellcaster:SetIsTargetFriendlyFn(friendfn)
             end
             if spells ~= nil then
-                inst.components.gfspellcaster:AddSpell(spells)
+                inst.components.gfspellcaster:AddSpells(spells)
             end
         end
     else
@@ -262,12 +262,7 @@ function GFMakeInventoryCastingItem(inst, spells)
         if GFGetIsMasterSim() then
             inst:AddComponent("gfspellitem")
             if spells ~= nil then
-                inst.components.gfspellitem:AddSpell(spells)
-                if type(spells) == "table" then
-                    inst.components.gfspellitem:SetItemSpell(spells[1])
-                else
-                    inst.components.gfspellitem:SetItemSpell(spells)
-                end
+                inst.components.gfspellitem:AddSpells(spells)
             end
         end
     else
@@ -291,7 +286,7 @@ function GFMakeQuestGiver(inst, data, quests)
     end
 end
 
-function GFGetValidSpawnPosition(x, y, z, minradius, maxradius, ground, maxtries)
+function GFGetValidSpawnPosition(x, y, z, minradius, maxradius, maxtries)
     local angle = math.random(360) * DEGREES
     maxtries = maxtries or 10
     minradius = minradius or 1
@@ -301,10 +296,11 @@ function GFGetValidSpawnPosition(x, y, z, minradius, maxradius, ground, maxtries
     local try = 1
     repeat 
         pt = Vector3(x + math.cos(angle) * radius, y, z - math.sin(angle) * radius)
-        if not ground or GetThisWorld().Map:IsPassableAtPoint(pt:Get()) then
+        if TheWorld.Map:IsPassableAtPoint(pt:Get()) then
             break
         end
         pt = nil
+        try = try + 1
     until try < maxtries
 
     return pt
@@ -433,7 +429,7 @@ function GFTestGlobalFunctions()
     print("GFGetPlayer", GFGetPlayer())
 end
 
-local function GetQuestReminderString(inst, qName)
+function GetQuestReminderString(inst, qName)
     local STR = STRINGS.GF.QUEST_REMINDERS
     if type(inst) ~= "string" then inst = inst.prefab end
     inst = string.upper(inst)
@@ -463,7 +459,7 @@ function GetEffectString(eName, param)
     end
 end
 
-function GetSpellString(eName, param)
+function GetSpellString(eName, param, ignoreEmpty)
     --local INVALID_TITLE = STRINGS.GF.HUD.INVALID_LINES.INVALID_TITLE
     --local INVALID_TEXT = STRINGS.GF.HUD.INVALID_LINES.INVALID_TEXT
     param = param ~= nil and string.upper(param) or "TITLE"
@@ -471,6 +467,8 @@ function GetSpellString(eName, param)
     local STR = STRINGS.GF.SPELLS[eName]
     if STR ~= nil and STR[param] ~= nil then
         return STR[param]
+    elseif ignoreEmpty then
+        return ""
     else
         param = param == "TITLE" and STRINGS.GF.HUD.INVALID_LINES.INVALID_TITLE or STRINGS.GF.HUD.INVALID_LINES.INVALID_TEXT
         return param

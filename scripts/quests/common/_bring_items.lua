@@ -10,18 +10,35 @@ end
 
 local function Deserialize(self, doer, data)
     local count = data ~= nil and tonumber(data) or 0
-    GFDebugPrint("_ex_bring_five_logs, deserealizing data: ", count)
     local cmp = doer.components.gfquestdoer
     if cmp.currentQuests[questName] ~= nil then
         cmp.currentQuests[questName].count = count
-    else
-        GFDebugPrint("_ex_bring_five_logs, can't deserealize data")
     end
 end
 
-local function InfoString(self, doer)
+local function InfoData(self, doer)
     local qData = doer.components.gfquestdoer:GetQuestData(questName)
-    return (qData ~= nil and qData.count ~= nil) and string.format("collected items: %i/%i", qData.count, requredNumber) or STRINGS.GF.HUD.ERROR
+    local current = (qData ~= nil and qData.count ~= nil) and qData.count or 0
+    return {qData ~= nil and qData.count or 0, requredNumber}
+end
+
+local function OnGiverComplete(self, giver, doer)
+    if giver == nil or giver.prefab ~= "pigman" then return end
+
+    local x, y, z = giver.Transform:GetWorldPosition()
+    local pt = GFGetValidSpawnPosition(x, y, z, 15)
+    if pt == nil then return end
+    local home = SpawnPrefab("pighouse")
+    home.Transform:SetPosition(pt:Get())
+    if home ~= nil then
+        if home.inittask ~= nil then
+            home.inittask:Cancel()
+            home.inittask = nil
+        end
+        inst:PushEvent("onbuilt")
+        home.components.spawner:TakeOwnership(giver)
+        --inst.components.spawner:GoHome(giver)
+    end
 end
 
 local function QuestTrack(doer)
@@ -123,7 +140,7 @@ local Quest = Class(GFQuest, function(self)
     self.completion = "Love home. You good."
     self.goaltext = "Bring 5 logs"
 
-    self.StatusStringFn = InfoString
+    self.StatusDataFn = InfoData
 
     --flags
     self.norepeat = false
@@ -142,6 +159,8 @@ local Quest = Class(GFQuest, function(self)
     --checks
     self.CheckOnGiveFn = CheckOnGive
     self.CheckOnCompleteFn = CheckOnComplete
+
+    self.GiverCompleteFn = OnGiverComplete
 
     --reward
     self.RewardFn = Reward

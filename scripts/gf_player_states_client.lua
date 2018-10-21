@@ -680,8 +680,7 @@ local gfflurry = State{
 	},
 }
 
-local gfcraftcast = State
-{
+local gfcraftcast = State{
 	name = "gfcraftcast",
 	tags = {"doing", "casting", "busy", "nodangle"},
 
@@ -726,8 +725,37 @@ local gfcraftcast = State
 	},
 }
 
+local gfmakeattention = State
+{
+	name = "gfmakeattention",
+	tags = {"doing", "nodangle"},
+
+	onenter = function(inst)
+        inst.components.locomotor:Stop()
+        inst.AnimState:PlayAnimation("emoteXL_waving" .. math.random(3))
+        inst:PerformPreviewBufferedAction()
+		inst.sg:SetTimeout(2)
+		return
+	end,
+
+    ontimeout = function(inst)
+		inst:ClearBufferedAction()
+		inst.sg:GoToState("idle")
+	end,
+
+	onupdate = function(inst)
+		if inst:HasTag("doing") then
+			if inst.entity:FlattenMovementPrediction() then
+				inst.sg:GoToState("idle", "noanim")
+			end
+		elseif inst.bufferedaction == nil then
+			inst.sg:GoToState("idle")
+		end
+	end,
+}
 
 --Add states block--------------
+AddStategraphState("wilson_client", gfmakeattention)
 AddStategraphState("wilson_client", gfdodrink)
 AddStategraphState("wilson_client", gfcastwithstaff)
 AddStategraphState("wilson_client", gfgroundslam)
@@ -752,6 +780,7 @@ end))
 --Add actions handlers block----
 AddStategraphActionHandler("wilson_client", ActionHandler(ACTIONS.GFDRINKIT, "gfdodrink"))
 AddStategraphActionHandler("wilson_client", ActionHandler(ACTIONS.GFENHANCEITEM, "dolongaction"))
+AddStategraphActionHandler("wilson_client", ActionHandler(ACTIONS.GFTALKFORQUEST, "gfmakeattention"))
 
 AddStategraphActionHandler("wilson_client", ActionHandler(ACTIONS.GFCASTSPELL, function(inst)
     local act = inst:GetBufferedAction()
@@ -766,7 +795,7 @@ AddStategraphActionHandler("wilson_client", ActionHandler(ACTIONS.GFCASTSPELL, f
 		spellName = gfsp.currentSpell
 	--Well, I don't know how to hook the name for an item-instant-spell in any other way
 	elseif item and item.replica.gfspellitem then
-		spellName = item.replica.gfspellitem:GetItemSpellName()	
+		spellName = item.replica.gfspellitem:GetCurrentSpell()	
 	end
 
 	if spellName == nil or spellList[spellName] == nil then return "idle" end --invalid spell name

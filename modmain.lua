@@ -103,11 +103,12 @@ GFAddCasterCreature("pigman", PigmanFrindlyFireCheck)
 GFAddCasterCreature("bunnyman", PigmanFrindlyFireCheck)
 GFAddCasterCreature("knight", ChessFrindlyFireCheck)
 
-_G.GFAddQuestGiver("pigman", "PIGMAN_DEFAULT", function(inst, attracter) print(inst, "reacts on", attracter) end, 3)
-_G.GFAddQuestGiver("skeleton", "SKELETON_DEFAULT", function(inst, attracter) print(inst, "reacts on", attracter) end, 1)
+_G.GFAddQuestGiver("pigman", "PIGMAN_DEFAULT", nil, 3)
+_G.GFAddQuestGiver("pigking", "PIGKING_DEFAULT", nil, 3)
+--[[_G.GFAddQuestGiver("skeleton", "SKELETON_DEFAULT", function(inst, attracter) print(inst, "reacts on", attracter) end, 1)
 
 _G.GFAddBaseQuests("pigman", "_ex_bring_five_rocks", "_ex_bring_five_logs")
-_G.GFAddBaseQuests("skeleton", "_ex_kill_two_merms", "_ex_kill_five_spiders")
+_G.GFAddBaseQuests("skeleton", "_ex_kill_two_merms", "_ex_kill_five_spiders") ]]
 
 AddModRPCHandler("GreenFramework", "GFPLAYEISRREADY", function(inst)
     inst:PushEvent("gfplayerisready")

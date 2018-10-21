@@ -1036,13 +1036,13 @@ local gfcraftcast = State
 local gfmakeattention = _G.State
 {
 	name = "gfmakeattention",
-	tags = {"doing", "casting", "nodangle"},
+	tags = {"doing", "nodangle"},
 
 	onenter = function(inst)
         inst.components.locomotor:Stop()
         inst.AnimState:PlayAnimation("emoteXL_waving" .. math.random(3))
         local act = inst:GetBufferedAction()
-        if act and act.target then
+		if act and act.target then
             act.target:PushEvent("gfQGGetAttention", inst)
         end
 	end,
@@ -1087,8 +1087,21 @@ AddStategraphEvent("wilson", EventHandler("gfforcemove", function(inst, data)
 	inst.components.locomotor:PushAction(data.act, true, true)
 end))
 
+
+
 --Add actions handlers----
-AddStategraphActionHandler("wilson", ActionHandler(ACTIONS.GFDRINKIT, "gfdodrink"))
+AddStategraphActionHandler("wilson", ActionHandler(ACTIONS.GFDRINKIT, function(inst, act)
+		local drink = act.target or act.invobject
+		if drink == nil or drink.components.gfdrinkable == nil then return end
+		local check, reason = drink.components.gfdrinkable:CheckBeforeDrunk(inst)
+		if check then 
+			return "gfdodrink"
+		else
+			inst:PushEvent("gfRefuseDrink", {reason = reason})
+			return "idle"
+		end
+	end)
+)
 AddStategraphActionHandler("wilson", ActionHandler(ACTIONS.GFENHANCEITEM, "dolongaction"))
 AddStategraphActionHandler("wilson", ActionHandler(ACTIONS.GFTALKFORQUEST, "gfmakeattention"))
 
@@ -1107,7 +1120,7 @@ AddStategraphActionHandler("wilson", ActionHandler(ACTIONS.GFCASTSPELL, function
 		spellName = gfsp.currentSpell
 	--Well, I don't know how to hook the name for an item-instant-spell in any other way
 	elseif item and item.replica.gfspellitem then
-		spellName = item.replica.gfspellitem:GetItemSpellName()	
+		spellName = item.replica.gfspellitem:GetCurrentSpell()	
 	end
 
 	if spellName == nil or spellList[spellName] == nil then return "idle" end --invalid spell name

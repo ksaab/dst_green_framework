@@ -63,21 +63,21 @@ local function Accept(owner, qName)
     owner.components.gfquestdoer:HandleButtonClick(qName, 0)
 
     owner:PushEvent("gfQSCloseDialogPush")
-    GFDebugPrint("CLIENT: you've accepted the quest.", qName)
+    --GFDebugPrint("CLIENT: you've accepted the quest.", qName)
 end
 
 local function Refuse(owner, qName)
     owner.components.gfquestdoer:HandleButtonClick(qName, 1)
 
     owner:PushEvent("gfQSCloseDialogPush")
-    GFDebugPrint("CLIENT: you've refused the quest.", qName)
+    --GFDebugPrint("CLIENT: you've refused the quest.", qName)
 end
 
 local function Complete(owner, qName)
     owner.components.gfquestdoer:HandleButtonClick(qName, 3)
 
     owner:PushEvent("gfQSCloseDialogPush")
-    GFDebugPrint("CLIENT: you've trying to complete the quest.", qName)
+    --GFDebugPrint("CLIENT: you've trying to complete the quest.", qName)
 end
 
 local QuestDialog = Class(Widget, function(self, owner)

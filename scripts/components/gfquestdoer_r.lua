@@ -13,7 +13,7 @@ local function QRStatusChanged(doer, qName, qEvent, giverHash)
         doer:PushEvent("gfQSInformerPush", {qName = qName, qEvent = qEvent})
     end
 
-    GFDebugPrint(("QDoerReplica: Quest %s has new status %i on %s"):format(qName, qEvent, tostring(doer)))
+    --GFDebugPrint(("QDoerReplica: Quest %s has new status %i on %s"):format(qName, qEvent, tostring(doer)))
 end
 
 local function QRCreate(doer, qName, qEvent, giverHash)
@@ -31,7 +31,7 @@ local function QRCreate(doer, qName, qEvent, giverHash)
         doer:PushEvent("gfQSInformerPush", {qName = qName, qEvent = qEvent})
     end
 
-    GFDebugPrint(("QDoerReplica: Strating quest %s on %s"):format(qName, tostring(doer)))
+    --GFDebugPrint(("QDoerReplica: Strating quest %s on %s"):format(qName, tostring(doer)))
 end
 
 local function QRRemove(doer, qName, qEvent, giverHash)
@@ -46,7 +46,7 @@ local function QRRemove(doer, qName, qEvent, giverHash)
         doer:PushEvent("gfQSInformerPush", {qName = qName, qEvent = qEvent})
     end
 
-    GFDebugPrint(("QDoerReplica: Removing quest %s from %s"):format(qName, tostring(doer)))
+    --GFDebugPrint(("QDoerReplica: Removing quest %s from %s"):format(qName, tostring(doer)))
 end
 
 local function QRCooldown(doer, qName, qEvent)
@@ -57,7 +57,7 @@ local function QRCooldown(doer, qName, qEvent)
         self.completedQuests[qName] = qEvent == 8 and 1 or nil
     end
 
-    GFDebugPrint(("QDoerReplica: %s cooldown changed for %s"):format(qName, tostring(doer)))
+    --GFDebugPrint(("QDoerReplica: %s cooldown changed for %s"):format(qName, tostring(doer)))
 end
 
 local function DeserealizeEventStream(classified)
@@ -161,7 +161,7 @@ local function DeserealizeOfferString(classified)
             if qName ~= nil then
                 table.insert(giveArr, qName)
             else
-                GFDebugPrint("Invalid quest ID", tmp[i])
+                --GFDebugPrint("Invalid quest ID", tmp[i])
             end
         end
     end
@@ -174,14 +174,14 @@ local function DeserealizeOfferString(classified)
             if qName ~= nil then
                 table.insert(compArr, qName)
             else
-                GFDebugPrint("Invalid quest ID", tmp[i])
+                --GFDebugPrint("Invalid quest ID", tmp[i])
             end
         end
     end
 
     --if (giveArr == nil or #giveArr == 0) and (compArr == nil or #compArr == 0) then
     if #giveArr == 0 and #compArr == 0 then
-        GFDebugPrint("QDoerR: got line but don't have any quests!")
+        --GFDebugPrint("QDoerR: got line but don't have any quests!")
         return
     end
 
@@ -288,7 +288,7 @@ local function CreateQuestDialog(self, quests, strid)
                     end
                 end
             else
-                GFDebugPrint("Offering invalid quest (give)", quests[i])
+                --GFDebugPrint("Offering invalid quest (give)", quests[i])
             end
         end
     end

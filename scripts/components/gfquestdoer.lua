@@ -3,7 +3,7 @@ local QID_TO_NAME = GFQuestIDToName
 
 local _r = require "components/gfquestdoer_r"
 
-local function TrackGiverFail(inst)
+--[[ local function TrackGiverFail(inst)
     inst.components.gfquestdoer:StopTrackGiver()
 
     if inst.player_classified ~= nil then
@@ -13,11 +13,11 @@ local function TrackGiverFail(inst)
             inst.player_classified._gfQSCloseDialogEvent:push()
         end
     end
-end
+end ]]
 
 local function TrackGiver(inst, giver)
     if not inst:IsValid() or not giver:IsValid() or not inst:IsNear(giver, 15) then
-        TrackGiverFail(inst)
+        inst.components.gfquestdoer.TrackGiverFail()
     end
 end
 
@@ -30,7 +30,7 @@ local function ResetQuests(self)
                 needToUpdate = true
                 self.completedQuests[qName] = nil
                 self:PushCooldown(qName, false)
-                GFDebugPrint(("Cooldown on quest %s is ended for %s"):format(qName, tostring(self.inst)))
+                --GFDebugPrint(("Cooldown on quest %s is ended for %s"):format(qName, tostring(self.inst)))
             end
         end
     end
@@ -52,23 +52,35 @@ local GFQuestDoer = Class(function(self, inst)
     self._trackTask = nil
     self._offeredQuest = nil
 
+    self.TrackGiverFail = function()
+        inst.components.gfquestdoer:StopTrackGiver()
+    
+        if inst.player_classified ~= nil then
+            if inst == GFGetPlayer() and not GFGetIsDedicatedNet() then
+                inst:PushEvent("gfQSCloseDialogPush")
+            else
+                inst.player_classified._gfQSCloseDialogEvent:push()
+            end
+        end
+    end
+
     if GFGetIsMasterSim() then
         self:WatchWorldState("cycles", ResetQuests)
-        inst:ListenForEvent("death", TrackGiverFail)
+        inst:ListenForEvent("death", self.TrackGiverFail)
     end
 end)
 
 function GFQuestDoer:OfferQuests(quests, strid, giver)
     if self:CreateQuestDialog(quests, strid, giver) then
         if giver ~= nil and not self:TrackGiver(giver) then 
-            GFDebugPrint("Can't track giver", tostring(giver))
+            --GFDebugPrint("Can't track giver", tostring(giver))
             return
         end
         for _, v in pairs(quests) do
             self._questTracker[v] = true
         end
     else
-        GFDebugPrint("Nothing to offer")
+        --GFDebugPrint("Nothing to offer")
     end
 end
 
@@ -94,6 +106,11 @@ function GFQuestDoer:AcceptQuest(qName)
     --updaing quest list on the cleint-side
     self:UpdateQuestList(qName, 3)
     _q:Accept(self.inst) --register quest's events
+
+    if self._questGiver ~= nil then
+        self._questGiver.components.gfquestgiver:OnQuestAccepted(qName, self.inst)
+    end
+
     self:StopTrackGiver() --don't need to track a giver anymore
 end
 
@@ -103,12 +120,12 @@ function GFQuestDoer:CompleteQuest(qName)
     if not self:IsQuestDone(qName)
         or not ALL_QUESTS[qName]:CheckBeforeComplete(self.inst) 
     then
-        GFDebugPrint(string.format("%s can't complete the quest %s", tostring(self.inst), qName))
+        --GFDebugPrint(string.format("%s can't complete the quest %s", tostring(self.inst), qName))
         return false
     end
 
     local _q = ALL_QUESTS[qName]
-    _q:Complete(self.inst) --unregister quest's events and run a reward fn
+    _q:Complete(self.inst, self._questGiver) --unregister quest's events and run a reward fn
 
     --set a cooldown for the quest if needed
     if _q.norepeat then
@@ -122,6 +139,12 @@ function GFQuestDoer:CompleteQuest(qName)
     --updaing quest list on the cleint-side
     self:UpdateQuestList(qName, 5)
     self.currentQuests[qName] = nil
+
+    if self._questGiver ~= nil then
+        self._questGiver.components.gfquestgiver:OnQuestCompleted(qName, self.inst)
+    end
+
+    self:StopTrackGiver()
 
     return true
 end
@@ -141,7 +164,7 @@ end
 
 function GFQuestDoer:SetQuestDone(qName, done)
     local status = (done == nil or done == false) and 0 or 1
-    print(qName .. "now has status " .. tostring(status))
+    --print(qName .. "now has status " .. tostring(status))
     if self.currentQuests[qName].status ~= status then
         self.currentQuests[qName].status = status
         self:UpdateQuestInfo(qName, done)
@@ -171,7 +194,7 @@ function GFQuestDoer:GetQuestData(qName)
 end
 
 function GFQuestDoer:ResetAllQuests(ignoreCurrent)
-    GFDebugPrint("Resetting all quests for" .. tostring(self.inst))
+    --GFDebugPrint("Resetting all quests for" .. tostring(self.inst))
     for qName, v in pairs(self.completedQuests) do
         self:PushCooldown(qName, false)
         self.completedQuests[qName] = nil
@@ -214,11 +237,11 @@ function GFQuestDoer:TrackGiver(giver)
     --checking distance
     self._trackTask = self.inst:DoPeriodicTask(0.5, TrackGiver, nil, giver)
     --and listening for combat events
-    self.inst:ListenForEvent("attacked", TrackGiverFail, self._questGiver)
-    self.inst:ListenForEvent("death", TrackGiverFail, self._questGiver)
-    self.inst:ListenForEvent("newtarget", TrackGiverFail, self._questGiver)
+    self.inst:ListenForEvent("attacked", self.TrackGiverFail, self._questGiver)
+    self.inst:ListenForEvent("death", self.TrackGiverFail, self._questGiver)
+    self.inst:ListenForEvent("newtarget", self.TrackGiverFail, self._questGiver)
 
-    GFDebugPrint(("%s has started tracking %s"):format(tostring(self.inst), tostring(self._questGiver)))
+    --GFDebugPrint(("%s has started tracking %s"):format(tostring(self.inst), tostring(self._questGiver)))
     return true
 end
 
@@ -228,16 +251,16 @@ function GFQuestDoer:StopTrackGiver()
         self._questTracker = {}
     end
 
-    self.inst:RemoveEventCallback("attacked", TrackGiverFail, self._questGiver)
-    self.inst:RemoveEventCallback("death", TrackGiverFail, self._questGiver)
-    self.inst:RemoveEventCallback("newtarget", TrackGiverFail, self._questGiver)
+    self.inst:RemoveEventCallback("attacked", self.TrackGiverFail, self._questGiver)
+    self.inst:RemoveEventCallback("death", self.TrackGiverFail, self._questGiver)
+    self.inst:RemoveEventCallback("newtarget", self.TrackGiverFail, self._questGiver)
 
     if self._trackTask ~= nil then
         self._trackTask:Cancel()
         self._trackTask = nil
     end
 
-    GFDebugPrint(("%s has stopped tracking %s"):format(tostring(self.inst), tostring(self._questGiver)))
+    --GFDebugPrint(("%s has stopped tracking %s"):format(tostring(self.inst), tostring(self._questGiver)))
     self._questGiver = nil
 end
 

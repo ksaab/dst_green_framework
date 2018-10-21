@@ -10,12 +10,9 @@ end
 
 local function Deserialize(self, doer, data)
     local count = data ~= nil and tonumber(data) or 0
-    GFDebugPrint("_ex_bring_five_logs, deserealizing data: ", count)
     local cmp = doer.components.gfquestdoer
     if cmp.currentQuests[questName] ~= nil then
         cmp.currentQuests[questName].count = count
-    else
-        GFDebugPrint("_ex_bring_five_logs, can't deserealize data")
     end
 end
 

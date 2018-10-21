@@ -24,11 +24,11 @@ end
 
 local function InfoData(self, doer)
     local qData = doer.components.gfquestdoer:GetQuestData(questName)
-    return {qData.count or 0, requredNumber}
+    local current = (qData ~= nil and qData.count ~= nil) and qData.count or 0
+    return {qData ~= nil and qData.count or 0, requredNumber}
 end
 
 local function QuestTrack2(doer, data)
-    print(requredCreature)
     if data and data.victim and data.victim.prefab == requredCreature then
         local qData = doer.components.gfquestdoer:GetQuestData(questName)
         qData.count = qData.count + 1
@@ -44,7 +44,6 @@ end
 local function Accept(self, doer)
     doer.components.gfquestdoer:GetQuestData(questName).count = 0
     if not GFGetIsMasterSim() then return end
-    print("registering event for", questName)
     doer:ListenForEvent("killed", QuestTrack2)
 end
 

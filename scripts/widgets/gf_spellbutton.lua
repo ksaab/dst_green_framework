@@ -7,6 +7,8 @@ local UIAnim = require "widgets/uianim"
 local INVALID_TITLE = STRINGS.GF.HUD.INVALID_LINES.INVALID_TITLE
 local INVALID_TEXT = STRINGS.GF.HUD.INVALID_LINES.INVALID_TEXT
 
+local ALL_SPELLS = GFSpellList
+
 local function OnClick(self)
     if self == nil then return end
     local spellName = self.spell
@@ -22,7 +24,7 @@ local function OnClick(self)
     end
 end
 
-local SpellButton = Class(Button, function(self, owner, spell)
+local SpellButton = Class(Button, function(self, owner, sName)
 	self.owner = owner
     Button._ctor(self, "SpellButton")
     
@@ -35,16 +37,17 @@ local SpellButton = Class(Button, function(self, owner, spell)
 
     self.background = self:AddChild(Image("images/gfspellhud.xml", "gf_spell_panel_icon.tex"))
 
-    if spell then
-        self.spell = spell.name
-        if spell.icon ~= nil and spell.iconAtlas ~= nil then
-            self.icon = self:AddChild(Image(spell.iconAtlas, spell.icon))
+    if sName then
+        local sInst = ALL_SPELLS[sName]
+        self.spell = sName
+        if sInst.icon ~= nil and sInst.iconAtlas ~= nil then
+            self.icon = self:AddChild(Image(sInst.iconAtlas, sInst.icon))
             --self.icon:SetScale(0.7)
         end
 
         self:SetTooltip(string.format("%s\n%s", 
-            GetSpellString(spell.name, "title"), 
-            GetSpellString(spell.name, "desc")
+            GetSpellString(sName, "title"), 
+            GetSpellString(sName, "desc")
         ))
     end
 

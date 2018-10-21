@@ -155,12 +155,12 @@ function GFEffectable:ApplyEffect(eName, eParams)
         eInst:Refresh(self.inst, eData, eParams) --refreshing the existing effect
         if not eInst.static then self.inst:PushEvent("gfEFEffectRefreshed", {eName = eName, eData = eData}) end
 
-        GFDebugPrint(("%s refreshes %s"):format(tostring(self.inst), eName))
+        --GFDebugPrint(("%s refreshes %s"):format(tostring(self.inst), eName))
         self.inst.replica.gfeffectable:RefreshEffect(eName)
     else--if self:CheckResists(effect) then
         local eData = {}
+        eInst:Apply(self.inst, eData, eParams)
         self.effects[eName] = eData
-        eInst:Apply(self.inst, self.effects[eName], eParams)
         if not eInst.static then self.inst:PushEvent("gfEFEffectApplied", {eName = eName, eData = eData}) end
 
         if not eInst.static then --static effects are permanent modificators, so don't need to update
@@ -180,7 +180,7 @@ function GFEffectable:ApplyEffect(eName, eParams)
             end
         end
 
-        GFDebugPrint(("%s now is affected by %s"):format(tostring(self.inst), eName))
+        --GFDebugPrint(("%s now is affected by %s"):format(tostring(self.inst), eName))
         self.inst.replica.gfeffectable:ApplyEffect(eName)
     end
     
@@ -209,7 +209,7 @@ function GFEffectable:RemoveEffect(eName, reason)
     self.inst.replica.gfeffectable:RemoveEffect(eName)
     if not eInst.static then self.inst:PushEvent("gfEFEffectRemoved", {eName = eName, reason = reason}) end
 
-    GFDebugPrint(("%s is no longer affected by %s, reason %s "):format(tostring(self.inst), eName, reason))
+    --GFDebugPrint(("%s is no longer affected by %s, reason %s "):format(tostring(self.inst), eName, reason))
 end
 
 function GFEffectable:RemoveAllEffects(removeStatic, reason)
@@ -229,6 +229,10 @@ function GFEffectable:RemoveAllEffectsWithTag(tag, reason)
             self:RemoveEffect(eName, reason)
         end
     end
+end
+
+function GFEffectable:GetEffectData(eName)
+    return self.effects[eName] 
 end
 
 function GFEffectable:GetTimer(eName)

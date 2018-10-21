@@ -179,7 +179,7 @@ local Spell = Class(GFSpell, function(self, name)
     self.tags = {
         magic = true,
         lightning = true,
-        replicateable = true,
+        replicable = true,
     }
     
     --cooldowns

@@ -38,10 +38,14 @@ local function DeserializeQuests(inst)
 
     --quest list is updated, need to check the player, may be we can offer him something new
     --TODO: replace component with replica when it's possible
-    if ThePlayer ~= nil and ThePlayer.components.gfquestdoer ~= nil and self._listening then
+    if ThePlayer ~= nil and ThePlayer.components.gfquestdoer ~= nil then
         if self:HasQuests() then
+            --[[ if self._listening then
+                self:CheckQuestsOnPlayer(ThePlayer)
+            else
+            end ]]
             self:StartTrackingPlayer()
-        else
+        elseif self._listening then
             self:StopTrackingPlayer()
         end
         --self:CheckQuestsOnPlayer(ThePlayer)
@@ -116,6 +120,8 @@ function QSQuestGiver:UpdateQuests()
     if self._task == nil then
         self._task = self.inst:DoTaskInTime(0, UpdateFn)
     end
+
+    self:StartTrackingPlayer()
 end
 
 function QSQuestGiver:CheckQuestsOnPlayer(player)
@@ -133,7 +139,7 @@ function QSQuestGiver:CheckQuestsOnPlayer(player)
     for k, qName in pairs(cList) do
         --TODO: replace component with replica when it's possible
         if pcomp:IsQuestDone(qName) then
-            print(("QSQuestGiver: %s I can complete a quest %s for %s"):format(tostring(self.inst), qName, tostring(player)))
+            --print(("QSQuestGiver: %s I can complete a quest %s for %s"):format(tostring(self.inst), qName, tostring(player)))
             if self._follower ~= nil then
                 self._follower.AnimState:PlayAnimation("question" .. self._followerOffest, true)
             end
@@ -144,7 +150,7 @@ function QSQuestGiver:CheckQuestsOnPlayer(player)
     for k, qName in pairs(gList) do
         --TODO: replace component with replica when it's possible
         if pcomp:CheckQuest(qName) then
-            print(("QSQuestGiver: %s I can give a quest %s to %s"):format(tostring(self.inst), qName, tostring(player)))
+           -- print(("QSQuestGiver: %s I can give a quest %s to %s"):format(tostring(self.inst), qName, tostring(player)))
             if self._follower ~= nil then
                 self._follower.AnimState:PlayAnimation("exclamation" .. self._followerOffest, true)
             end
@@ -156,26 +162,31 @@ function QSQuestGiver:CheckQuestsOnPlayer(player)
         self._follower.AnimState:PlayAnimation("none", true)
     end
 
-    print(("QSQuestGiver: %s I don't have any interesting for %s"):format(tostring(self.inst), tostring(player)))
+    --print(("QSQuestGiver: %s I don't have any interesting for %s"):format(tostring(self.inst), tostring(player)))
 end
 
 function QSQuestGiver:StartTrackingPlayer()
     if GFGetIsDedicatedNet()    --dedicated don't need to track
         or not self:HasQuests() --don't need to track the player id we don't have any quests
-        or self._listening      --we are already tracking the player
+        --or self._listening      --we are already tracking the player
         or ThePlayer == nil                         --no valid player,
         or ThePlayer.components.gfquestdoer == nil  --no track
         or self.inst:IsAsleep()
     then
-        GFDebugPrint("QSQuestGiverR: don't need to track the player!")
+        --GFDebugPrint("QSQuestGiverR: don't need to track the player!")
         return 
+    end
+
+    if self._listening then
+        self:CheckQuestsOnPlayer(ThePlayer)
+        return
     end
 
     if self._follower == nil then
          self._follower = SpawnPrefab("gf_quest_mark")
     end
     if self._follower == nil then
-        GFDebugPrint("QSQuestGiverR: Panic! Can't create a follower!")
+        --GFDebugPrint("QSQuestGiverR: Panic! Can't create a follower!")
         return
     end
 
@@ -185,7 +196,7 @@ function QSQuestGiver:StartTrackingPlayer()
     self:CheckQuestsOnPlayer(ThePlayer)
     self.inst:ListenForEvent("gfQSOnQuestUpdate", self._onplayerupdate, ThePlayer)
 
-    print(("QSQuestGiverR: Now %s watching for %s"):format(tostring(self.inst), tostring(ThePlayer)))
+    --print(("QSQuestGiverR: Now %s watching for %s"):format(tostring(self.inst), tostring(ThePlayer)))
 end
 
 function QSQuestGiver:StopTrackingPlayer()
@@ -199,7 +210,7 @@ function QSQuestGiver:StopTrackingPlayer()
         TheCamera:RemoveListener(self, self._oncameraupdate)
         self.inst:RemoveEventCallback("gfQSOnQuestUpdate", self._onplayerupdate, ThePlayer)
 
-        print(("QSQuestGiverR: %s stops watching for %s"):format(tostring(self.inst), tostring(ThePlayer)))
+        --print(("QSQuestGiverR: %s stops watching for %s"):format(tostring(self.inst), tostring(ThePlayer)))
     end
 end
 

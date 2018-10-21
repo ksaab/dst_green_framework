@@ -48,7 +48,6 @@ local function DoDeserealizeEventStream(classified)
         local eventData = eventsArray[i]:split(';')
         if #eventData >= 2 then --don't need to process invalid strings
             local eName = EID_TO_NAME[tonumber(eventData[2])]
-            print("eName", eName)
             if eName ~= nil then
                 if eventData[1] == '1' or eventData[1] == '2' then --create a new icon for effect
                     UpdateClassifiedEffect(classified._parent, eName, tonumber(eventData[3] or 0), tonumber(eventData[4] or 1))
@@ -238,7 +237,6 @@ function GFEffectable:ApplyEffect(eName)
         if self.classified ~= nil and eInst.pushToClassified then
             if self.inst == ThePlayer and not GFGetIsDedicatedNet() then
                 --if inst is the not dedicated host-player, don't need to push net variable
-                print("host event")
                 eInst:HUDOnUpdate(self.inst, self.effects[eName])
                 self.inst:PushEvent("gfEFUpdateIcon", {eName = eName})
             else
@@ -309,27 +307,29 @@ function GFEffectable:GenerateHoverStrings(static)
     for eName, _ in pairs(self.effects) do
         local eInst = ALL_EFFECTS[eName]
         local type = eInst.type
-        if static then
-            if type == 3 then
-                table.insert(tmp1, GetEffectString(eName, "hover"))
-            elseif type == 4 then
-                table.insert(tmp2, GetEffectString(eName, "hover"))
-            end
-        else
-            if type == 1 then
-                table.insert(tmp1, GetEffectString(eName, "hover"))
-            elseif type == 2 then
-                table.insert(tmp2, GetEffectString(eName, "hover"))
+        if eInst.pushToReplica then
+            if static then
+                if type == 3 then
+                    table.insert(tmp1, GetEffectString(eName, "hover"))
+                elseif type == 4 then
+                    table.insert(tmp2, GetEffectString(eName, "hover"))
+                end
+            else
+                if type == 1 then
+                    table.insert(tmp1, GetEffectString(eName, "hover"))
+                elseif type == 2 then
+                    table.insert(tmp2, GetEffectString(eName, "hover"))
+                end
             end
         end
     end
 
     if static then
-        self.hudInfo.affixString    = #tmp1 > 0 and table.concat(tmp1, ", ") or nil
-        self.hudInfo.enchantString  = #tmp2 > 0 and table.concat(tmp2, ", ") or nil
+        self.hudInfo.affixString    = #tmp1 > 0 and table.concat(tmp1, ", ") or ""
+        self.hudInfo.enchantString  = #tmp2 > 0 and table.concat(tmp2, ", ") or ""
     else
-        self.hudInfo.positiveString = #tmp1 > 0 and table.concat(tmp1, ", ") or nil
-        self.hudInfo.negativeString = #tmp2 > 0 and table.concat(tmp2, ", ") or nil
+        self.hudInfo.positiveString = #tmp1 > 0 and table.concat(tmp1, ", ") or ""
+        self.hudInfo.negativeString = #tmp2 > 0 and table.concat(tmp2, ", ") or ""
     end
 end
 

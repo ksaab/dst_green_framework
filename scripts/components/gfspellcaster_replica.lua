@@ -1,49 +1,37 @@
 --Green Framework. Please, don't copy any files or functions from this mod, because it can break other mods based on the GF.
 
-local spellList = GFSpellList
-local spellNamesToID = GFSpellNameToID
-local spellIDToNames = GFSpellIDToName
+local ALL_SPELLS = GFSpellList
+local SNAME_TO_ID = GFSpellNameToID
+local SID_TO_NAME = GFSpellIDToName
 
---listening for dirty events directly from the player_classified
-local function DeserializeSpells(classified)
-    if classified._parent == nil then GFDebugPrint("DeserializeSpells: parent is nil") return end
+local function DeserializeStream(classified)
+    if classified._parent == nil then return end
 
+    local eventArr = classified._gfSCSpellStream:value():split('^')
     local self = classified._parent.replica.gfspellcaster
-    local spells = classified._spellString:value():split(';')
-    GFDebugPrint(classified._spellString:value())
-    self.spells = {}
-    for _, v in pairs(spells) do
-        local spellName = spellIDToNames[tonumber(v)]
-        self.spells[spellName] = spellList[spellName]
+    for _, event in pairs(eventArr) do
+        local eData = event:split(';')
+        if eData[1] == '1' then
+            self:AddSpell(eData[2])
+        elseif eData[1] == '2' then
+            self:RemoveSpell(eData[2])
+        elseif eData[1] == '3' then
+            self:PushRecharge(eData[2], tonumber(eData[3]), tonumber(eData[4]))
+        end
     end
-
-    classified._parent:PushEvent("gfpushwatcher")
-    classified._parent:PushEvent("gfpushpanel")
 end
 
---listening for dirty events directly from the player_classified
-local function DeserializeRecharges(classified)
-    if classified._parent == nil then GFDebugPrint("DeserializeRecharges: parent is nil") return end
-
-    local self = classified._parent.replica.gfspellcaster
-    local spellArray = classified._spellRecharges:value():split(';')
-    GFDebugPrint(classified._spellRecharges:value())
-    self.spellsReadyTime = {}
-    self.spellsRechargeDuration = {}
-    for k, v in pairs(spellArray) do
-        local recharges = v:split(',')
-        recharges[1] = spellIDToNames[tonumber(recharges[1])]
-        self.spellsReadyTime[recharges[1]] = GetTime() + tonumber(recharges[2])
-        self.spellsRechargeDuration[recharges[1]] = tonumber(recharges[3] or recharges[2])
+local function _pushEvent(self)
+    if self._pushTask == nil then
+        self._pushTask = self.inst:DoTaskInTime(0, function(inst) 
+            self._pushTask = nil
+            inst:PushEvent("gfRWPush") 
+        end)
     end
-
-    classified._parent:PushEvent("gfpushwatcher")
 end
 
---listening for dirty events directly from the player_classified
-local function PushRechargesDirty(classified)
-    if classified._parent == nil then print("PushRechargesDirty: parent is nil") return end
-    classified._parent:PushEvent("gfpushwatcher")
+local function _forceRecharges(classified)
+    if classified._parent ~= nil then classified._parent:PushEvent("gfRWPush") end
 end
 
 local GFSpellCaster = Class(function(self, inst)
@@ -54,16 +42,25 @@ local GFSpellCaster = Class(function(self, inst)
     if not inst:HasTag("player") then return end
     
     self.spells = {}
-    self.spellsReadyTime = {}
-    self.spellsRechargeDuration = {}
+    self.spellData = {}
+
+    self._pushTask = nil
 
     --attaching classified on the server-side
     if self.classified == nil and inst.player_classified ~= nil then
         self:AttachClassified(inst.player_classified)
     end
+
+    if GFGetIsMasterSim() and self.inst.components.gfspellcaster ~= nil then 
+        self.spells = self.inst.components.gfspellcaster.spells
+        self.spellData = self.inst.components.gfspellcaster.spellData
+    end
 end)
 
---attaching classified on the client-side
+-----------------------------------------
+--Classified methods---------------------
+-----------------------------------------
+
 function GFSpellCaster:AttachClassified(classified)
     if self.classified ~= nil then return end
 
@@ -74,9 +71,8 @@ function GFSpellCaster:AttachClassified(classified)
 
     if not GFGetIsMasterSim() then 
         --collecting events directly from the classified prefab
-        self.inst:ListenForEvent("gfsetspellsdirty", DeserializeSpells, classified)
-        self.inst:ListenForEvent("gfsetrechargesdirty", DeserializeRecharges, classified)
-        self.inst:ListenForEvent("gfupdaterechargesdirty", PushRechargesDirty, classified)
+        self.inst:ListenForEvent("gfSCForceRechargesEvent", _forceRecharges, classified)
+        self.inst:ListenForEvent("gfSCEventDirty", DeserializeStream, classified)
     end
 end
 
@@ -86,101 +82,83 @@ function GFSpellCaster:DetachClassified()
     self.ondetachclassified = nil
 end
 
-function GFSpellCaster:SetSpells()
-    if not GFGetIsMasterSim() then return end
+-----------------------------------------
+--Safe methods---------------------------
+-----------------------------------------
 
-    GFDebugPrint("Updating spells on", self.inst)
-    local splstr = {}
-    self.spells = {} --resetting current spells
+function GFSpellCaster:AddSpell(sName)
+    if sName == nil or ALL_SPELLS[sName] == nil then return false end
 
-    --collecting all spells from the component
-    --component and replica on the server have the same set of data — looks like a waste of the memory, 
-    --but I don't want to create a lot of ismastersim checks in HUD methods
-    for k, v in pairs(self.inst.components.gfspellcaster.spells) do
-        self.spells[k] = spellList[k]
-        table.insert(splstr, spellNamesToID[k])
-    end
-
-    if self.classified ~= nil then
-        if self.inst == GFGetPlayer() and not GFGetIsDedicatedNet() then
-            --refresh recharge-watcher on the host-side
-            self.inst:PushEvent("gfpushwatcher") 
-            self.inst:PushEvent("gfpushpanel")
-        else
-            --sending information about current spells to the client
-            --sending string which contains all spells enumerated with a separator
-            local setstr = table.concat(splstr, ';')
-            self.classified._spellString:set_local(setstr)
-            self.classified._spellString:set(setstr)
+    if GFGetIsMasterSim() then
+        if self.inst == ThePlayer and not GFGetIsDedicatedNet() then
+            _pushEvent(self)
+            self.inst:PushEvent("gfSCPanelAdd", {sName = sName}) 
+        elseif self.classified ~= nil then
+            self.classified._gfSCSpellStream:push_string(string.format("1;%s", sName))
         end
-    end
-end
-
-function GFSpellCaster:SetSpellRecharges()
-    if not GFGetIsMasterSim() then return end
-
-    GFDebugPrint("Updating recharges on", self.inst)
-    local splstr = {}  --resetting current cooldowns
-    local totals = self.inst.components.gfspellcaster.spellsRechargeDuration
-
-    --collecting all cooldowns from the component
-    --duplicating data like above, but the reason is the same too
-    for k, v in pairs(self.inst.components.gfspellcaster.spellsReadyTime) do
-        local remain = v - GetTime()
-        self.spellsReadyTime[k] = v
-        self.spellsRechargeDuration[k] = totals[k]
-        print(("%s,%.2f,%.2f"):format(spellNamesToID[k], v - GetTime(), totals[k]))
-        table.insert(splstr, ("%s,%.2f,%.2f"):format(spellNamesToID[k], v - GetTime(), totals[k]))
-    end
-
-    if self.classified ~= nil then
-        if self.inst == GFGetPlayer() and not GFGetIsDedicatedNet() then
-            --refresh recharge-watcher on the host-side
-            self.inst:PushEvent("gfpushwatcher")
-        else
-            --sending information about current cooldowns to the client
-            local setstr = table.concat(splstr, ';')
-            self.classified._spellRecharges:set_local(setstr)
-            self.classified._spellRecharges:set(setstr)
-        end
-    end
-end
-
-function GFSpellCaster:PushSpellRecharges()
-    if self.classified ~= nil then
-        if self.inst == GFGetPlayer() and not GFGetIsDedicatedNet() then
-            --refresh hud on the host-side
-            self.inst:PushEvent("gfpushwatcher")
-        else
-            --forcing a refresh event on the client
-            self.classified._forceUpdateRecharges:push()
-        end
-    end
-end
-
-function GFSpellCaster:IsSpellValidForCaster(spellName)
-    return self.spells[spellName] ~= nil
-        and self:CanCastSpell(spellName)
-end
-
-function GFSpellCaster:CanCastSpell(spellname)
-    if spellList[spellname].passive then return false end --can't cast passive spells
-    
-    if self.spellsReadyTime[spellname] ~= nil then --there is a recharge for this spell
-        return GetTime() > self.spellsReadyTime[spellname]
     else
-        return true
+        self.spells[sName] = true
+        _pushEvent(self)
+        self.inst:PushEvent("gfSCPanelAdd", {sName = sName}) 
     end
 end
 
-function GFSpellCaster:GetSpellRecharge(spellname)
+function GFSpellCaster:RemoveSpell(sName)
+    if GFGetIsMasterSim() then
+        if self.inst == ThePlayer and not GFGetIsDedicatedNet() then
+            _pushEvent(self)
+            self.inst:PushEvent("gfSCPanelRemove", {sName = sName}) 
+        elseif self.classified ~= nil then
+            self.classified._gfSCSpellStream:push_string(string.format("2;%s", sName))
+        end
+    else
+        self.spells[sName] = nil
+        _pushEvent(self)
+        self.inst:PushEvent("gfSCPanelRemove", {sName = sName}) 
+    end
+end
+
+function GFSpellCaster:PushRecharge(sName, remain, pass)
+    --print(("cooldown %.2f/%.2f"):format(GetTime() + remain, GetTime() - pass))
+    if sName == nil or ALL_SPELLS[sName] == nil then return false end
+
+    if GFGetIsMasterSim() then
+        if self.inst == ThePlayer and not GFGetIsDedicatedNet() then
+            _pushEvent(self)
+        elseif self.classified ~= nil then
+            self.classified._gfSCSpellStream:push_string(string.format("3;%s;%.2f;%.2f", sName, remain, pass))
+        end
+    else
+        self.spellData[sName] = 
+        {
+            endTime = GetTime() + remain,
+            startTime = GetTime() - pass,
+        }
+        --print(("cooldown %.2f/%.2f"):format(GetTime() + remain, GetTime() - pass))
+        _pushEvent(self)
+    end
+end
+
+function GFSpellCaster:CanCastSpell(sName)
+    if sName == nil and ALL_SPELLS[sName] == nil then return false end
+
+    if not ALL_SPELLS[sName].passive then
+        return self.spellData[sName] == nil or GetTime() > self.spellData[sName].endTime
+    end
+end
+
+function GFSpellCaster:IsSpellValidForCaster(sName)
+    return self.spells[sName] ~= nil and self:CanCastSpell(sName)
+end
+
+function GFSpellCaster:GetSpellRecharge(sName)
     local r, t = 0, 0
-    if self.spellsReadyTime[spellname] then
-        t = self.spellsRechargeDuration[spellname]
-        r = math.max(0, self.spellsReadyTime[spellname] - GetTime())
+    local sData = self.spellData[sName]
+    if sData then
+        t = sData.endTime - sData.startTime 
+        r = math.max(0, sData.endTime - GetTime())
     end
 
-    --first - remaingg time, secont - total recharge time
     return r, t
 end
 
@@ -188,10 +166,14 @@ function GFSpellCaster:GetSpellCount()
     return GetTableSize(self.spells)
 end
 
-function GFSpellCaster:PreCastCheck(spellName)
-    if spellName and spellList[spellName] then
-        local preCheck = spellList[spellName]:PreCastCheck(self.inst)
-        local result, reason = spellList[spellName]:PreCastCheck(self.inst)
+-----------------------------------------
+--Unsafe methods-------------------------
+-----------------------------------------
+
+function GFSpellCaster:PreCastCheck(sName)
+    if sName and ALL_SPELLS[sName] then
+        local preCheck = ALL_SPELLS[sName]:PreCastCheck(self.inst)
+        local result, reason = ALL_SPELLS[sName]:PreCastCheck(self.inst)
         if not result then
             if self.inst.components.talker then
                 self.inst.components.talker:Say(GetActionFailString(self.inst, "GFCASTSPELL", reason or "GENERIC"), 2.5, false, true, false)
@@ -204,24 +186,23 @@ function GFSpellCaster:PreCastCheck(spellName)
     end
 end
 
-function GFSpellCaster:HandleIconClick(spellName)
+function GFSpellCaster:HandleIconClick(sName)
     local inst = self.inst
-    if spellName 
-        and spellList[spellName] 
+    if sName 
+        and ALL_SPELLS[sName] 
         and not (inst:HasTag("playerghost") or inst:HasTag("corpse"))
         and not inst:HasTag("busy")
         and (not inst.replica.rider or not inst.replica.rider:IsRiding())
-        and self:IsSpellValidForCaster(spellName)
-        and self:PreCastCheck(spellName)
+        and self:IsSpellValidForCaster(sName)
+        and self:PreCastCheck(sName)
     then
-        SendModRPCToServer(MOD_RPC["GreenFramework"]["GFCLICKSPELLBUTTON"], spellName)
+        SendModRPCToServer(MOD_RPC["GreenFramework"]["GFCLICKSPELLBUTTON"], sName)
+    end
+end
 
-        --[[ if spellList[spellName].instant then
-            local act = BufferedAction(inst, inst, ACTIONS.GFCASTSPELL)
-            act.spell = spellName
-            inst:ClearBufferedAction()
-            inst.components.locomotor:PreviewAction(act, true, true)
-        end ]]
+function GFSpellCaster:ForceRechargesDirty(sName)
+    if self.inst == ThePlayer and not GFGetIsDedicatedNet() then self.inst:PushEvent("gfRWPush") 
+    elseif self.classified ~= nil then self.classified._gfSCForceRechargesEvent:push()
     end
 end
 

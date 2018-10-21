@@ -104,7 +104,6 @@ function Effect:Refresh(inst, eData, eParams)
     end
 
     if self.updateStacksOnRefresh then
-        print("updating stacks")
         eData.stacks = math.min(eData.stacks + (eParams.stacks or 1), self.maxStacks)
     end
 
