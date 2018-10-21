@@ -18,58 +18,52 @@ end
 local QSQuestGiver = Class(function(self, inst)
     self.inst = inst
     self.hash = GenerateHash()
-    self.questCount = 0
-
-    self.offerList = {}
-    self.completeList = {}
-
+    self.quests = {}
     self.dialogString = "DEFAULT"
 
     self.getAttentionFn = nil
+
+    if self.inst.replica.gfquestgiver then 
+        self.inst.replica.gfquestgiver.quests = self.quests
+    end
 end)
 
-function QSQuestGiver:AddQuest(questName)
-    if questName == nil or ALL_QUESTS[questName] == nil then return end
-
-    table.insert(self.offerList, questName)
-    table.insert(self.completeList, questName)
-
+function QSQuestGiver:AddQuest(questName, mode)
+    mode = mode or 0
+    self.quests[questName] = mode
     self.inst.replica.gfquestgiver:UpdateQuests()
-    --GFDebugPrint(("%s now offers and completes quest %s "):format(tostring(self.inst), questName))
+    if mode == 0 then
+        GFDebugPrint(("%s now offers and completes quest %s "):format(tostring(self.inst), questName))
+    elseif mode == 1 then
+        GFDebugPrint(("%s now offers quest %s "):format(tostring(self.inst), questName))
+    elseif mode == 2 then
+        GFDebugPrint(("%s now completes quest %s "):format(tostring(self.inst), questName))
+    end
 end
 
-function QSQuestGiver:AddQuestToOffer(questName)
-    if questName == nil or ALL_QUESTS[questName] == nil then return end
-
-    table.insert(self.offerList, questName)
+function QSQuestGiver:SetMode(questName, mode)
+    if questName == nil or self.quests[questName] == nil then return end
+    mode = mode or 0
+    self.quests[questName] = mode
     self.inst.replica.gfquestgiver:UpdateQuests()
-    --GFDebugPrint(("%s now offers quest %s "):format(tostring(self.inst), questName))
+    if mode == 0 then
+        GFDebugPrint(("%s now offers and completes quest %s "):format(tostring(self.inst), questName))
+    elseif mode == 1 then
+        GFDebugPrint(("%s now offers quest %s "):format(tostring(self.inst), questName))
+    elseif mode == 2 then
+        GFDebugPrint(("%s now completes quest %s "):format(tostring(self.inst), questName))
+    end
 end
 
-function QSQuestGiver:AddQuestToComplete(questName)
-    if questName == nil or ALL_QUESTS[questName] == nil then return end
-
-    table.insert(self.completeList, questName)
-    self.inst.replica.gfquestgiver:UpdateQuests()
-    --GFDebugPrint(("%s now completes quest %s "):format(tostring(self.inst), questName))
-end
-
-function QSQuestGiver:RemoveQuest(questName, offerOnly)
-    RemoveByValue(self.offerList, questName)
-    RemoveByValue(self.completeList, questName)
+function QSQuestGiver:RemoveQuest(questName)
+    self.quests[questName] = nil
     
     self.inst.replica.gfquestgiver:UpdateQuests()
-    --GFDebugPrint(("%s now doesn't have quest %s "):format(tostring(self.inst), questName))
-end
-
-function QSQuestGiver:HideQuest(questName)
-    RemoveByValue(self.offerList, questName)
-    self.inst.replica.gfquestgiver:UpdateQuests()
-    --GFDebugPrint(("%s now doesn't have quest %s "):format(tostring(self.inst), questName))
+    GFDebugPrint(("%s now doesn't have quest %s "):format(tostring(self.inst), questName))
 end
 
 function QSQuestGiver:HasQuests()
-    return #(self.offerList) + #(self.completeList) > 0
+    return next(self.quests) ~= nil
 end
 
 function QSQuestGiver:PickQuests(doer)
@@ -78,21 +72,16 @@ function QSQuestGiver:PickQuests(doer)
 
     local picked = {}
     local canComplete = {}
-    
-    for i = 1, #(self.offerList) do
-        local qName = self.offerList[i]
+
+    for qName, qData in pairs(self.quests) do
         if doercomp:CheckQuest(qName) then
             table.insert(picked, qName)
         end
-    end
-
-    for i = 1, #(self.completeList) do
-        local qName = self.completeList[i]
-        if doercomp:HasQuest(qName) then
-            if doercomp:IsQuestDone(qName) then
-                table.insert(picked, qName)
-            else
+        if qData ~= 1 and doercomp:HasQuest(qName) then
+            if not doercomp:IsQuestDone(qName) then
                 table.insert(canComplete, qName)
+            else
+                table.insert(picked, qName)
             end
         end
     end
@@ -100,33 +89,21 @@ function QSQuestGiver:PickQuests(doer)
     return #picked > 0 and picked or nil, canComplete
 end
 
-function QSQuestGiver:IsCompleterFor(qName)
-    for _, v in pairs(self.completeList) do
-        if v == qName then return true end
-    end
-
-    return false
+function QSQuestGiver:HasQuest(qName)
+    return self.quests[qName] ~= nil
 end
 
-function QSQuestGiver:PickQuest(doer)
-    if self:HasQuests() then
-        for qName, _ in pairs(self.offerList) do
-            local quest = ALL_QUESTS[qName]
-            if quest ~= nil 
-                and doer.components.gfquestdoer:CheckQuest(qName)
-                and quest:CheckBeforeGiving(doer, self.inst) 
-            then
-                return qName
-            end
-        end
-    end
+function QSQuestGiver:IsGiverFor(qName)
+    return self.quests[qName] ~= nil and self.quests[qName] ~= 2
+end
 
-    return nil
+function QSQuestGiver:IsCompleterFor(qName)
+    return self.quests[qName] ~= nil and self.quests[qName] ~= 1
 end
 
 function QSQuestGiver:OnQuestAccepted(qName, doer)
     local qInst = ALL_QUESTS[qName]
-    if qInst.uniqe then self:HideQuest(qName) end
+    if qInst.uniqe then self:SetMode(qName, 2) end
     qInst:GiverAccept(self.inst, doer)
 end
 
@@ -173,17 +150,19 @@ function QSQuestGiver:GetDebugString()
     local give = {}
     local pass = {}
 
-    for k, v in pairs(self.offerList or {}) do
-        table.insert(give, k)
+    for qName, qData in pairs(self.quests) do
+        if qData ~= 2 then
+            table.insert(give, qName)
+        end
+        if qData ~= 1 then
+            table.insert(pass, qName)
+        end
     end
-
-    for k, v in pairs(self.completeList or {}) do
-        table.insert(pass, k)
-    end
-
+    
     return (#give > 0 or #pass > 0)
         and string.format("give:[%s]; pass:[%s]", table.concat(give, ", "), table.concat(pass, ", ")) 
         or "none"
 end
+
 
 return QSQuestGiver

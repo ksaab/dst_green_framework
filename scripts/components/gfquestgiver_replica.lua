@@ -3,60 +3,36 @@ local QID_TO_NAME = GFQuestIDToName
 
 --client only
 local function DeserializeQuests(inst)
-
-    ---------------------------------------------
-    --QUESTID1;QUESTID2;etc^QUESTID1;QUESTID3;etc
-    --offer quests         |complete quests
-    ---------------------------------------------
+    -----------------------------------------------
+    --QUEST1ID;MODE^QUEST2ID;MODE^QUEST3ID;MODE;etc
+    -----------------------------------------------
 
     local self = inst.replica.gfquestgiver
     local qArr = self._questLine:value():split('^')
 
-    --reset current quests
-    self.offerList = {}
-    self.completeList = {}
+    self.quests = {}
 
-    if qArr[1] ~= "_" then
-        local tmp = qArr[1]:split(';')
-        for k, qID in pairs(tmp) do
-            local qName = QID_TO_NAME[tonumber(qID)]
-            if qName ~= nil then
-                table.insert(self.offerList, qName)
-            end
+    for _, qData in pairs(qArr) do
+        local tmp = qData:split(';')
+        local qName = QID_TO_NAME[tonumber(tmp[1])]
+        if qName ~= nil then
+            self.quests[qName] = tonumber(tmp[2])
         end
     end
 
-    if qArr[2] ~= nil then
-        local tmp = qArr[2]:split(';')
-        for k, qID in pairs(tmp) do
-            local qName = QID_TO_NAME[tonumber(qID)]
-            if qName ~= nil then
-                table.insert(self.completeList, qName)
-            end
-        end
-    end
-
-    --quest list is updated, need to check the player, may be we can offer him something new
-    --TODO: replace component with replica when it's possible
     if ThePlayer ~= nil and ThePlayer.components.gfquestdoer ~= nil then
         if self:HasQuests() then
-            --[[ if self._listening then
-                self:CheckQuestsOnPlayer(ThePlayer)
-            else
-            end ]]
             self:StartTrackingPlayer()
         elseif self._listening then
             self:StopTrackingPlayer()
         end
-        --self:CheckQuestsOnPlayer(ThePlayer)
     end
 end
 
 local QSQuestGiver = Class(function(self, inst)
     self.inst = inst
 
-    self.offerList = {}
-    self.completeList = {}
+    self.quests = {}
 
     self._questLine = net_string(inst.GUID, "QSQuestGiver._questLine", "gfQGUpdateQuests")
     self._listening = false
@@ -77,39 +53,27 @@ local QSQuestGiver = Class(function(self, inst)
         inst:ListenForEvent("onremove", function() self:StopTrackingPlayer() end)
         inst:DoTaskInTime(0, function() self:StartTrackingPlayer() end)
     end
+
+    if self.inst.components.gfquestgiver ~= nil then 
+        self.quests = self.inst.components.gfquestgiver.quests
+    end
 end)
 
 function QSQuestGiver:HasQuests()
-    if GFGetIsMasterSim() then return self.inst.components.gfquestgiver:HasQuests() end
-    return #(self.offerList) + #(self.completeList) > 0
+    return next(self.quests) ~= nil
 end
 
 function QSQuestGiver:UpdateQuests()
     local function UpdateFn(inst)
         local self = inst.replica.gfquestgiver
-        local comp = inst.components.gfquestgiver
         self._task = nil
+
+        local str = {}
+        for qName, qData in pairs(self.quests) do
+            table.insert(str, string.format("%i;%i", ALL_QUESTS[qName].id, qData))
+        end
         
-        local give, pass = "", ""
-        if #(comp.offerList) > 0 then
-            local tmp = {}
-            for _, qName in pairs(comp.offerList) do
-                table.insert(tmp, ALL_QUESTS[qName].id)
-            end
-            give = table.concat(tmp, ';')
-        else
-            give = "_"
-        end
-    
-        if #(comp.completeList) > 0 then
-            local tmp = {}
-            for _, qName in pairs(comp.completeList) do
-                table.insert(tmp, ALL_QUESTS[qName].id)
-            end
-            pass = table.concat(tmp, ';')
-        end
-    
-        local str = give .. "^" .. pass
+        local str = table.concat(str, '^')
         
         self._questLine:set_local(str)
         self._questLine:set(str)
@@ -125,21 +89,12 @@ function QSQuestGiver:UpdateQuests()
 end
 
 function QSQuestGiver:CheckQuestsOnPlayer(player)
+    --TODO: replace component with replica when it's possible
     local pcomp = player.components.gfquestdoer
-    local gList, cList
-    
-    if GFGetIsMasterSim() then
-        gList = self.inst.components.gfquestgiver.offerList
-        cList = self.inst.components.gfquestgiver.completeList
-    else
-        gList = self.offerList
-        cList = self.completeList
-    end
 
-    for k, qName in pairs(cList) do
-        --TODO: replace component with replica when it's possible
-        if pcomp:IsQuestDone(qName) then
-            --print(("QSQuestGiver: %s I can complete a quest %s for %s"):format(tostring(self.inst), qName, tostring(player)))
+    for qName, qData in pairs(self.quests) do
+        if qData ~= 1 and pcomp:IsQuestDone(qName) then
+            print(("QSQuestGiver: %s I can complete a quest %s for %s"):format(tostring(self.inst), qName, tostring(player)))
             if self._follower ~= nil then
                 self._follower.AnimState:PlayAnimation("question" .. self._followerOffest, true)
             end
@@ -147,10 +102,9 @@ function QSQuestGiver:CheckQuestsOnPlayer(player)
         end
     end
 
-    for k, qName in pairs(gList) do
-        --TODO: replace component with replica when it's possible
-        if pcomp:CheckQuest(qName) then
-           -- print(("QSQuestGiver: %s I can give a quest %s to %s"):format(tostring(self.inst), qName, tostring(player)))
+    for qName, qData in pairs(self.quests) do
+        if qData ~= 2 and pcomp:CheckQuest(qName) then
+            print(("QSQuestGiver: %s I can give a quest %s to %s"):format(tostring(self.inst), qName, tostring(player)))
             if self._follower ~= nil then
                 self._follower.AnimState:PlayAnimation("exclamation" .. self._followerOffest, true)
             end
@@ -161,8 +115,7 @@ function QSQuestGiver:CheckQuestsOnPlayer(player)
     if self._follower ~= nil then
         self._follower.AnimState:PlayAnimation("none", true)
     end
-
-    --print(("QSQuestGiver: %s I don't have any interesting for %s"):format(tostring(self.inst), tostring(player)))
+    print(("QSQuestGiver: %s I don't have any interesting for %s"):format(tostring(self.inst), tostring(player)))
 end
 
 function QSQuestGiver:StartTrackingPlayer()
