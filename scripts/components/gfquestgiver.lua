@@ -1,23 +1,16 @@
 local ALL_QUESTS = GFQuestList
 
-local charSet = {}
-
-for i = 48,  57 do table.insert(charSet, string.char(i)) end
-for i = 97, 122 do table.insert(charSet, string.char(i)) end
-
-local function GenerateHash()
-    local str = {}
-    local num = #charSet
-    for i = 1, 4 do
-        str[i] = charSet[math.random(1, num)]
+local function SetHash(inst)
+    local self = inst.components.gfquestgiver
+    if self.hash == nil then
+        self.hash = GFGetWorld().components.gfquesttracker:TrackGiver(inst)
+        --self.inst.replica.gfquestgiver._hash:set_local(self.hash)
+        self.inst.replica.gfquestgiver._hash:set(self.hash)
     end
-
-    return table.concat(str)
 end
 
 local QSQuestGiver = Class(function(self, inst)
     self.inst = inst
-    self.hash = GenerateHash()
     self.quests = {}
     self.dialogString = "DEFAULT"
 
@@ -26,6 +19,8 @@ local QSQuestGiver = Class(function(self, inst)
     if self.inst.replica.gfquestgiver then 
         self.inst.replica.gfquestgiver.quests = self.quests
     end
+
+    inst:DoTaskInTime(0, SetHash)
 end)
 
 function QSQuestGiver:AddQuest(questName, mode)
@@ -56,6 +51,7 @@ function QSQuestGiver:SetMode(questName, mode)
 end
 
 function QSQuestGiver:RemoveQuest(questName)
+    if self.quests[questName] == nil then return end
     self.quests[questName] = nil
     
     self.inst.replica.gfquestgiver:UpdateQuests()
@@ -76,8 +72,11 @@ function QSQuestGiver:PickQuests(doer)
     for qName, qData in pairs(self.quests) do
         if doercomp:CheckQuest(qName) then
             table.insert(picked, qName)
-        end
-        if qData ~= 1 and doercomp:HasQuest(qName) then
+        elseif qData ~= 1 
+            and doercomp:HasQuest(qName) 
+            and (not ALL_QUESTS[qName]:CheckHash() 
+                or self.hash == doercomp:GetQuestGiverHash(qName))
+        then
             if not doercomp:IsQuestDone(qName) then
                 table.insert(canComplete, qName)
             else

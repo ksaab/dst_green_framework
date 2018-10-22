@@ -273,12 +273,12 @@ end
 function GFMakeQuestGiver(inst, data, quests)
     if GFGetIsMasterSim() then
         inst:AddComponent("gfquestgiver")
+        if data ~= nil then
+            if data.reactFn ~= nil then inst.components.gfquestgiver:SetReactFn(data.reactFn) end
+            if data.stringFn ~= nil then inst.components.gfquestgiver.dialogStringFn = data.stringFn end
+            if data.dialogStr ~= nil then inst.components.gfquestgiver.dialogString = data.dialogStr end
+        end
         if quests ~= nil then
-            if data ~= nil then
-                if data.reactFn ~= nil then inst.components.gfquestgiver:SetReactFn(data.reactFn) end
-                if data.stringFn ~= nil then inst.components.gfquestgiver.dialogStringFn = data.stringFn end
-                if data.dialogStr ~= nil then inst.components.gfquestgiver.dialogString = data.dialogStr end
-            end
             for _, v in pairs(quests) do
                 inst.components.gfquestgiver:AddQuest(v)
             end

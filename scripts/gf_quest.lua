@@ -15,6 +15,7 @@ local Quest = Class(function(self, qName)
     self.norepeat = false
     self.cooldown = 60
     self.savable = false
+    self.hashBounded = false
 
     --serialization
     self.SerializeFn = nil
@@ -42,6 +43,10 @@ function Quest:Deserialize(doer, data)
     if self.DeserializeFn then
         self:DeserializeFn(doer, data)
     end
+end
+
+function Quest:CheckHash()
+    return self.hashBounded
 end
 
 function Quest:CheckBeforeGive(doer)

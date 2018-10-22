@@ -12,6 +12,10 @@ AddPrefabPostInit("world", function(world)
             player:AddComponent("gfrechargewatcher")
         end
     end)
+
+    if _G.GFGetIsMasterSim() then
+        world:AddComponent("gfquesttracker")
+    end
 end)
 
 AddPrefabPostInit("player_classified", function(inst)

@@ -150,7 +150,7 @@ function GFQuestDoer:CompleteQuest(qName)
 end
 
 function GFQuestDoer:AbandonQuest(qName)
-    if not GFGetIsMasterSim() then return end
+    if not GFGetIsMasterSim() or self.currentQuests[qName] == nil then return end
 
     --unregistering quest's events
     if ALL_QUESTS[qName] ~= nil then
@@ -163,6 +163,8 @@ function GFQuestDoer:AbandonQuest(qName)
 end
 
 function GFQuestDoer:SetQuestDone(qName, done)
+    if self.currentQuests[qName] == nil then return end
+
     local status = (done == nil or done == false) and 0 or 1
     --print(qName .. "now has status " .. tostring(status))
     if self.currentQuests[qName].status ~= status then
@@ -173,7 +175,14 @@ function GFQuestDoer:SetQuestDone(qName, done)
 end
 
 function GFQuestDoer:SetQuestFailed(qName)
+    if self.currentQuests[qName] == nil then return end
+
     if self.currentQuests[qName].status ~= 2 then
+        --unregistering quest's events
+        if ALL_QUESTS[qName] ~= nil then
+            ALL_QUESTS[qName]:Abandon(self.inst)
+        end
+        print(qName .. "is now failed")
         self.currentQuests[qName].status = 2
         self:UpdateQuestInfo(qName, true)
         self:UpdateQuestList(qName, 2)
@@ -191,6 +200,10 @@ GFQuestDoer.PushCooldown = _r.PushCooldown
 
 function GFQuestDoer:GetQuestData(qName)
     return self.currentQuests[qName]
+end
+
+function GFQuestDoer:GetQuestGiverHash(qName)
+    return self.currentQuests[qName] ~= nil and self.currentQuests[qName].giverHash or '0'
 end
 
 function GFQuestDoer:ResetAllQuests(ignoreCurrent)
@@ -226,6 +239,14 @@ end
 
 function GFQuestDoer:IsQuestDone(qName)
     return self.currentQuests[qName] ~= nil and self.currentQuests[qName].status == 1
+end
+
+function GFQuestDoer:FailQuestsWithHash(hash)
+    for qName, qData in pairs(self.currentQuests) do
+        if ALL_QUESTS[qName]:CheckHash() and qData.giverHash == hash then
+            self:SetQuestFailed(qName)
+        end
+    end
 end
 
 function GFQuestDoer:TrackGiver(giver)

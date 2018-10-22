@@ -44,6 +44,7 @@ local QSQuestGiver = Class(function(self, inst)
     self._onplayerupdate = function(player) self:CheckQuestsOnPlayer(player) end
 
     self._task = nil
+    self._hash = net_string(inst.GUID, "QSQuestGiver._hash")
 
     if not GFGetIsMasterSim() then
         inst:ListenForEvent("gfQGUpdateQuests", DeserializeQuests)
@@ -56,6 +57,8 @@ local QSQuestGiver = Class(function(self, inst)
 
     if self.inst.components.gfquestgiver ~= nil then 
         self.quests = self.inst.components.gfquestgiver.quests
+        --self._hash:set_local(self.inst.components.gfquestgiver.hash)
+        --self._hash:set(self.inst.components.gfquestgiver.hash)
     end
 end)
 
@@ -93,7 +96,11 @@ function QSQuestGiver:CheckQuestsOnPlayer(player)
     local pcomp = player.components.gfquestdoer
 
     for qName, qData in pairs(self.quests) do
-        if qData ~= 1 and pcomp:IsQuestDone(qName) then
+        if qData ~= 1 
+            and pcomp:IsQuestDone(qName) 
+            and (not ALL_QUESTS[qName]:CheckHash() 
+                or self._hash:value() == pcomp:GetQuestGiverHash(qName))
+        then
             print(("QSQuestGiver: %s I can complete a quest %s for %s"):format(tostring(self.inst), qName, tostring(player)))
             if self._follower ~= nil then
                 self._follower.AnimState:PlayAnimation("question" .. self._followerOffest, true)
