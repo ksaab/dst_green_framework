@@ -7,6 +7,7 @@ AddReplicableComponent("gfspellcaster")
 AddReplicableComponent("gfspellitem")
 AddReplicableComponent("gfeffectable")
 AddReplicableComponent("gfquestgiver")
+AddReplicableComponent("gfquestdoer")
 
 --drink potions, or something else...
 AddComponentPostInit("eater", function(self)

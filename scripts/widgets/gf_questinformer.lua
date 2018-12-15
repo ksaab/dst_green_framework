@@ -2,7 +2,7 @@ local Widget = require "widgets/widget"
 local Text = require "widgets/text"
 local TEMPLATES = require "widgets/redux/templates"
 
-local ALL_QUESTS = GFQuestList
+local ALL_QUESTS = GF.GetQuests()
 local MAX_LIFETIME = 5
 
 local INVALID_TITLE = STRINGS.GF.HUD.INVALID_LINES.INVALID_TITLE
@@ -45,9 +45,6 @@ end)
 function QuestInformer:RefreshLines(data)
     if data == nil or data.qName == nil then return end
 
-    local qString = data.qEvent ~= nil 
-        and (QEVENTS[data.qEvent + 1] or STRINGS.GF.HUD.ERROR)
-        or GetQuestString(self.owner, data.qName, "status")
     for i = self.lineCount, 2, -1 do
         local str = self.textLines[i - 1]:GetString()
         if str ~= "" then
@@ -63,9 +60,14 @@ function QuestInformer:RefreshLines(data)
         self:StartUpdating()
     end
 
+    local qString = data.qEvent ~= nil 
+        and (QEVENTS[data.qEvent + 1] or STRINGS.GF.HUD.ERROR)
+        or GetQuestString(self.owner, data.qName, "status")
+        
+    print(data.qKey, self.owner.replica.gfquestdoer[data.qKey])
     local str = string.format("%s - %s", 
         GetQuestString(self.owner, data.qName, "title"), 
-        string.format(qString, unpack(ALL_QUESTS[data.qName]:GetStatusData(self.owner)))
+        string.format(qString, unpack(ALL_QUESTS[data.qName]:GetStatusData(self.owner, self.owner.replica.gfquestdoer.currentQuests[data.qKey])))
     )
     local line = self.textLines[1]
     line:SetString(str)

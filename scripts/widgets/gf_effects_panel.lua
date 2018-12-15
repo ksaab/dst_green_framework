@@ -1,5 +1,5 @@
 --Green Framework. Please, don't copy any files or functions from this mod, because it can break other mods based on the GF.
-local ALL_EFFECTS = GFEffectList
+local ALL_EFFECTS = GF.GetStatusEffects()
 
 local Widget = require "widgets/widget"
 local Image = require "widgets/image"

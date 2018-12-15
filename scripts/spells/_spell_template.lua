@@ -1,4 +1,4 @@
-local GFSpell = require("gf_spell")
+local GFSpell = require("gf_class_spell")
 
 --pointer params:
 --[[-------------------------

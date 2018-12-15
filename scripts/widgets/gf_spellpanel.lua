@@ -6,7 +6,7 @@ local Image = require "widgets/image"
 local Text = require "widgets/text"
 local SpellPanelBG = require "widgets/gf_spellpanel_bg"
 
-local ALL_SPELLS = GFSpellList
+local ALL_SPELLS = GF.GetSpells()
 
 local SpellPanel = Class(Widget, function(self, owner)
 	self.owner = owner

@@ -3,7 +3,7 @@ local Text = require "widgets/text"
 local TEMPLATES = require "widgets/redux/templates"
 local NineSlice = require "widgets/nineslice"
 
-local ALL_QUESTS = GFQuestList
+local ALL_QUESTS = GF.GetQuests()
 local INVALID_TITLE = STRINGS.GF.HUD.INVALID_LINES.INVALID_TITLE
 local INVALID_TEXT = STRINGS.GF.HUD.INVALID_LINES.INVALID_TEXT
 
@@ -60,29 +60,26 @@ local TYPES =
 }
 
 local function Accept(owner, qName)
-    owner.components.gfquestdoer:HandleButtonClick(qName, 0)
-
-    owner:PushEvent("gfQSCloseDialogPush")
-    --GFDebugPrint("CLIENT: you've accepted the quest.", qName)
+    owner.components.gfplayerdialog:HandleQuestButton(0, qName)
+    owner:PushEvent("gfPDCloseDialog")
+    GFDebugPrint("CLIENT: you've accepted the quest.", qName)
 end
 
-local function Refuse(owner, qName)
-    owner.components.gfquestdoer:HandleButtonClick(qName, 1)
-
-    owner:PushEvent("gfQSCloseDialogPush")
-    --GFDebugPrint("CLIENT: you've refused the quest.", qName)
+local function Close(owner, qName)
+    owner.components.gfplayerdialog:HandleQuestButton(1)
+    owner:PushEvent("gfPDCloseDialog")
+    GFDebugPrint("CLIENT: you've refused the quest.", qName)
 end
 
 local function Complete(owner, qName)
-    owner.components.gfquestdoer:HandleButtonClick(qName, 3)
-
-    owner:PushEvent("gfQSCloseDialogPush")
-    --GFDebugPrint("CLIENT: you've trying to complete the quest.", qName)
+    owner.components.gfplayerdialog:HandleQuestButton(3, qName)
+    owner:PushEvent("gfPDCloseDialog")
+    GFDebugPrint("CLIENT: you've trying to complete the quest.", qName)
 end
 
-local QuestDialog = Class(Widget, function(self, owner)
+local ConversationDialog = Class(Widget, function(self, owner)
 	self.owner = owner
-    Widget._ctor(self, "QuestDialog")
+    Widget._ctor(self, "ConversationDialog")
 
     --widget itself
     self.root = self:AddChild(Widget("ROOT"))
@@ -134,15 +131,15 @@ local QuestDialog = Class(Widget, function(self, owner)
     local allChilds = {"title", "body", "goal", "leftButton", "rightButton", "middleButton"}
     for k, v in pairs(allChilds) do window[v]:Hide() end
 
-    self.inst:ListenForEvent("gfQSChoiseDialogPush", function(player, data) self:ShowChoiseDialog(data) end, owner)
-    self.inst:ListenForEvent("gfQSDialogPush", function(player, data) self:ShowAcceptDialog(data) end, owner)
-    self.inst:ListenForEvent("gfQSCloseDialogPush", function(player) self:CloseDialog() end, owner)
-    self.inst:ListenForEvent("gfQSCompleteDialogPush", function(player, data) self:ShowCompleteDialog(data) end, owner)
+    self.inst:ListenForEvent("gfPDChoiseDialog", function(player, data) self:ShowChoiseDialog(data) end, owner)
+    self.inst:ListenForEvent("gfPDAcceptDialog", function(player, data) self:ShowAcceptDialog(data) end, owner)
+    self.inst:ListenForEvent("gfPDCloseDialog", function(player) self:CloseDialog() end, owner)
+    self.inst:ListenForEvent("gfPDCompleteDialog", function(player, data) self:ShowCompleteDialog(data) end, owner)
     
     print("Quest dialog was added to ", owner)
 end)
 
-function QuestDialog:CloseDialog(data)
+function ConversationDialog:CloseDialog(data)
     self:Hide()
 
     local window = self.window
@@ -167,13 +164,14 @@ function QuestDialog:CloseDialog(data)
     window.questLines = {}
 end
 
-function QuestDialog:ShowChoiseDialog(data)
+function ConversationDialog:ShowChoiseDialog(data)
     local TYPE = TYPES.OFFER
 
     local window = self.window
     local lines = window.questLines
     local gQuests = data.gQuests
     local cQuests = data.cQuests
+    local events = data.events
     local offset = 75
 
     for k, v in pairs(window.questLines) do v:Kill() end
@@ -185,7 +183,7 @@ function QuestDialog:ShowChoiseDialog(data)
             lines[i] = window:AddChild(TEMPLATES.StandardButton(
                 function() 
                     self:CloseDialog()
-                    self.owner:PushEvent("gfQSCompleteDialogPush", {qName = cQuests[i]}) 
+                    self.owner:PushEvent("gfPDCompleteDialog", {qName = cQuests[i]}) 
                 end, 
                 GetQuestString(self.owner, cQuests[i], "title"), 
                 {200, 40}
@@ -204,7 +202,7 @@ function QuestDialog:ShowChoiseDialog(data)
             lines[i] = window:AddChild(TEMPLATES.StandardButton(
                 function() 
                     self:CloseDialog()
-                    self.owner:PushEvent("gfQSDialogPush", {qName = gQuests[j]}) 
+                    self.owner:PushEvent("gfPDAcceptDialog", {qName = gQuests[j]}) 
                 end, 
                 GetQuestString(self.owner, gQuests[j], "title"),  
                 {200, 40}
@@ -214,18 +212,35 @@ function QuestDialog:ShowChoiseDialog(data)
         end
     end
 
+    offset = offset - 10
+    for j = 1, #events do
+        i = i + 1
+        local event = events[j]
+        lines[i] = window:AddChild(TEMPLATES.StandardButton(
+            function() 
+                self:CloseDialog()
+                self.owner.components.gfplayerdialog:HandleEventButton(event)
+            end, 
+            GetConversationString(self.owner, event, "line"),  
+            {200, 40}
+        ))
+        offset = offset - 30
+        lines[i]:SetPosition(0, offset)
+        lines[i].image:SetTint(0.3, 0.3, 0.9, 1)
+    end
+
     self:Show()
     window.middleButton:Show()
     window.middleButton:SetText(TYPE.MIDDLE_BUTTON.TEXT)
-    window.middleButton:SetOnClick(function() Refuse(self.owner, "_") end)
+    window.middleButton:SetOnClick(function() Close(self.owner, "_") end)
 
     window.title:Show()
     window.body:Show()
-    window.title:SetString(TYPE.TITLE)
-    window.body:SetString(STRINGS.GF.QUEST_DIALOGS[data.dString or "DEFAULT"])
+    window.title:SetString(GetConversationString(self.owner, data.dString or "DEFAULT", "title"))
+    window.body:SetString(GetConversationString(self.owner, data.dString or "DEFAULT", "text"))
 end
 
-function QuestDialog:ShowAcceptDialog(data)
+function ConversationDialog:ShowAcceptDialog(data)
     local TYPE = TYPES.ACCEPT
 
     local window = self.window
@@ -240,7 +255,7 @@ function QuestDialog:ShowAcceptDialog(data)
     self:Show()
     window.leftButton:Show()
     window.leftButton:SetText(TYPE.LEFT_BUTTON.TEXT)
-    window.leftButton:SetOnClick(function() Refuse(self.owner, qName) end)
+    window.leftButton:SetOnClick(function() Close(self.owner, qName) end)
 
     window.rightButton:Show()
     window.rightButton:SetText(TYPE.RIGHT_BUTTON.TEXT)
@@ -257,7 +272,7 @@ function QuestDialog:ShowAcceptDialog(data)
     window.goal:SetString(qData:GetGoalString(self.owner)) ]]
 end
 
-function QuestDialog:ShowCompleteDialog(data)
+function ConversationDialog:ShowCompleteDialog(data)
     local TYPE = TYPES.COMPLETE
 
     local window = self.window
@@ -272,7 +287,7 @@ function QuestDialog:ShowCompleteDialog(data)
     self:Show()
     window.leftButton:Show()
     window.leftButton:SetText(TYPE.LEFT_BUTTON.TEXT)
-    window.leftButton:SetOnClick(function() Refuse(self.owner, qName) end)
+    window.leftButton:SetOnClick(function() Close(self.owner, qName) end)
 
     window.rightButton:Show()
     window.rightButton:SetText(TYPE.RIGHT_BUTTON.TEXT)
@@ -285,4 +300,4 @@ function QuestDialog:ShowCompleteDialog(data)
 end
 
 
-return QuestDialog
+return ConversationDialog

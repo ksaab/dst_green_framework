@@ -3,6 +3,10 @@ local _G = GLOBAL
 
 --[[Init specified prefabs]]--------
 ------------------------------------
+local GFAddCasterCreature = _G.GFAddCasterCreature
+local GFAddCommunicative = _G.GFAddCommunicative
+--init spellcasters
+--spellcaster friendly fire functions
 local function PigmanFrindlyFireCheck(self, target)
     return self.inst.components.combat.target ~= target
         and ((target:HasTag("pig") and not target:HasTag("werepig")) 
@@ -21,64 +25,29 @@ local function ChessFrindlyFireCheck(self, target)
             or (self.inst.components.follower and self.inst.components.follower.leader == target))
 end
 
-local function PigmanWantToTalk(talker, inst)
-    return not inst:HasTag("werepig") and not inst:HasTag("sfhostile")
-end
-
-local prefabs_post_init = 
-{
-    pigman = function(inst) 
-        if _G.GFGetIsMasterSim() then
-            inst:AddComponent("gfspellcaster")
-            inst.components.gfspellcaster:SetIsTargetFriendlyFn(PigmanFrindlyFireCheck)
-
-            inst:AddComponent("gfinterlocutor")
-            inst.components.gfinterlocutor.phrase = "PIGMAN_DEFAULT"
-            inst.components.gfinterlocutor.wantsToTalkFn = PigmanWantToTalk
-            inst.components.gfinterlocutor.defaultNode = true
-
-            inst:AddComponent("gfquestgiver")
-        end
-    end,
-    pigking = function(inst) 
-        if _G.GFGetIsMasterSim() then
-            inst:AddComponent("gfinterlocutor")
-            inst.components.gfinterlocutor.phrase = "PIGKING_DEFAULT"
-
-            inst:AddComponent("gfquestgiver")
-        end
-    end,
-    bunnyman = function(inst) 
-        if _G.GFGetIsMasterSim() then
-            inst:AddComponent("gfspellcaster")
-            inst.components.gfspellcaster:SetIsTargetFriendlyFn(BunnymanFrindlyFireCheck)
-
-            inst:AddComponent("gfinterlocutor")
-            inst:AddComponent("gfquestgiver")
-        end
-    end,
-    knight = function(inst) 
-        if _G.GFGetIsMasterSim() then
-            inst:AddComponent("gfspellcaster")
-            inst.components.gfspellcaster:SetIsTargetFriendlyFn(ChessFrindlyFireCheck)
-        end
-    end,
-}
-
-for prefab, fn in pairs(prefabs_post_init) do
-    AddPrefabPostInit(prefab, fn)
-end
+--add prefabs to the caster entities list
+GFAddCasterCreature("pigman", PigmanFrindlyFireCheck)
+GFAddCasterCreature("bunnyman", PigmanFrindlyFireCheck)
+GFAddCasterCreature("knight", ChessFrindlyFireCheck)
 
 --init interlocutors
 --want to talk functions
+local function PigWantToTalk(talker, inst)
+    return not inst:HasTag("werepig") and not inst:HasTag("sfhostile")
+end
 
+--talk react functions
+local function PigTalkReact(inst, data)
+    print("it's a react fn")
+    return true
+end
 
 --add prefabs to the communicative entities list
---GFAddCommunicative("pigman", "PIGMAN_DEFAULT", PigWantToTalk, PigTalkReact, true, 3)
---GFAddCommunicative("bunnyman", "BUNNYMAN_DEFAULT", PigWantToTalk, PigTalkReact, true, 4)
---GFAddCommunicative("pigking", "PIGKING_DEFAULT", nil, nil, true, 4)
---GFAddCommunicative("livingtree", "LIVINGTREE_DEFAULT", nil, nil, true, 4)
---GFAddCommunicative("livingtree_halloween", "LIVINGTREE_DEFAULT", nil, nil, true, 4)
+GFAddCommunicative("pigman", "PIGMAN_DEFAULT", PigWantToTalk, PigTalkReact, true, 3)
+GFAddCommunicative("bunnyman", "BUNNYMAN_DEFAULT", PigWantToTalk, PigTalkReact, true, 4)
+GFAddCommunicative("pigking", "PIGKING_DEFAULT", nil, nil, true, 4)
+GFAddCommunicative("livingtree", "LIVINGTREE_DEFAULT", nil, nil, true, 4)
+GFAddCommunicative("livingtree_halloween", "LIVINGTREE_DEFAULT", nil, nil, true, 4)
 
 --[[Init the world]]----------------
 ------------------------------------
@@ -157,7 +126,7 @@ local function PlayerFFCheck(self, target)
         or (self.inst.components.leader and self.inst.components.leader:IsFollower(target))
 end
 
-local function InitPlayer(player)
+AddPlayerPostInit(function(player)
     if _G.GFGetIsMasterSim() and GetModConfigData("tag_overflow_fix") then
         --honestly - I didn't want to make this, 
         --but - I suppose - there is no way to avoid tag-overlow crashes
@@ -174,6 +143,7 @@ local function InitPlayer(player)
                 player._overflowedTags[id] = true
                 --print(id)
             end
+
 
             tags = nil
 
@@ -210,22 +180,15 @@ local function InitPlayer(player)
         end
     end
 
+    _G.GFMakePlayerCaster(player, _G.GFEntitiesBaseSpells[player.prefab])
+    --_G.GFDebugPrint(string.format("Add Spell Pointer (%s) to %s", _G.GFGetIsMasterSim() and "server" or "client", tostring(player)))
     player:AddComponent("gfspellpointer")
     player:AddComponent("gfplayerdialog")
     
     if _G.GFGetIsMasterSim() then
-        player:AddComponent("gfquestdoer")
         player:AddComponent("gfeffectable")
         player:AddComponent("gfeventreactor")
-        player:AddComponent("gfspellcaster")
-        player.components.gfspellcaster:SetIsTargetFriendlyFn(PlayerFFCheck)
-        if _G.GF.EntitiesBaseSpells[prefab] ~= nil then 
-            player.components.gfspellcaster:AddSpells(_G.GF.EntitiesBaseSpells[prefab]) 
-        end
-
-        for _, fn in pairs (_G.GF.PostGreenInit["player"]) do
-            fn(inst)
-        end
+        player:AddComponent("gfquestdoer")
 
         player:ListenForEvent("gfRefuseDrink", function(player, data) 
             if player.components.talker ~= nil then
@@ -236,7 +199,7 @@ local function InitPlayer(player)
     end
 
     player:PushEvent("gfQGUpdateQuests")
-end
+end)
 
 --[[Init common]]--------------------------------------------------------------
 --this prefabs doesn't have FX or NOCLICK tags, but they shouldn't be modidifed
@@ -254,36 +217,21 @@ local invalidPrefabs =
     dragonfly_spawner = true
 }
 
-
-
 AddPrefabPostInitAny(function(inst) 
     local prefab = inst.prefab
-
-    if invalidPrefabs[prefab] then inst:AddTag("NOCLICK") return end    --non-interactive prefabs
-    if inst:HasTag("FX") or inst:HasTag("NOCLICK") then return end      --fx and non-interactive prefabs
-
-    if inst:HasTag("player") then
-        InitPlayer(inst)
-        return
-    end
-
+    if inst:HasTag("FX") or inst:HasTag("NOCLICK") or inst:HasTag("player") or invalidPrefabs[prefab] then return end
+    
     if _G.GFGetIsMasterSim() then
         inst:AddComponent("gfeffectable")
         inst:AddComponent("gfeventreactor")
-        if inst.components.equippable 
-            and inst.components.equippable.equipslot == _G.EQUIPSLOTS.HANDS 
-            and inst.components.gfspellitem == nil
-        then
-            inst:AddComponent("gfspellitem")
-            if _G.GF.EntitiesBaseSpells[prefab] ~= nil then 
-                inst.components.gfspellitem:AddSpells(_G.GF.EntitiesBaseSpells[prefab]) 
-            end
+        if inst.components.equippable and inst.components.equippable.equipslot == _G.EQUIPSLOTS.HANDS then
+            _G.GFMakeInventoryCastingItem(inst, _G.GFEntitiesBaseSpells[prefab])
         end
-    end
-
-    if _G.GF.PostGreenInit[prefab] ~= nil then
-        for _, fn in pairs (_G.GF.PostGreenInit[prefab]) do
-            fn(inst)
+        if _G.GFCasterCreatures[prefab] ~= nil then
+            _G.GFMakeCaster(inst, _G.GFEntitiesBaseSpells[prefab], _G.GFCasterCreatures[prefab])
+        end
+        if _G.GFCommunicative[prefab] ~= nil then
+            _G.GFMakeCommunicative(inst, _G.GFCommunicative[prefab])
         end
     end
 end)

@@ -2,16 +2,17 @@
 local TUNING = GLOBAL.TUNING
 local STRINGS = GLOBAL.STRINGS
 local ACTIONS = GLOBAL.ACTIONS
-local spellList = GLOBAL.GFSpellList
+local ALL_SPELLS = GLOBAL.GF.GetSpells()
 local GetString = GLOBAL.GetString
 local GetActionFailString = GLOBAL.GetActionFailString
+local _G = GLOBAL
 --local GetQuestReminderString = GLOBAL.GetQuestReminderString
 
 AddAction("GFCASTSPELL", STRINGS.ACTIONS.GFCASTSPELL, function(act)
     local doer = act.doer
     local spellName = act.spell
     local item = act.invobject
-    if spellName ~= nil and doer.components.gfspellcaster ~= nil and spellList[spellName] ~= nil then 
+    if spellName ~= nil and doer.components.gfspellcaster ~= nil and ALL_SPELLS[spellName] ~= nil then 
         if doer:HasTag("player") then
             if doer.components.gfspellpointer then
                 doer.components.gfspellpointer:Disable()
@@ -23,7 +24,7 @@ AddAction("GFCASTSPELL", STRINGS.ACTIONS.GFCASTSPELL, function(act)
                 end
                 return true
             end
-            if not spellList[spellName]:CanBeCastedBy(doer) then
+            if not ALL_SPELLS[spellName]:CanBeCastedBy(doer) then
                 if doer.components.talker then
                     doer.components.talker:Say(GetActionFailString(doer, "GFCASTSPELL", "CAST_FAILED"), 2.5)
                 end
@@ -49,7 +50,7 @@ STRINGS.ACTIONS.GFCASTSPELL = STRINGS.ACTIONS._GFCASTSPELL
 ACTIONS.GFCASTSPELL.strfn = function(act)
     local spell = act.doer.components.gfspellpointer and act.doer.components.gfspellpointer.currentSpell or nil
     if spell ~= nil then
-		return spellList[spell].actionFlag or "GENERIC"
+		return ALL_SPELLS[spell].actionFlag or "GENERIC"
 	else
 		return "GENERIC"
 	end
@@ -136,66 +137,42 @@ AddAction("GFENHANCEITEM", STRINGS.ACTIONS.GFENHANCEITEM, function(act)
     end
 end)
 
-AddAction("GFTALKFORQUEST", STRINGS.ACTIONS.GFTALKFORQUEST, function(act)
+AddAction("GFLETSTALK", "Talk", function(act)
     local giver = act.target
     local doer = act.doer
 
     if giver ~= nil 
-        and doer.components.gfquestdoer ~= nil
-        and giver.components.gfquestgiver ~= nil
+        and doer.components.gfplayerdialog ~= nil
+        and giver.components.gfinterlocutor ~= nil
         and (not giver.components.health or not giver.components.health:IsDead())
     then
         --check is character is busy
-        if (giver.components.combat ~= nil and giver.components.combat.target ~= nil) 
-            or (giver.components.burnable ~= nil and giver.components.burnable:IsBurning()) 
-            or (giver.components.freezable ~= nil and giver.components.freezable:IsFrozen()) 
-            or (giver.components.sleeper ~= nil and giver.components.sleeper:IsAsleep()) 
-        then
-            if doer.components.talker then
-                doer.components.talker:Say(GetActionFailString(doer, "GFTALKFORQUEST", "TARGETBUSY"))
-            end
-
-            return true --don't want to make player saying "can't do that"
+        if not giver.components.gfinterlocutor:WantsToTalk(doer) then
+            return false, "TARGETBUSY"
         end
 
-        local doerComp = doer.components.gfquestdoer
-        local giveComp = giver.components.gfquestgiver
+        return giver.components.gfinterlocutor:StartConversation(doer)
+        --[[ local giveComp = giver.components.gfinterlocutor
+        local quests, events, strings = giver.components.gfinterlocutor:Collect(doer)
+        local dString = giver.components.gfinterlocutor:GetString()
 
-        if doerComp:GetQuestsNumber() >= TUNING.GW.QUESTS.MAX_QUESTS then
-            if doer.components.talker then
-                doer.components.talker:Say(GetActionFailString(doer, "GFTALKFORQUEST", "TOMANYQUESTS"))
-            end
-
-            return true --don't want to make player saying "can't do that"
+        local offer, complete, inprogress
+        if quests ~= nil then
+            offer = quests.offer
+            complete = quests.complete
+            inprogress = quests.inprogress
+            --print(_G.PrintTable(quests))
         end
 
-        local offer, notDone = giveComp:PickQuests(doer)
-        
-        if not offer then
-            if #notDone > 0 then
-                if doer.components.talker then
-                    doer.components.talker:Say(GLOBAL.GetQuestReminderString(doer, notDone[math.random(#notDone)]))
-                end
-    
-                return true --don't want to make player saying "can't do that
-            end
-
-            if doer.components.talker then
-                doer.components.talker:Say(GetActionFailString(doer, "GFTALKFORQUEST", "NOQUESTS"))
-            end
-
-            return true --don't want to make player saying "can't do that"
-        end
-
-        doerComp:OfferQuests(offer, giveComp:GetDialogString(doer), giver)
+        doer.components.gfplayerdialog:PushDialog(dString, offer, complete, events, strings)
+        doer.components.gfplayerdialog:StartTrack(giver, true) ]]
     end
 
     return true
 end)
 
-ACTIONS.GFTALKFORQUEST.distance = 10
-ACTIONS.GFTALKFORQUEST.priority = 10
-
+ACTIONS.GFLETSTALK.distance = 10
+ACTIONS.GFLETSTALK.priority = 10
 
 --ACTION COLLECTORS------
 -------------------------
@@ -215,7 +192,7 @@ AddComponentAction("POINT", "gfspellitem", function(inst, doer, pos, actions, ri
     if right and not gfsp:IsEnabled() then
         spellName = inst.replica.gfspellitem:GetCurrentSpell()
         if spellName ~= nil then
-            spell = spellList[spellName]
+            spell = ALL_SPELLS[spellName]
             if spell 
                 and inst.replica.gfspellitem:CanCastSpell(spellName)
                 and doer.replica.gfspellcaster:CanCastSpell(spellName) 
@@ -249,7 +226,7 @@ AddComponentAction("EQUIPPED", "gfspellitem", function(inst, doer, target, actio
     if right and not gfsp:IsEnabled() then
         spellName = inst.replica.gfspellitem:GetCurrentSpell()
         if spellName ~= nil then
-            spell = spellList[spellName]
+            spell = ALL_SPELLS[spellName]
             if spell 
                 and inst.replica.gfspellitem:CanCastSpell(spellName)
                 and doer.replica.gfspellcaster:CanCastSpell(spellName) 
@@ -291,7 +268,17 @@ AddComponentAction("USEITEM", "gfitemenhancer", function(inst, doer, target, act
     end
 end)
 
-AddComponentAction("SCENE", "gfquestgiver", function(inst, doer, actions, right)
+AddComponentAction("SCENE", "gfinterlocutor", function(inst, doer, actions, right)
+    if right 
+        and inst:HasTag("hasdialog")
+        and inst:IsValid() 
+        and (not inst.replica.health or not inst.replica.health:IsDead()) --interlocutor must be alive
+    then
+        table.insert(actions, ACTIONS.GFLETSTALK)
+    end
+end)
+
+--[[ AddComponentAction("SCENE", "gfquestgiver", function(inst, doer, actions, right)
     if right then
         if inst:IsValid() 
             and (not inst.replica.health or not inst.replica.health:IsDead()) --quest giver must be alive
@@ -300,4 +287,4 @@ AddComponentAction("SCENE", "gfquestgiver", function(inst, doer, actions, right)
             table.insert(actions, ACTIONS.GFTALKFORQUEST)
         end
     end
-end)
+end) ]]

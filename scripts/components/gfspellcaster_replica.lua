@@ -1,8 +1,7 @@
 --Green Framework. Please, don't copy any files or functions from this mod, because it can break other mods based on the GF.
 
-local ALL_SPELLS = GFSpellList
-local SNAME_TO_ID = GFSpellNameToID
-local SID_TO_NAME = GFSpellIDToName
+local ALL_SPELLS = GF.GetSpells()
+local SPELLS_IDS = GF.GetSpellsIDs()
 
 local function DeserializeStream(classified)
     if classified._parent == nil then return end

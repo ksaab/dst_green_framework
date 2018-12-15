@@ -1,4 +1,33 @@
 local ALL_QUESTS = GF.GetQuests()
+local QUESTS_IDS = GF.GetQuestsIDs()
+
+local _r = require "components/gfquestdoer_r"
+
+local function TrackGiver(inst, giver)
+    if not inst:IsValid() or not giver:IsValid() or not inst:IsNear(giver, 15) then
+        inst.components.gfquestdoer.TrackGiverFail()
+    end
+end
+
+local function _GetQuestKey(qName, hash)
+    if qName ~= nil and ALL_QUESTS[qName] ~= nil then
+        return ALL_QUESTS[qName].unique
+            and qName
+            or (hash ~= nil and qName .. hash or nil)
+    end
+
+    return nil
+end
+
+local function OnInvChanged(inst, data)
+    local self = inst.components.gfquestdoer
+    if self._itemTask == nil then
+        self._itemTask = inst:DoTaskInTime(0, function(inst, data) 
+            inst:PushEvent("gfinvchanged", data) 
+            inst.components.gfquestdoer._itemTask = nil
+        end, data)
+    end
+end
 
 local function UpdateCooldowns(inst)
     local self = inst.components.gfquestdoer
@@ -11,18 +40,6 @@ local function UpdateCooldowns(inst)
     end
 end
 
---this function is used to update status for collecting-items quest
---don't want to add two inventory event listeners for every quest
-local function OnInvChanged(inst, data)
-    local self = inst.components.gfquestdoer
-    if self._itemTask == nil then
-        self._itemTask = inst:DoTaskInTime(0, function(inst, data) 
-            inst:PushEvent("gfinvchanged", data) 
-            inst.components.gfquestdoer._itemTask = nil
-        end, data)
-    end
-end
-
 local GFQuestDoer = Class(function(self, inst)
     self.inst = inst
 
@@ -30,40 +47,53 @@ local GFQuestDoer = Class(function(self, inst)
     self.completedQuests = {}
     self.registredQuests = {}
 
-    if GFGetIsMasterSim() then
-        --not the best decision, shoud to do something with this
-        --TODO - write an another handller for the inventory events
-        inst:ListenForEvent("itemlose", OnInvChanged)
-        inst:ListenForEvent("gotnewitem", OnInvChanged)
-        --update cooldowns for quests on every day segment
-        inst:ListenForEvent("phase", function() UpdateCooldowns(inst) end, GFGetWorld())
+    --attaching classified on the server-side
+    if self.classified == nil and inst.player_classified ~= nil then
+        self:AttachClassified(inst.player_classified)
     end
 
-    if inst.replica.gfquestdoer then 
-        inst.replica.gfquestdoer.currentQuests = self.currentQuests
-        inst.replica.gfquestdoer.completedQuests = self.completedQuests 
+    if GFGetIsMasterSim() then
+        inst:WatchWorldState("phase", UpdateCooldowns)
+
+        inst:ListenForEvent("itemlose", OnInvChanged)
+        inst:ListenForEvent("gotnewitem", OnInvChanged)
     end
 end)
+
+GFQuestDoer.AttachClassified = _r.AttachClassified
+GFQuestDoer.DetachClassified = _r.DetachClassified
+GFQuestDoer.UpdateQuestList = _r.UpdateQuestList
+GFQuestDoer.UpdateQuestInfo = _r.UpdateQuestInfo
 
 -----------------------------------------
 --safe methods---------------------------
 -----------------------------------------
+function GFQuestDoer:OfferQuests(quests, strid, giver)
+    local dComp = self.components.gfplayerdialog
+    if dComp == nil then
+        print(("Something wrong - %s doesn't have a dialog component"):format(tostring(self.inst)))
+        return false
+    end
+
+    return true
+end
+
+function GFQuestDoer:OfferQuest(qName, strid, giver)
+    self:OfferQuests({qName}, strid, giver)
+end
 
 function GFQuestDoer:AcceptQuest(qName, hash)
+    print("accepting", qName, hash)
     local qKey = GetQuestKey(qName, hash)
-    --component stores quests by qName .. '#' .. hash, so we can pick more then one quest of same type
-    --but quests without the soulbound flag are stored without a hash suffix - so player can take only one instace of the quest
     if qKey == nil or not self:CanPickQuest(qName, hash, qKey) then return end
-
-    GFDebugPrint(string.format("%s accepts quest %s", tostring(self.inst), qKey))
 
     local qInst = ALL_QUESTS[qName]
     local qData = 
     {
-        name = qName, --quest name
-        hash = hash, --unique id for quest giver
-        world = GFGetWorld().components.gfquesttracker:GetWorldHash(), --uniques id for a world where the quest was picked
-        status = 0, --current status, 0 means <in progrees>
+        name = qName,
+        hash = hash,
+        world = GFGetWorld().components.gfquesttracker:GetWorldHash(),
+        status = 0,
     }
 
     --registring events for quest, 
@@ -74,9 +104,26 @@ function GFQuestDoer:AcceptQuest(qName, hash)
     end
     self.registredQuests[qName][qKey] = qData
 
-    qInst:Accept(self.inst, qData) --loading required data from quest
-    self.currentQuests[qKey] = qData --saving the quest data to the components
-    self:UpdateQuestList(qName, hash, 3) --sending info about new quest to replica
+    --loading required data from quest
+    self.currentQuests[qKey] = qData 
+    self:UpdateQuestList(qName, hash, 3)
+    --components stores quests by qName .. hash, so we can pick more then one same quest
+    --but quests without the soulbound flag are stored without a hash suffix - so player can take only one instace of the quest
+
+    --TODO - Replace on replica when it's possible
+    --can't use replicas because of woodie tag overflow crashes
+    qInst:Accept(self.inst, qData)
+
+    --closing dialog
+    local dComp = self.inst.components.gfplayerdialog
+    if dComp ~= nil then
+        local giver = dComp:GetTrackingEntity()
+        if giver ~= nil and giver.components.gfquestgiver ~= nil then
+            giver.components.gfquestgiver:OnQuestAccepted(qName, self.inst)
+        end
+
+        dComp:CloseDialog()
+    end
 
     return self.currentQuests[qKey]
 end
@@ -84,9 +131,8 @@ end
 function GFQuestDoer:CompleteQuest(qName, hash, ignore)
     local qKey = GetQuestKey(qName, hash)
     if qKey == nil 
-        or self.currentQuests[qKey] == nil 
-        or self.currentQuests[qKey].status ~= 1
-        or not ALL_QUESTS[qName]:CheckBeforeComplete(self.inst, self.currentQuests[qKey])
+        or not self:IsHashedQuestDone(qKey)
+        or (not ignore and not ALL_QUESTS[qName]:CheckBeforeComplete(self.inst, self.currentQuests[qKey]))
     then 
         GFDebugPrint(string.format("%s can't complete the quest %s", tostring(self.inst), qKey))
         return false
@@ -94,30 +140,49 @@ function GFQuestDoer:CompleteQuest(qName, hash, ignore)
 
     local qInst = ALL_QUESTS[qName]
 
-    --unregistring the quest
     self.registredQuests[qName][qKey] = nil
     if next(self.registredQuests[qName]) == nil then
-        --if inst doesn't have same quest with another hash, then unregistring all events
         qInst:Unregister(self.inst)
         self.registredQuests[qName] = nil
     end
-
     qInst:Complete(self.inst, self.currentQuests[qKey])
 
-    --puushing cooldown for the quest
+    --TODO - cooldowns
     if qInst.cooldown > 0 then
-        self.completedQuests[qKey] = 
-        {
-            qName = qName,
-            hash = hash,
-            readyTime = qInst.cooldown + GetTime(),
-        }
- 
-        self:UpdateQuestList(qName, hash, 8) --tell the replica about new cooldown
+        if qInst.unique then
+            self.completedQuests[qName] = 
+            {
+                qName = qName,
+                hash = hash,
+                readyTime = qInst.cooldown + GetTime(),
+            }
+        else
+            self.completedQuests[qKey] = 
+            {
+                qName = qName,
+                hash = hash,
+                readyTime = qInst.cooldown + GetTime(),
+            }
+        end
+
+        self:UpdateQuestList(qName, hash, 8)
     end
 
-    self:UpdateQuestList(qName, hash, 5) --tell the replica about successful quest completion
-    self.currentQuests[qKey] = nil --removing the quest data from the component
+    --TODO - Replace on replica when it's possible
+    --can't use replicas because of woodie tag overflow crashes
+    self:UpdateQuestList(qName, hash, 5)
+    self.currentQuests[qKey] = nil
+
+    --closing dialog
+    local dComp = self.inst.components.gfplayerdialog
+    if dComp ~= nil then
+        local giver = dComp:GetTrackingEntity()
+        if giver ~= nil and giver.components.gfquestgiver ~= nil then
+            giver.components.gfquestgiver:OnQuestCompleted(qName, self.inst)
+        end
+
+        dComp:CloseDialog()
+    end
 
     return true
 end
@@ -128,19 +193,19 @@ function GFQuestDoer:AbandonQuest(qName, hash)
 
     local qInst = ALL_QUESTS[qName]
 
-    --unregistring the quest
-    self.registredQuests[qName][qKey] = nil
-    if next(self.registredQuests[qName]) == nil then
-        --if inst doesn't have same quest with another hash, then unregistring all events
-        qInst:Unregister(self.inst)
-        self.registredQuests[qName] = nil
+    if self.registredQuests[qName] then
+        self.registredQuests[qName][qKey] = nil
+        if next(self.registredQuests[qName]) == nil then
+            qInst:Unregister(self.inst)
+            self.registredQuests[qName] = nil
+        end
     end
-
     qInst:Abandon(self.inst, self.currentQuests[qKey])
     GFGetWorld().components.gfquesttracker:QuestAbandoned(self.inst, qName, hash)
-
-    self:UpdateQuestList(qName, hash, 4) --tell the replica
-    self.currentQuests[qKey] = nil --removing the quest data from the component
+    --TODO - Replace on replica when it's possible
+    --can't use replicas because of woodie tag overflow crashes
+    self:UpdateQuestList(qName, hash, 4)
+    self.currentQuests[qKey] = nil
 
     return true
 end
@@ -150,10 +215,9 @@ function GFQuestDoer:SetQuestDone(qName, hash, done)
     if qKey == nil or self.currentQuests[qKey] == nil then return false end
 
     local status = (done == nil or done == false) and 0 or 1
-
+    print(qKey .. "now has status " .. tostring(status))
     if self.currentQuests[qKey].status ~= status then
         self.currentQuests[qKey].status = status
-        --update the replica
         self:UpdateQuestList(qName, hash, status)
         self:UpdateQuestInfo(qName, hash, done)
     end
@@ -164,43 +228,30 @@ function GFQuestDoer:SetQuestFailed(qName, hash)
     if qKey == nil or self.currentQuests[qKey] == nil then return false end
 
     if self.currentQuests[qKey].status ~= 2 then
-        --unregistring the quest
-        self.registredQuests[qName][qKey] = nil
-        if next(self.registredQuests[qName]) == nil then
-            --if inst doesn't have same quest with another hash, then unregistring all events
-            qInst:Unregister(self.inst)
-            self.registredQuests[qName] = nil
+        --unregistering quest's events
+        if self.registredQuests[qName] then
+            self.registredQuests[qName][qKey] = nil
+            if next(self.registredQuests[qName]) == nil then
+                ALL_QUESTS[qName]:Unregister(self.inst)
+                self.registredQuests[qName] = nil
+            end
         end
-
+        print(qName .. "is now failed")
         self.currentQuests[qKey].status = 2
         self:UpdateQuestInfo(qName, hash, true)
         self:UpdateQuestList(qName, hash, 2)
     end
 end
 
-function GFQuestDoer:GetQuestData(qName, hash)
-    local qKey = GetQuestKey(qName, hash)
-    return qKey ~= nil and self.currentQuests[qKey] or nil
-end
 
-function GFQuestDoer:GetQuestsDataByName(qName)
-    local t = {}
-    for _, qData in pairs(self.currentQuests) do
-        if qData.qName == qName then
-            table.insert(t, qData)
-        end
-    end
-
-    return t
-end
-
---get info by quest name + giver hash
+--get info by pairs quest name + giver hash
 -------------------------------------------
 function GFQuestDoer:CanPickQuest(qName, hash)
     local qKey = GetQuestKey(qName, hash)
     return qKey ~= nil 
         and self.currentQuests[qKey] == nil 
         and self.completedQuests[qKey] == nil
+        and self.completedQuests[qName] == nil
         and ALL_QUESTS[qName]:CheckBeforeGive(self.inst)
 end
 
@@ -216,12 +267,18 @@ function GFQuestDoer:IsQuestDone(qName, hash)
         and self.currentQuests[qKey].status == 1
 end
 
---get info by key
+function GFQuestDoer:GetQuestData(qName, hash)
+    local qKey = GetQuestKey(qName, hash)
+    return qKey ~= nil and self.currentQuests[qKey] or nil
+end
+
+--get info by hashed key
 -------------------------------------------
 function GFQuestDoer:CanPickHashedQuest(qKey, qName)
     return qKey ~= nil 
         and self.currentQuests[qKey] == nil 
         and self.completedQuests[qKey] == nil
+        and self.completedQuests[qName] == nil
         and ALL_QUESTS[qName]:CheckBeforeGive(self.inst)
 end
 
@@ -235,6 +292,10 @@ function GFQuestDoer:HasHashedQuest(qKey)
     return qKey ~= nil and self.currentQuests[qKey] ~= nil
 end
 
+function GFQuestDoer:GetHashedQuestData(qKey)
+    return qKey ~= nil and self.currentQuests[qKey] or nil
+end
+
 --other
 function GFQuestDoer:GetRegistredQuests(qName)
     return self.registredQuests[qName]
@@ -242,15 +303,6 @@ end
 
 function GFQuestDoer:GetQuestsNumber()
     return GetTableSize(self.currentQuests)
-end
-
---update replica
-function GFQuestDoer:UpdateQuestList(...)
-    self.inst.replica.gfquestdoer:UpdateQuestList(...)
-end
-
-function GFQuestDoer:UpdateQuestInfo(...)
-    self.inst.replica.gfquestdoer:UpdateQuestInfo(...)
 end
 
 -----------------------------------------
@@ -328,6 +380,13 @@ function GFQuestDoer:OnLoad(data)
                     q.status = qData.status
                     q.world = qData.world
                     ALL_QUESTS[qData.name]:OnLoad(q, qData.string)
+                    --[[ local qtracker = GFGetWorld().components.gfquesttracker
+                    if qData.world == qtracker:GetWorldHash()
+                        and (qtracker.giverHashes[qData.hash] == nil
+                            or not qtracker.giverHashes[qData.hash].components.gfquestgiver:IsCompleterFor(qData.name))
+                    then
+                        self:SetQuestFailed(qData.name, qData.hash)
+                    end ]]
                 end
             end
 
@@ -347,12 +406,12 @@ end
 
 function GFQuestDoer:GetDebugString()
     local curr, done = {}, {}
-    local dstr = "pdf"
     for k, qData in pairs(self.currentQuests) do
-        table.insert(curr, string.format("[%s - %s]", GetQuestKey(qData.qName, qData.hash) or "NONE", dstr[qData.status]))
+        table.insert(curr, string.format("[%s:%s - %i]", qData.name, qData.hash or "NONE", qData.status))
     end
 
     return #curr > 0 and table.concat(curr, ",") or "None"
 end
+
 
 return GFQuestDoer

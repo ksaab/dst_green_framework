@@ -16,11 +16,11 @@ local CAMERASHAKE = _G.CAMERASHAKE
 local Vector3 = _G.Vector3
 local BufferedAction = _G.BufferedAction
 
-local spellList = _G.GFSpellList
+local ALL_SPELLS = _G.GF.GetSpells()
 
 local function GetSpellCastTime(spellName)
-	if spellName and spellList[spellName] then 
-		return spellList[spellName].castTime or 0
+	if spellName and ALL_SPELLS[spellName] then 
+		return ALL_SPELLS[spellName].castTime or 0
 	end
 
 	return 0
@@ -39,7 +39,7 @@ local function CanCastSpell(spell, inst, item)
 
     --check doer
 	local instValid = inst.replica.gfspellcaster and inst.replica.gfspellcaster:CanCastSpell(spell)
-	local precastCheck = spellList[spell]:PreCastCheck(inst)
+	local precastCheck = ALL_SPELLS[spell]:PreCastCheck(inst)
 
 	return instValid and itemValid and precastCheck
 end
@@ -725,6 +725,56 @@ local gfcraftcast = State{
 	},
 }
 
+local gfparry = State{
+	name = "gfparry",
+	tags = {"doing", "casting", "busy", "nodangle"},
+
+	onenter = function(inst)
+		inst.components.locomotor:Stop()
+
+		local act = inst:GetBufferedAction()
+		if act and act.spell then
+			if act.pos then
+				inst:ForceFacePoint(act.pos.x, 0, act.pos.z)
+			end
+
+            inst.AnimState:PlayAnimation("parry_pre")
+            inst.AnimState:PushAnimation("parry_loop", true)
+
+            inst:PerformPreviewBufferedAction()
+			inst.sg:SetTimeout(2)
+
+			return
+		end
+
+		inst.sg:GoToState("idle")
+	end,
+
+	ontimeout = function(inst)
+		inst:ClearBufferedAction()
+		inst.sg:GoToState("idle")
+	end,
+
+	onupdate = function(inst)
+		if inst:HasTag("busy") then
+			if inst.entity:FlattenMovementPrediction() then
+				inst.sg:GoToState("idle", "noanim")
+			end
+		elseif inst.bufferedaction == nil then
+			inst.sg:GoToState("idle")
+		end
+	end,
+
+	events =
+	{
+		EventHandler("unequip", function(inst) 
+			if inst.sg:HasStateTag("casting") then
+				inst.sg:GoToState("idle") 
+			end
+		end), 
+	},
+}
+
 local gfmakeattention = State
 {
 	name = "gfmakeattention",
@@ -770,6 +820,7 @@ AddStategraphState("wilson_client", gfleap)
 AddStategraphState("wilson_client", gfflurry)
 AddStategraphState("wilson_client", gfcraftcast)
 AddStategraphState("wilson_client", gfthrow)
+AddStategraphState("wilson_client", gfparry)
 
 --Add events block--------------
 AddStategraphEvent("wilson_client", EventHandler("gfforcemove", function(inst, data)
@@ -780,7 +831,8 @@ end))
 --Add actions handlers block----
 AddStategraphActionHandler("wilson_client", ActionHandler(ACTIONS.GFDRINKIT, "gfdodrink"))
 AddStategraphActionHandler("wilson_client", ActionHandler(ACTIONS.GFENHANCEITEM, "dolongaction"))
-AddStategraphActionHandler("wilson_client", ActionHandler(ACTIONS.GFTALKFORQUEST, "gfmakeattention"))
+AddStategraphActionHandler("wilson_client", ActionHandler(ACTIONS.GFLETSTALK, "gfmakeattention"))
+--AddStategraphActionHandler("wilson_client", ActionHandler(ACTIONS.GFTALKFORQUEST, "gfmakeattention"))
 
 AddStategraphActionHandler("wilson_client", ActionHandler(ACTIONS.GFCASTSPELL, function(inst)
     local act = inst:GetBufferedAction()
@@ -798,10 +850,10 @@ AddStategraphActionHandler("wilson_client", ActionHandler(ACTIONS.GFCASTSPELL, f
 		spellName = item.replica.gfspellitem:GetCurrentSpell()	
 	end
 
-	if spellName == nil or spellList[spellName] == nil then return "idle" end --invalid spell name
+	if spellName == nil or ALL_SPELLS[spellName] == nil then return "idle" end --invalid spell name
 
 	--gfsp:Disable()
-	spell = spellList[spellName]
+	spell = ALL_SPELLS[spellName]
 
 	if spell then
 		if act.pos == nil then act.pos = Vector3(act.target.Transform:GetWorldPosition()) end

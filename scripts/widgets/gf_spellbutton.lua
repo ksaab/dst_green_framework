@@ -7,7 +7,7 @@ local UIAnim = require "widgets/uianim"
 local INVALID_TITLE = STRINGS.GF.HUD.INVALID_LINES.INVALID_TITLE
 local INVALID_TEXT = STRINGS.GF.HUD.INVALID_LINES.INVALID_TEXT
 
-local ALL_SPELLS = GFSpellList
+local ALL_SPELLS = GF.GetSpells()
 
 local function OnClick(self)
     if self == nil then return end

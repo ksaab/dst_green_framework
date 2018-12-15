@@ -32,6 +32,14 @@ STRINGS.CHARACTERS.GENERIC.ACTIONFAIL.GFTALKFORQUEST =
     REMINDQUEST = "I thing I've promise to help here.",
 }
 
+STRINGS.CHARACTERS.GENERIC.ACTIONFAIL.GFLETSTALK = 
+{
+    NOQUESTS = "There is nothing intresting for me here.",
+    TARGETBUSY = "It's not the best time.",
+    TOMANYQUESTS = "My quest jouranl is full!",
+    REMINDQUEST = "I thing I've promise to help here.",
+}
+
 STRINGS.CHARACTERS.GENERIC.ACTIONFAIL.GFCASTSPELL =
 {
     GENERIC = "Nothing will come of it.",
@@ -87,8 +95,39 @@ STRINGS.GF.HUD =
     MINUTES_LETTER = "m",
 }
 
+STRINGS.GF.CONVERSATIONS = 
+{
+    --defaults
+    DEFAULT = 
+    {
+        TITLE = "Conversation",
+        TEXT = "Hello, do you want to talk with me?",
+    },
+    PIGMAN_DEFAULT = 
+    {
+        TITLE = "Pigman",
+        TEXT = "Oink! Oink-oink!",
+    },
+    BUNNYMAN_DEFAULT = 
+    {
+        TITLE = "Bunny",
+        TEXT = "Hey! Avoid any meat!",
+    },
+    PIGKING_DEFAULT = 
+    {
+        TITLE = "Pig King",
+        TEXT = "Hello, little creature. What do you want?",
+    },
+    LIVINGTREE_DEFAULT = 
+    {
+        TITLE = "Living tree",
+        TEXT = "*You hear the voice of the tree in your head*",
+    },
+}
+
 STRINGS.GF.QUESTS = 
 {
+    DEFAULT_REMINDER = "I think I've promised to help here.",
     _EX_KILL_FIVE_SPIDERS = 
     {
         TITLE = "Pesky spiders.",
@@ -105,26 +144,6 @@ STRINGS.GF.QUESTS =
         GOAL = "Bring five logs",
         STATUS = "Logs: %s/%s",
     },
-}
-
-STRINGS.GF.QUEST_DIALOGS = 
-{
-    GF_DIALOG_TEST = "It's a test dialog",
-    DEFAULT = "Hello, can you help me?",
-    PIGMAN_DEFAULT = "Oink. Oink-oink!",
-    SKELETON_DEFAULT = "The skeleton looks at you with empty eyes",
-}
-
-STRINGS.CHARACTERS.GENERIC.QUEST_REMINDERS = 
-{
-    DEFAULT_REMINDER = "I think I've promised to help here.",
-    _EX_BRING_FIVE_ROCKS = "I've promised to bring some rocks.",
-}
-
-STRINGS.CHARACTERS.WOODIE.QUEST_REMINDERS = 
-{
-    DEFAULT_REMINDER = "Woodie: I think I've promised to help here.",
-    _EX_BRING_FIVE_ROCKS = "Woodie: I've promised to bring some rocks.",
 }
 
 STRINGS.GF.EFFECTS = {}

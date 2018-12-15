@@ -20,11 +20,11 @@ local TUNING = _G.TUNING
 
 _G.require "stategraphs/commonstates"
 
-local spellList = _G.GFSpellList
+local ALL_SPELLS = _G.GF.GetSpells()
 
 local function GetSpellCastTime(spellName)
-	if spellName and spellList[spellName] then 
-		return spellList[spellName].castTime or 0
+	if spellName and ALL_SPELLS[spellName] then 
+		return ALL_SPELLS[spellName].castTime or 0
 	end
 
 	return 0
@@ -48,8 +48,8 @@ local function IsValidGround(pos)
 end
 
 --[[ local function GetSpellPostCast(spellName)
-	if spellName and spellList[spellName] then 
-		return spellList[spellName]:HasPostCast()
+	if spellName and ALL_SPELLS[spellName] then 
+		return ALL_SPELLS[spellName]:HasPostCast()
 	end
 end ]]
 
@@ -253,7 +253,7 @@ local gfcastwithstaff = State{
 			inst.AnimState:PlayAnimation("staff_pre")
 			inst.AnimState:PushAnimation("staff", false)
 			
-			local visuals = spellList[act.spell].stateVisuals
+			local visuals = ALL_SPELLS[act.spell].stateVisuals
 			if visuals ~= nil then
 				if visuals.sound ~= nil then
 					inst.SoundEmitter:PlaySound(visuals.sound)
@@ -558,7 +558,7 @@ local gfbookcast = State
 
 			inst.SoundEmitter:PlaySound("dontstarve/common/use_book") 
 
-			local visuals = spellList[act.spell].stateVisuals
+			local visuals = ALL_SPELLS[act.spell].stateVisuals
 			if visuals ~= nil then
 				if visuals.fxColour ~= nil then
 					inst.sg.statemem.bookfx = SpawnPrefab(inst.components.rider:IsRiding() and "book_fx_mount" or "book_fx")
@@ -747,8 +747,8 @@ local gfhighleapdone = State{
 		TimeEvent(8 * FRAMES, function(inst)
 			inst.components.bloomer:PopBloom("superjump")
 			local act = inst.sg.statemem.buffact
-			if act ~= nil and act.action == ACTIONS.GFCASTSPELL and act.spell and spellList[act.spell] then
-				spellList[act.spell]:DoPostCast(inst, act.target, act.pos)
+			if act ~= nil and act.action == ACTIONS.GFCASTSPELL and act.spell and ALL_SPELLS[act.spell] then
+				ALL_SPELLS[act.spell]:DoPostCast(inst, act.target, act.pos)
 			end
 			inst.components.health:SetInvincible(false)
 			inst.sg:RemoveStateTag("nointerrupt")
@@ -1033,6 +1033,144 @@ local gfcraftcast = State
 	},
 }
 
+local gfparry = State
+{
+	name = "gfparry",
+	tags = {"doing", "casting", "busy", "nodangle", "parryhit", "parrying"},
+
+	onenter = function(inst, data)
+		inst.components.locomotor:Stop()
+
+		local act = inst:GetBufferedAction()
+		if act and act.spell then
+			local spellParams = ALL_SPELLS[act.spell]:GetSpellParams()
+			local castTime = math.max(1.5, GetSpellCastTime(act.spell))
+			local redir = SpawnPrefab("gf_redirect_dummy")
+			absorb = (spellParams ~= nil and spellParams.absorb ~= nil)
+				and spellParams.absorb
+				or 100
+
+			inst.sg.statemem.remain = castTime
+			inst.sg.statemem.redir = redir
+			inst.sg.statemem.absorb = absorb
+
+			inst.components.combat.redirectdamagefn = function(inst, attacker, damage, weapon, stimuli) 
+				if inst.sg.statemem.redir ~= nil 
+					and not inst.sg.statemem.redir.components.health:IsDead()
+					and attacker ~= nil
+					and stimuli == nil
+				then
+					local x, y, z = inst.Transform:GetWorldPosition()
+					local xa, ya, za = attacker.Transform:GetWorldPosition()
+					local angle = (math.atan2(xa - x, za - z) - math.pi * 0.5) / _G.DEGREES
+					local look = inst.Transform:GetRotation()
+
+					return (math.abs(look - angle) < 90) and inst.sg.statemem.redir or nil
+				end
+
+				return nil
+			end
+
+			inst:PerformBufferedAction()
+
+			inst.AnimState:PlayAnimation("parry_pre", false) 
+			inst.AnimState:PushAnimation("parry_loop", true) 
+
+			inst.sg:SetTimeout(castTime)
+			return
+		end
+
+		inst.sg:GoToState("idle")
+	end,
+
+	ontimeout = function(inst)
+		inst.sg:GoToState("gfparrypost")
+	end,
+
+	onexit = function(inst)
+		inst.components.combat.redirectdamagefn = nil
+		if inst.sg.statemem.redir ~= nil and inst.sg.statemem.redir:IsValid() then
+			inst.sg.statemem.redir:Remove()
+		end
+	end,
+
+	timeline =
+    {
+        TimeEvent(10 * FRAMES, function(inst)
+            inst.sg:RemoveStateTag("busy")
+        end),
+    },
+
+	events =
+	{
+		EventHandler("unequip", function(inst) 
+			if inst.sg:HasStateTag("casting") then
+				inst.sg:GoToState("idle") 
+			end
+		end), 
+		EventHandler("attacked", function(inst, data) 
+			inst:PushEvent("attacked_hax", data)
+		end), 
+		EventHandler("attacked_hax", function(inst, data) 
+			if inst.sg.statemem.absorb > 0 then
+				if data.damageresolved == 0 then
+					inst.sg.statemem.absorb = inst.sg.statemem.absorb - data.damage
+					inst.AnimState:PlayAnimation("parryblock", false) 
+					inst.AnimState:PushAnimation("parry_loop", true) 
+					inst:PushEvent("parry", data)
+				else
+					inst.sg:GoToState(inst.sg:HasStateTag("nointerrupt") and "gfparrypost" or "hit")
+				end
+			else
+				if data.damageresolved > 0 and not inst.sg:HasStateTag("nointerrupt") then
+					inst.sg:GoToState("hit")
+				else
+					inst.sg:GoToState("gfparrypost")
+				end
+			end
+		end), 
+		EventHandler("ontalk", function(inst)
+			if inst.sg.statemem.talktask ~= nil then
+				inst.sg.statemem.talktask:Cancel()
+				inst.sg.statemem.talktask = nil
+				inst.SoundEmitter:KillSound("talk")
+			end
+			if DoTalkSound(inst) then
+				inst.sg.statemem.talktask =
+					inst:DoTaskInTime(1.5 + math.random() * .5,
+						function()
+							inst.SoundEmitter:KillSound("talk")
+							inst.sg.statemem.talktask = nil
+						end)
+			end
+		end),
+		EventHandler("donetalking", function(inst)
+			if inst.sg.statemem.talktalk ~= nil then
+				inst.sg.statemem.talktask:Cancel()
+				inst.sg.statemem.talktask = nil
+				inst.SoundEmitter:KillSound("talk")
+			end
+		end),
+	},
+}
+
+local gfparrypost = _G.State
+{
+	name = "gfparrypost",
+	tags = {"doing", "nodangle"},
+
+	onenter = function(inst)
+        inst.AnimState:PlayAnimation("parry_pst", false)
+	end,
+
+	events =
+	{
+		EventHandler("animover", function(inst)
+            inst.sg:GoToState("idle")
+		end),
+	},
+}
+
 local gfmakeattention = _G.State
 {
 	name = "gfmakeattention",
@@ -1058,7 +1196,7 @@ local gfmakeattention = _G.State
 	{
 		_G.EventHandler("animover", function(inst)
             inst.sg:GoToState("idle")
-        end),
+		end),
 	},
 }
 
@@ -1079,6 +1217,8 @@ AddStategraphState("wilson", gfleapdone)
 AddStategraphState("wilson", gfflurry)
 AddStategraphState("wilson", gfcraftcast)
 AddStategraphState("wilson", gfthrow)
+AddStategraphState("wilson", gfparry)
+AddStategraphState("wilson", gfparrypost)
 AddStategraphState("wilson", gfmakeattention)
 
 --Add events--------------
@@ -1103,7 +1243,8 @@ AddStategraphActionHandler("wilson", ActionHandler(ACTIONS.GFDRINKIT, function(i
 	end)
 )
 AddStategraphActionHandler("wilson", ActionHandler(ACTIONS.GFENHANCEITEM, "dolongaction"))
-AddStategraphActionHandler("wilson", ActionHandler(ACTIONS.GFTALKFORQUEST, "gfmakeattention"))
+AddStategraphActionHandler("wilson", ActionHandler(ACTIONS.GFLETSTALK, "gfmakeattention"))
+--AddStategraphActionHandler("wilson", ActionHandler(ACTIONS.GFTALKFORQUEST, "gfmakeattention"))
 
 AddStategraphActionHandler("wilson", ActionHandler(ACTIONS.GFCASTSPELL, function(inst)
     local act = inst:GetBufferedAction()
@@ -1123,9 +1264,9 @@ AddStategraphActionHandler("wilson", ActionHandler(ACTIONS.GFCASTSPELL, function
 		spellName = item.replica.gfspellitem:GetCurrentSpell()	
 	end
 
-	if spellName == nil or spellList[spellName] == nil then return "idle" end --invalid spell name
+	if spellName == nil or ALL_SPELLS[spellName] == nil then return "idle" end --invalid spell name
 
-	spell = spellList[spellName]
+	spell = ALL_SPELLS[spellName]
 
 	if spell then
 		if act.pos == nil then act.pos = Vector3(act.target.Transform:GetWorldPosition()) end

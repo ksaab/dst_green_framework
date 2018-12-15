@@ -1,7 +1,7 @@
 --Green Framework. Please, don't copy any files or functions from this mod, because it can break other mods based on the GF.
 
-local spelllist = GFSpellList
-local spelllistcached = GFSpellNameToID
+local ALL_SPELLS = GF.GetSpells()
+local SPELLS_IDS = GF.GetSpellsIDs()
 
 local function EmptySpell(self)
     print(("Spell: spell %s has no cast function..."):format(self.name))
@@ -64,10 +64,16 @@ local Spell = Class(function(self, name)
                             --args (self, caster)
 end)
 
+function Spell:HasTag(tag)
+    return self.tags[tag] ~= nil
+end
 
---can be used in fn-handlers for spell cast events
-function Spell:HasSpellTag(tag)
-    return self.tags[tag]
+function Spell:AddTag(tag)
+    self.tags[tag] = true
+end
+
+function Spell:RemoveTag(tag)
+    self.tags[tag] = nil
 end
 
 --used in the spellitem component
@@ -95,6 +101,11 @@ end
 --used in stategraphs
 function Spell:GetRange()
     return self.range
+end
+
+--used in stategraphs
+function Spell:GetSpellParams()
+    return self.spellParams
 end
 
 --used in stategraphs

@@ -1,13 +1,13 @@
 --Green Framework. Please, don't copy any files or functions from this mod, because it can break other mods based on the GF.
 
-local ALL_EFFECTS = GFEffectList
-local affixList = GFEntitiesBaseAffixes
+local ALL_EFFECTS = GF.GetStatusEffects()
+local BASE_EFFECTS = GF.EntitiesBaseEffects
 
 local function RemoveEffectsOnDeath(inst)
     inst.components.gfeffectable:RemoveAllEffects(false, "death")
 end
 
-local gfEffectsSymbols = require("gf_effects_symbols")
+local gfEffectsSymbols = require("gf_var_symbols")
 
 local function SetFollowSymbol(self)
     local inst = self.inst
@@ -68,7 +68,7 @@ end
 local function TryAddAffix(inst)
     local self = inst.components.gfeffectable
     if self and self.isNew then
-        for affixType, affixData in pairs(affixList[inst.prefab]) do
+        for affixType, affixData in pairs(BASE_EFFECTS[inst.prefab]) do
             if math.random() < affixData.chance then
                 local aff = affixData.list[math.random(#(affixData.list))]
                 --GFDebugPrint(("Add [%s-type] affix [%s] to %s"):format(affixType, aff, tostring(self.inst)))
@@ -95,7 +95,7 @@ local GFEffectable = Class(function(self, inst)
         SetFollowSymbol(self)
     end
 
-    if affixList[inst.prefab] then
+    if BASE_EFFECTS[inst.prefab] then
         inst:DoTaskInTime(0, TryAddAffix)
     end
 
@@ -157,7 +157,9 @@ function GFEffectable:ApplyEffect(eName, eParams)
 
         --GFDebugPrint(("%s refreshes %s"):format(tostring(self.inst), eName))
         self.inst.replica.gfeffectable:RefreshEffect(eName)
-    else--if self:CheckResists(effect) then
+
+        return true
+    elseif self:CheckResists(eInst) then
         local eData = {}
         eInst:Apply(self.inst, eData, eParams)
         self.effects[eName] = eData
@@ -182,9 +184,31 @@ function GFEffectable:ApplyEffect(eName, eParams)
 
         --GFDebugPrint(("%s now is affected by %s"):format(tostring(self.inst), eName))
         self.inst.replica.gfeffectable:ApplyEffect(eName)
+
+        return true
     end
     
-    return true
+    return false
+end
+
+function GFEffectable:PushEffect(name, from, duration, stacks, other)
+    local data = 
+    {
+        applier = from,
+        stacks = stacks,
+        duration = duration,
+    }
+    if other ~= nil then
+        if type(other) == "table" then
+            for k, v in pairs(other) do
+                data[k] = v
+            end
+        else
+            data.custom = other
+        end
+    end
+
+    self:ApplyEffect(name, data)
 end
 
 function GFEffectable:ConsumeStacks(eName, value)

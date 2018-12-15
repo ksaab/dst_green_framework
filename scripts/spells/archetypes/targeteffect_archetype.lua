@@ -1,6 +1,6 @@
 --Green Framework. Please, don't copy any files or functions from this mod, because it can break other mods based on the GF.
 
-local GFSpell = require("gf_spell")
+local GFSpell = require("gf_class_spell")
 
 local function DoCast(self, doer, target, pos, spellData)
     if doer == nil or target == nil then return false end

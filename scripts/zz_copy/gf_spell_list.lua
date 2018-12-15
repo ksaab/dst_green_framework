@@ -3,25 +3,25 @@ local rawget = _G.rawget
 local rawset = _G.rawset
 local require = _G.require
 
-if not rawget(_G, "GFSpellList") then
-    rawset(_G, "GFSpellList", {})
+if not rawget(_G, "GF.GetSpells()") then
+    rawset(_G, "GF.GetSpells()", {})
 end
 
 if not rawget(_G, "GFSpellNameToID") then
     rawset(_G, "GFSpellNameToID", {})
 end
 
-if not rawget(_G, "GFSpellIDToName") then
-    rawset(_G, "GFSpellIDToName", {})
+if not rawget(_G, "GF.GetSpellsIDs()") then
+    rawset(_G, "GF.GetSpellsIDs()", {})
 end
 
 if not GfCharacterSpells then
     rawset(_G, "GfCharacterSpells", {})
 end
 
-local GFSpellList = _G.GFSpellList
+local GF.GetSpells() = _G.GF.GetSpells()
 local GFSpellNameToID = _G.GFSpellNameToID
-local GFSpellIDToName = _G.GFSpellIDToName
+local GF.GetSpellsIDs() = _G.GF.GetSpellsIDs()
 
 local spellArray = 
 {
@@ -38,9 +38,9 @@ for k, v in pairs (spellArray) do
         v.folder or commonFolder,
         v.name
     }
-    GFSpellList[v.name] = require(table.concat(route))
-    GFSpellList[v.name].name = v.name
-    GFSpellList[v.name].id = k
+    GF.GetSpells()[v.name] = require(table.concat(route))
+    GF.GetSpells()[v.name].name = v.name
+    GF.GetSpells()[v.name].id = k
     GFSpellNameToID[v.name] = k
-    GFSpellIDToName[k] = v.name
+    GF.GetSpellsIDs()[k] = v.name
 end

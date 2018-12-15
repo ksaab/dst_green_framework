@@ -1,8 +1,7 @@
 --Green Framework. Please, don't copy any files or functions from this mod, because it can break other mods based on the GF.
 
-local ALL_SPELLS = GFSpellList
-local SNAME_TO_ID = GFSpellNameToID
-local SID_TO_NAME = GFSpellIDToName
+local ALL_SPELLS = GF.GetSpells()
+local SPELLS_IDS = GF.GetSpellsIDs()
 
 local function DeserializeSpellsString(inst)
     local self = inst.replica.gfspellitem
@@ -10,7 +9,7 @@ local function DeserializeSpellsString(inst)
 
     self.spells = {}
     for _, sID in pairs(spellArr) do
-        local sName = SID_TO_NAME[tonumber(sID)]
+        local sName = SPELLS_IDS[tonumber(sID)]
         if sName ~= nil then
             self.spells[sName] = true
         end
@@ -25,7 +24,7 @@ local function DeserializeRechargesString(inst)
     local currTime = GetTime()
     for _, rData in pairs(rechArr) do
         local rech = rData:split(';')
-        local sName = SID_TO_NAME[tonumber(rech[1])]
+        local sName = SPELLS_IDS[tonumber(rech[1])]
         if sName ~= nil then
             self.spellData[sName] = 
             {
@@ -38,7 +37,7 @@ end
 
 local function SetCurrentSpell(inst)
     local self = inst.replica.gfspellitem
-    local sName = SID_TO_NAME[self._currentSpell:value()]
+    local sName = SPELLS_IDS[self._currentSpell:value()]
     if sName ~= nil then
         self.currentSpell = sName
     end
@@ -124,7 +123,7 @@ end
 function GFSpellItem:UpdateSpells()
     local str = {}
     for sName, v in pairs(self.spells) do
-        table.insert(str, SNAME_TO_ID[sName])
+        table.insert(str, ALL_SPELLS[sName].id)
     end
 
     str = table.concat(str, ';')
@@ -138,7 +137,7 @@ function GFSpellItem:UpdateRecharges()
     for sName, sData in pairs(self.spellData) do
         if sData.endTime > currTime then
             table.insert(str, string.format("%i;%.2f;%.2f", 
-                SNAME_TO_ID[sName], sData.endTime - currTime, currTime - sData.startTime))
+                ALL_SPELLS[sName].id, sData.endTime - currTime, currTime - sData.startTime))
         end
     end
 
@@ -150,7 +149,7 @@ end
 function GFSpellItem:UpdateCurrentSpell(sName)
     self.currentSpell = sName
     self._currentSpell:set_local(0)
-    self._currentSpell:set(SNAME_TO_ID[sName] or 0)
+    self._currentSpell:set(ALL_SPELLS[sName].id or 0)
 end
 
 

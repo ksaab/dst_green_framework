@@ -1,8 +1,6 @@
 --Green Framework. Please, don't copy any files or functions from this mod, because it can break other mods based on the GF.
-
-local ALL_EFFECTS = GFEffectList
-local ENAME_TO_ID = GFEffectNameToID
-local EID_TO_NAME = GFEffectIDToName
+local ALL_EFFECTS = GF.GetStatusEffects()
+local EFFECTS_IDS = GF.GetStatusEffectsIDs()
 
 local INVALID_TITLE = STRINGS.GF.HUD.INVALID_LINES.INVALID_TITLE
 local INVALID_TEXT = STRINGS.GF.HUD.INVALID_LINES.INVALID_TEXT
@@ -47,7 +45,7 @@ local function DoDeserealizeEventStream(classified)
     for i = 1, #eventsArray do
         local eventData = eventsArray[i]:split(';')
         if #eventData >= 2 then --don't need to process invalid strings
-            local eName = EID_TO_NAME[tonumber(eventData[2])]
+            local eName = EFFECTS_IDS[tonumber(eventData[2])]
             if eName ~= nil then
                 if eventData[1] == '1' or eventData[1] == '2' then --create a new icon for effect
                     UpdateClassifiedEffect(classified._parent, eName, tonumber(eventData[3] or 0), tonumber(eventData[4] or 1))
@@ -74,7 +72,7 @@ local function DeserializeStaticHovers(inst)
     local currEffects = {}
 
     for _, eID in pairs(effectsArray) do
-        local eName = EID_TO_NAME[tonumber(eID)]
+        local eName = EFFECTS_IDS[tonumber(eID)]
         currEffects[eName] = true --set that the effect exists, nonexisting effects will be removed
         local eData = self.effects[eName]
 
@@ -106,7 +104,7 @@ local function DeserializeActiveHovers(inst)
     local currEffects = {}
 
     for _, eID in pairs(effectsArray) do
-        local eName = EID_TO_NAME[tonumber(eID)]
+        local eName = EFFECTS_IDS[tonumber(eID)]
         currEffects[eName] = true --set that the effect exists, nonexisting effects will be removed
         local eData = self.effects[eName]
         local eInst = ALL_EFFECTS[eName]
@@ -196,9 +194,9 @@ function GFEffectable:UpdateReplicaEffects(static)
         local eInst = ALL_EFFECTS[eName]
         local type = eInst.type
         if static then
-            if type == 3 or type == 4 then table.insert(str, ENAME_TO_ID[eName]) end
+            if type == 3 or type == 4 then table.insert(str, ALL_EFFECTS[eName].id) end
         else
-            if type == 1 or type == 2 then table.insert(str, ENAME_TO_ID[eName]) end
+            if type == 1 or type == 2 then table.insert(str, ALL_EFFECTS[eName].id) end
         end
     end
 
@@ -243,7 +241,7 @@ function GFEffectable:ApplyEffect(eName)
                 --tell the player-client about a new effect
                 local eData = self.effects[eName]
                 local expTime = eInst.static == true and 0 or eData.expirationTime - GetTime()
-                self.classified._gfEFEventStream:push_string(string.format("1;%i;%.2f;%i", ENAME_TO_ID[eName], expTime, eData.stacks))
+                self.classified._gfEFEventStream:push_string(string.format("1;%i;%.2f;%i", ALL_EFFECTS[eName].id, expTime, eData.stacks))
             end
         end
     end
@@ -266,7 +264,7 @@ function GFEffectable:RefreshEffect(eName)
             --tell the player-client that the effect was updated
             local eData = self.effects[eName]
             local expTime = eInst.static == true and 0 or eData.expirationTime - GetTime()
-            self.classified._gfEFEventStream:push_string(string.format("2;%i;%.2f;%i", ENAME_TO_ID[eName], expTime, eData.stacks))
+            self.classified._gfEFEventStream:push_string(string.format("2;%i;%.2f;%i", ALL_EFFECTS[eName].id, expTime, eData.stacks))
         end
     end
 
@@ -289,7 +287,7 @@ function GFEffectable:RemoveEffect(eName)
                 self.inst:PushEvent("gfEFRemoveIcon", {eName = eName})
             else
                 --tell the player-client that the effect was removed
-                self.classified._gfEFEventStream:push_string(string.format("3;%i", ENAME_TO_ID[eName]))--;%.2f,%i", ENAME_TO_ID[eName], expTime, eData.stacks))
+                self.classified._gfEFEventStream:push_string(string.format("3;%i", ALL_EFFECTS[eName].id))
             end
         end
     end

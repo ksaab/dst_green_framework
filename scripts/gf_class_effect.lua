@@ -131,11 +131,19 @@ function Effect:ConsumeStacks(inst, eData, value)
         eData.stacks = math.max(stacks, self.maxStacks)
     end
 
-    self:Refresh(inst, {duration = 0, stacks = 0})
+    self:Refresh(inst, eData, {duration = 0, stacks = 0})
 end
 
 function Effect:HasTag(tag)
     return self.tags[tag] ~= nil
+end
+
+function Effect:AddTag(tag)
+    self.tags[tag] = true
+end
+
+function Effect:RemoveTag(tag)
+    self.tags[tag] = nil
 end
 
 ------------------------------------------------------------

@@ -1,6 +1,261 @@
 --Green Framework. Please, don't copy any files or functions from this mod, because it can break other mods based on the GF.
+local GF = {}
 
 rawset(_G, "GFVersion", 1.3)
+rawset(_G, "GF", GF)
+
+function GF.CheckVersion() return true end
+function GF.GetVersion() return 1.3 end
+
+--init global storages for items
+local DialogueNodes = {}
+local DialogueNodesIDs = {}
+rawset(GF, "DialogueNodes", DialogueNodes)
+rawset(GF, "DialogueNodesIDs", DialogueNodesIDs)
+
+local StatusEffects = {}
+local StatusEffectsIDs = {}
+rawset(GF, "StatusEffects", StatusEffects)
+rawset(GF, "StatusEffectsIDs", StatusEffectsIDs)
+
+local Spells = {}
+local SpellsIDs = {}
+rawset(GF, "Spells", Spells)
+rawset(GF, "SpellsIDs", SpellsIDs)
+
+local Quests = {}
+local QuestsIDs = {}
+rawset(GF, "Quests", Quests)
+rawset(GF, "QuestsIDs", QuestsIDs)
+
+local itemTypes = 
+{
+    dialogue_node = 
+    {
+        all = DialogueNodes,
+        ids = DialogueNodesIDs,
+        dir = "ALL_DIALOGUE_NODES/",
+        str = "dialogue node",
+    },
+    status_effect = 
+    {
+        all = StatusEffects,
+        ids = StatusEffectsIDs,
+        dir = "effects/",
+        str = "effect",
+    },
+    spell = 
+    {
+        all = Spells,
+        ids = SpellsIDs,
+        dir = "spells/",
+        str = "spell",
+    },
+    quest = 
+    {
+        all = Quests,
+        ids = QuestsIDs,
+        dir = "quests/",
+        str = "quest",
+    },
+}
+
+--methods for modmain.lua---------------------
+--this one loads an item from a file and adds it to the game
+function GF.InitItemOfType(type, route)
+    local type = itemTypes[type]
+    if type == nil then print ("attemp to init incorrect type " .. tostring(type)) return end
+    
+    local items = require(type.dir .. route)
+    assert(items, "could not load an item " .. type.dir .. route)
+
+    for _, item in pairs(items) do
+        local id = #(type.ids) + 1
+
+        if type.all[item.name] ~= nil then
+            id = type.all[item.name].id
+            print(("dialogue node with %s already exists! Overwriting..."):format(item.name))
+        end
+
+        item.id = id
+        type.all[item.name] = item
+        type.ids[item.id] = item.name
+
+        print(("%s <%s> was initialized with ID %i"):format(type.str, item.name, id))
+    end
+end
+
+--this may be used to make some changes in an existing item
+function GF.PostInitItemOfType(type, name, fn)
+    local type = itemTypes[type]
+    if type == nil then print ("attemp to post init incorrect type " .. tostring(type)) return end
+
+    local item = type.all[name] 
+    if item ~= nil then
+        print(("DialogueNodePostInit: node %s exists, calling the post init function"):format(name))
+        fn(item)
+    else
+        print(("DialogueNodePostInit: node %s doesn't exist!"):format(name))
+    end
+end
+
+--############################################
+--DIALOGUE NODES------------------------------
+--############################################
+
+--*modmain* - this one loads a node from a file and adds it to the game
+function GF.InitDialogueNode(route)
+    GF.InitItemOfType("dialogue_node", route)
+end
+
+--*modmain* - this may be used to make some changes in an existing node
+function GF.DialogueNodePostInit(name, fn)
+    GF.PostInitItemOfType("dialogue_node", name, fn)
+end
+
+--returns an instance of the dialogue_node class
+--should be used like the CreateEntity function but for nodes
+function GF.CreateDialogueNode()
+    local item = require "gf_dialogue_node"
+    return item()
+end
+
+--should be used as the Prefab function 
+--to return a post constructor for the dialogue_node class
+function GF.DialogueNode(name, fn)
+    local node = fn()
+    node.name = name
+
+    return node
+end
+
+function GF.GetDialogueNodes()
+    return GF.DialogueNodes
+end
+
+function GF.GetDialogueNodesIDs()
+    return GF.DialogueNodesIDs
+end
+
+--############################################
+--STATUS EFFECTS------------------------------
+--############################################
+
+--*modmain* - this one loads a node from a file and adds it to the game
+function GF.InitStatusEffect(route)
+    GF.InitItemOfType("status_effect", route)
+end
+
+--*modmain* - this may be used to make some changes in an existing node
+function GF.StatusEffectPostInit(name, fn)
+    GF.PostInitItemOfType("status_effect", name, fn)
+end
+
+--returns an instance of the dialogue_node class
+--should be used like the CreateEntity function but for nodes
+function GF.CreateStatusEffect()
+    local effect = require "gf_effect"
+    return effect()
+end
+
+--should be used as the Prefab function 
+--to return a post constructor for the dialogue_node class
+function GF.StatusEffect(name, fn)
+    local effect = fn()
+    effect.name = name
+
+    return effect
+end
+
+--returns all effects
+function GF.GetStatusEffects()
+    return GF.StatusEffects
+end
+
+--returns all IDs for effects
+function GF.GetStatusEffectsIDs()
+    return GF.StatusEffectsIDs
+end
+
+--############################################
+--SPELLS--------------------------------------
+--############################################
+
+--*modmain* - this one loads a node from a file and adds it to the game
+function GF.InitSpell(route)
+    GF.InitItemOfType("spell", route)
+end
+
+--*modmain* - this may be used to make some changes in an existing node
+function GF.SpellPostInit(name, fn)
+    GF.PostInitItemOfType("spell", name, fn)
+end
+
+--returns an instance of the dialogue_node class
+--should be used like the CreateEntity function but for nodes
+function GF.CreateSpell()
+    local spell = require "gf_spell"
+    return spell()
+end
+
+--should be used as the Prefab function 
+--to return a post constructor for the dialogue_node class
+function GF.Spell(name, fn)
+    local spell = fn()
+    spell.name = name
+
+    return spell
+end
+
+--returns all effects
+functionGF.GetSpells()
+    return GF.Spells
+end
+
+--returns all IDs for effects
+function GF.GetSpellsIDs()
+    return GF.SpellsIDs
+end
+
+--############################################
+--QUESTS--------------------------------------
+--############################################
+
+--*modmain* - this one loads a node from a file and adds it to the game
+function GF.InitQuest(route)
+    GF.InitItemOfType("quest", route)
+end
+
+--*modmain* - this may be used to make some changes in an existing node
+function GF.QuestPostInit(name, fn)
+    GF.PostInitItemOfType("quest", name, fn)
+end
+
+--returns an instance of the dialogue_node class
+--should be used like the CreateEntity function but for nodes
+function GF.CreateQuest()
+    local quest = require "gf_quest"
+    return quest()
+end
+
+--should be used as the Prefab function 
+--to return a post constructor for the dialogue_node class
+function GF.Quest(name, fn)
+    local quest = fn()
+    quest.name = name
+
+    return quest
+end
+
+--returns all effects
+function GF.GetQuests()
+    return GF.Quests
+end
+
+--returns all IDs for effects
+function GF.GetQuestsIDs()
+    return GF.QuestsIDs
+end
 
 local GFIsTogether = _G.TheNet ~= nil and true or false
 rawset(_G, "GFIsTogether", GFIsTogether)
@@ -44,7 +299,6 @@ else
     end
 end
 
-
 rawset(_G, "GFGetIsMasterSim", GFGetIsMasterSim)
 rawset(_G, "GFGetIsDedicatedNet", GFGetIsDedicatedNet)
 rawset(_G, "GFGetPVPEnabled", GFGetPVPEnabled)
@@ -57,40 +311,11 @@ function GFDebugPrint(...)
     end
 end
 
-local validCustomReplication = 
-{
-    gfeffectable = true,
-    gfspellcaster = true,
-    gfquestgiver = true,
-    gfspellitem = true,
-    gfquestdoer = true,
-}
-
-local customReplicas = {}
-
-function GFCustomComponentReplication(inst, compName)
-    if validCustomReplication[compName] == nil then return end
-
-    if rawget(inst.replica, "_")[compName] ~= nil then
-        print("replica " .. compName .. " already exists! " ..debugstack_oneline(3))
-    end
-
-    local filename = compName .. "_replica"
-    local cmp = customReplicas[filename]
-    if cmp == nil then
-        cmp = require("components/" .. filename)
-        customReplicas[filename] = cmp
-    end
-
-    assert(cmp ~= nil, "replica ".. compName .. " does not exist!")
-    getmetatable(inst.replica)[compName] = cmp(inst)
-end
-
 function GFAddCustomSpell(name, route, id)
     GFDebugPrint(string.format("GF-CUSTOM-EFFECT: initializing spell %s%s", name, route))
 
-    id = (id and type(id) == "number") and id or #GFSpellIDToName + 1
-    if GFSpellIDToName[id] ~= nil then
+    id = (id and type(id) == "number") and id or #GF.GetSpellsIDs() + 1
+    if GF.GetSpellsIDs()[id] ~= nil then
         error(("Spell with id %i already exists"):format(id), 3)
     end
 
@@ -102,11 +327,11 @@ function GFAddCustomSpell(name, route, id)
         GFDebugPrint(string.format("GF: file %s doesn't have a quest name, setting it to the file name", name))
     end
 
-    GFSpellList[name] = s
-    GFSpellList[name].name = name
-    GFSpellList[name].id = id
+    GF.GetSpells()[name] = s
+    GF.GetSpells()[name].name = name
+    GF.GetSpells()[name].id = id
     GFSpellNameToID[name] = id
-    GFSpellIDToName[id] = name
+    GF.GetSpellsIDs()[id] = name
 
     GFDebugPrint(("GF: SPELL %s created"):format(name))
 end
@@ -127,10 +352,10 @@ function GFAddCustomEffect(name, route, id)
         GFDebugPrint(string.format("GF: file %s doesn't have a quest name, setting it to the file name", name))
     end
 
-    GFEffectList[name] = e
-    GFEffectList[name].name = name
-    GFEffectList[name].id = id
-    GFEffectNameToID[name] = id
+    GF.GetStatusEffects()[name] = e
+    GF.GetStatusEffects()[name].name = name
+    GF.GetStatusEffects()[name].id = id
+    GF.GetStatusEffectsIDs()[name] = id
     GFEffectIDToName[id] = name
 
     GFDebugPrint(("GF: EFFECT %s created"):format(name))
@@ -139,8 +364,8 @@ end
 function GFAddCustomQuest(name, route, modname, id)
     GFDebugPrint(string.format("GF-CUSTOM-QUEST: initializing quest %s%s", name, route))
     --id for quest should be unique
-    id = (id and type(id) == "number") and id or #GFQuestIDToName + 1
-    if GFQuestIDToName[id] ~= nil then
+    id = (id and type(id) == "number") and id or #GF.GetQuestsIDs() + 1
+    if GF.GetQuestsIDs()[id] ~= nil then
         error(("Quest with id %i already exists"):format(id), 3)
     end
 
@@ -152,16 +377,16 @@ function GFAddCustomQuest(name, route, modname, id)
         GFDebugPrint(string.format("GF: file %s doesn't have a quest name, setting it to the file name", name))
     end
     
-    GFQuestList[name] = q     --It's a "database" for quests
-    GFQuestList[name].id = id --unique ID for quest (works only in current session, may change in another)
+    GF.GetQuests[name] = q     --It's a "database" for quests
+    GF.GetQuests[name].id = id --unique ID for quest (works only in current session, may change in another)
                                 --id are used only for network things, all server/client stuff works with names
 
     --well, it should help if the quest has an error
     if modname ~= nil then
-        GFQuestList[name]._modname = modname
+        GF.GetQuests[name]._modname = modname
     end
 
-    GFQuestIDToName[id] = name --cached quests IDs
+    GF.GetQuestsIDs()[id] = name --cached quests IDs
     GFDebugPrint(("GF: QUEST %s created"):format(name))
 end
 
@@ -197,23 +422,44 @@ function GFAddBaseSpells(prefab, ...)
     end 
 end
 
-function GFAddQuestGiver(prefab, dialogStr, reactFn, markOffset)
-    if GFQuestGivers[prefab] == nil then
-        GFQuestGivers[prefab] = {}
+function GFAddCommunicative(prefab, phrase, wantsToTalkFn, reactFn, isQuestGiver, markOffset)
+    if GFCommunicative[prefab] == nil then
+        GFCommunicative[prefab] = {}
     end
 
-    GFQuestGivers[prefab].dialogStr = dialogStr
-    GFQuestGivers[prefab].reactFn = reactFn
-    GFQuestGivers[prefab].markOffset = markOffset
+    GFCommunicative[prefab].quests = isQuestGiver == true and {} or nil
+    GFCommunicative[prefab].conversations = {}
+    GFCommunicative[prefab].reactFn = reactFn
+    GFCommunicative[prefab].wantsToTalkFn = wantsToTalkFn
+    GFCommunicative[prefab].markOffset = markOffset
+    GFCommunicative[prefab].phrase = phrase
 end
 
 function GFAddBaseQuests(prefab, ...)
-    if GFEntitiesBaseQuests[prefab] == nil then
-        GFEntitiesBaseQuests[prefab] = {}
+    if GFCommunicative[prefab] == nil or GFCommunicative[prefab].quests == nil then
+        print("can't add quests to", prefab, "because it's not defined as quest giver")
+        return 
     end
 
     for i = 1, arg.n do
-        table.insert(GFEntitiesBaseQuests[prefab], arg[i])
+        if type(arg[i + 1]) == "number" then
+            GFCommunicative[prefab].quests[arg[i]] = arg[i + 1]
+            i = i + 1
+        else
+            GFCommunicative[prefab].quests[arg[i]] = 0
+        end
+        --table.insert(GFCommunicative[prefab].quests, arg[i])
+    end 
+end
+
+function GFAddBaseConversations(prefab, ...)
+    if GFCommunicative[prefab] == nil then
+        print("can't add quests to", prefab, "because it's not defined as interlocutor")
+        return 
+    end
+
+    for i = 1, arg.n do
+        table.insert(GFCommunicative[prefab].conversations, arg[i])
     end 
 end
 
@@ -270,17 +516,24 @@ function GFMakeInventoryCastingItem(inst, spells)
     end
 end
 
-function GFMakeQuestGiver(inst, data, quests)
+function GFMakeCommunicative(inst, data)
     if GFGetIsMasterSim() then
-        inst:AddComponent("gfquestgiver")
+        inst:AddComponent("gfinterlocutor")
         if data ~= nil then
-            if data.reactFn ~= nil then inst.components.gfquestgiver:SetReactFn(data.reactFn) end
-            if data.stringFn ~= nil then inst.components.gfquestgiver.dialogStringFn = data.stringFn end
-            if data.dialogStr ~= nil then inst.components.gfquestgiver.dialogString = data.dialogStr end
-        end
-        if quests ~= nil then
-            for _, v in pairs(quests) do
-                inst.components.gfquestgiver:AddQuest(v)
+            if data.phrase ~= nil then inst.components.gfinterlocutor.phrase = data.phrase end
+            if data.reactFn ~= nil then inst.components.gfinterlocutor:SetReactFn(data.reactFn) end
+            if data.wantsToTalkFn then inst.components.gfinterlocutor.wantsToTalkFn = data.wantsToTalkFn end
+            if data.conversations ~= nil then
+                for k, conv in pairs(data.conversations) do
+                    inst.components.gfinterlocutor:AddConversation(conv)
+                end
+            end
+
+            if data.quests ~= nil then
+                inst:AddComponent("gfquestgiver")
+                for k, v in pairs(data.quests) do
+                    inst.components.gfquestgiver:AddQuest(k, v)
+                end
             end
         end
     end
@@ -429,20 +682,14 @@ function GFTestGlobalFunctions()
     print("GFGetPlayer", GFGetPlayer())
 end
 
-function GetQuestReminderString(inst, qName)
-    local STR = STRINGS.GF.QUEST_REMINDERS
-    if type(inst) ~= "string" then inst = inst.prefab end
-    inst = string.upper(inst)
-    qName = string.upper(qName)
-
-    local STR
-    if STRINGS.CHARACTERS[inst] ~= nil and STRINGS.CHARACTERS[inst].QUEST_REMINDERS ~= nil then
-        STR = STRINGS.CHARACTERS[inst].QUEST_REMINDERS
-    else
-        STR = STRINGS.CHARACTERS.GENERIC.QUEST_REMINDERS
+function GetQuestKey(qName, hash)
+    if qName ~= nil and GF.GetQuests[qName] ~= nil then
+        return GF.GetQuests[qName].unique
+            and qName
+            or (hash ~= nil and qName .. '#' .. hash or nil)
     end
 
-    return STR[qName] ~= nil and STR[qName] or STR.DEFAULT_REMINDER
+    return nil
 end
 
 function GetEffectString(eName, param)
@@ -475,6 +722,19 @@ function GetSpellString(eName, param, ignoreEmpty)
     end
 end
 
+function GetConversationString(inst, cName, param)
+    param = param ~= nil and string.upper(param) or "TITLE"
+    cName = string.upper(cName)
+    local STR = STRINGS.GF.CONVERSATIONS[cName]
+    if STR ~= nil and STR[param] ~= nil then
+        local n = inst.name ~= nil and string.gsub(inst.name, "^%l", string.upper) or "Stranger"
+        return string.gsub(STR[param], "&name", n)
+    else
+        param = param == "TITLE" and "" or STRINGS.GF.HUD.INVALID_LINES.INVALID_TEXT
+        return param
+    end
+end
+
 function GetQuestString(inst, qName, param)
     param = param ~= nil and string.upper(param) or "TITLE"
     qName = string.upper(qName)
@@ -483,6 +743,8 @@ function GetQuestString(inst, qName, param)
     if STR ~= nil and STR[param] ~= nil then
         local n = inst.name ~= nil and string.gsub(inst.name, "^%l", string.upper) or "Stranger"
         return string.gsub(STR[param], "&name", n)
+    elseif param == "REMINDER" then
+        return STRINGS.GF.QUESTS.DEFAULT_REMINDER
     else
         param = param == "TITLE" and STRINGS.GF.HUD.INVALID_LINES.INVALID_TITLE or STRINGS.GF.HUD.INVALID_LINES.INVALID_TEXT
         return param

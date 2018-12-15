@@ -4,114 +4,75 @@ local questName = "_ex_bring_five_logs"
 local requredItem = "log"
 local requredNumber = 5
 
-local function Serialize(self, doer)
-    return tostring(math.min(doer.components.gfquestdoer.currentQuests[questName].count, requredNumber))
+local function Serialize(self, doer, qData)
+    return tostring(math.min(qData.count, requredNumber))
 end
 
-local function Deserialize(self, doer, data)
-    local count = data ~= nil and tonumber(data) or 0
-    local cmp = doer.components.gfquestdoer
-    if cmp.currentQuests[questName] ~= nil then
-        cmp.currentQuests[questName].count = count
+local function Deserialize(self, doer, qData, string)
+    local count = string ~= nil and tonumber(string) or 0
+    if qData ~= nil then
+        qData.count = count
     end
 end
 
-local function InfoData(self, doer)
-    local qData = doer.components.gfquestdoer:GetQuestData(questName)
+local function InfoData(self, doer, qData)
+    print("infodata", qData)
     local current = (qData ~= nil and qData.count ~= nil) and qData.count or 0
-    return {qData ~= nil and qData.count or 0, requredNumber}
+    return {current, requredNumber}
 end
 
-local function OnGiverComplete(self, giver, doer)
-    if giver == nil or giver.prefab ~= "pigman" then return end
+local function QuestTrack(doer, data)
+    if data ~= nil and data.item ~= nil and data.item.prefab ~= requredItem then return end
 
-    local x, y, z = giver.Transform:GetWorldPosition()
-    local pt = GFGetValidSpawnPosition(x, y, z, 15)
-    if pt == nil then return end
-    local home = SpawnPrefab("pighouse")
-    home.Transform:SetPosition(pt:Get())
-    if home ~= nil then
-        if home.inittask ~= nil then
-            home.inittask:Cancel()
-            home.inittask = nil
-        end
-        inst:PushEvent("onbuilt")
-        home.components.spawner:TakeOwnership(giver)
-        --inst.components.spawner:GoHome(giver)
-    end
-end
-
-local function QuestTrack(doer)
-    local qData = doer.components.gfquestdoer.currentQuests[questName]
-    if qData._track --[[or qData.status ~= 0]] then return end
-
-    doer.components.gfquestdoer.currentQuests[questName]._track = true
-    doer:DoTaskInTime(0, function(doer)
-        local cmp = doer.components.gfquestdoer
-        local _, count = doer.components.inventory:Has(requredItem, requredNumber)
-        --local qData = cmp.currentQuests[questName]
-        --quest status should be updated on if it was changed
+    local qDoerComp = doer.components.gfquestdoer
+    local _, count = doer.components.inventory:Has(requredItem, requredNumber)
+    local quests = qDoerComp:GetRegistredQuests(questName)
+    for qKey, qData in pairs(quests) do
         if count ~= qData.count then
             if count < requredNumber then
                 qData.count = count
                 if qData.status == 1 then
-                    cmp:SetQuestDone(questName, false)
+                    qDoerComp:SetQuestDone(questName, qData.hash, false)
                 else
-                    cmp:UpdateQuestInfo(questName)
+                    qDoerComp:UpdateQuestInfo(questName, qData.hash)
                 end
             elseif qData.status == 0 then
                 qData.count = math.min(count, requredNumber)
-                --cmp:UpdateQuestInfo(questName)
-                cmp:SetQuestDone(questName, true)
+                qDoerComp:SetQuestDone(questName, qData.hash, true)
             end
         end
-        cmp.currentQuests[questName]._track = false
-    end)
-end
-
-local function CheckItem(doer, data)
-    if doer.components.gfquestdoer.currentQuests[questName].status == 0
-        and data 
-        and data.item 
-        and data.item.prefab == requredItem 
-    then 
-        QuestTrack(doer) 
+        print(qKey, "now you have", qData.count, "logs")
     end
 end
 
-local function Accept(self, doer)
-    local cmp = doer.components.gfquestdoer
-
-    local qData = cmp.currentQuests[questName]
+local function Accept(self, doer, qData)
+    local qDoerComp = doer.components.gfquestdoer
     qData.count = 0
 
     if not GFGetIsMasterSim() then return end
-
     local _, count = doer.components.inventory:Has(requredItem, requredNumber)
     --quest status should be updated on if it was changed
     if count < requredNumber then
         if count > 0 then
             qData.count = count
-            cmp:UpdateQuestInfo(questName)
+            qDoerComp:UpdateQuestInfo(questName, qData.hash)
         end
     else
         qData.count = math.min(count, requredNumber)
-        cmp:SetQuestDone(questName, true)
+        qDoerComp:SetQuestDone(questName, qData.hash, true)
     end
+end
 
-    doer:ListenForEvent("itemlose", QuestTrack)
-    doer:ListenForEvent("gotnewitem", CheckItem)
+local function Register(self, doer)
+    doer:ListenForEvent("gfinvchanged", QuestTrack)
+end
+
+local function Unregister(self, doer)
+    doer:RemoveEventCallback("gfinvchanged", QuestTrack)
 end
 
 local function Complete(self, doer)
-    doer:RemoveEventCallback("itemlose", QuestTrack)
-    doer:RemoveEventCallback("gotnewitem", CheckItem)
     doer.components.inventory:ConsumeByName(requredItem, requredNumber)
-end
-
-local function Abandon(self, doer)
-    doer:RemoveEventCallback("itemlose", QuestTrack)
-    doer:RemoveEventCallback("gotnewitem", CheckItem)
 end
 
 local function CheckOnGive(self, doer)
@@ -135,11 +96,6 @@ local Quest = Class(GFQuest, function(self)
     GFQuest._ctor(self, questName) --inheritance
 
     --strings
-    self.title = "Pig need home"
-    self.description = "Cold nights. I need home. You bring trees."
-    self.completion = "Love home. You good."
-    self.goaltext = "Bring 5 logs"
-
     self.StatusDataFn = InfoData
 
     --flags
@@ -151,16 +107,17 @@ local Quest = Class(GFQuest, function(self)
     self.SerializeFn = Serialize
     self.DeserializeFn = Deserialize
 
+    --register 
+    self.RegisterFn = Register
+    self.UnregisterFn = Unregister
+
     --status
     self.AcceptFn = Accept
     self.CompleteFn = Complete
-    self.AbandonFn = Abandon
 
     --checks
     self.CheckOnGiveFn = CheckOnGive
     self.CheckOnCompleteFn = CheckOnComplete
-
-    self.GiverCompleteFn = OnGiverComplete
 
     --reward
     self.RewardFn = Reward

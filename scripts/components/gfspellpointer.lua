@@ -1,8 +1,7 @@
 --Green Framework. Please, don't copy any files or functions from this mod, because it can break other mods based on the GF.
 
-local spellList = GFSpellList
-local spellIDToNames = GFSpellIDToName
-local spellNamesToID = GFSpellNameToID
+local ALL_SPELLS = GF.GetSpells()
+local spellIDToNames = GF.GetSpellsIDs()
 
 local function DisablePointerOnUnequipped(inst)
     local self = inst.components.gfspellpointer
@@ -70,7 +69,7 @@ local function OverrideLeftMouseActions(inst, target, position)
        
     if pointer.targetEntity then
         return inst.components.playeractionpicker:SortActionList({ ACTIONS.GFCASTSPELL }, pointer.targetEntity, item)
-    elseif not spellList[spellName].needTarget then -- can't cast spell that requires target on the ground
+    elseif not ALL_SPELLS[spellName].needTarget then -- can't cast spell that requires target on the ground
         return inst.components.playeractionpicker:SortActionList({ ACTIONS.GFCASTSPELL }, pointer.targetPosition, item)
     end 
 end
@@ -121,13 +120,13 @@ end
 function GFSpellPointer:Enable(spellName)
     local pc = self.inst.components.playercontroller
     if spellName ~= nil 
-        and spellList[spellName] ~= nil --spell isn't exists
+        and ALL_SPELLS[spellName] ~= nil --spell isn't exists
         --and self.currentSpell ~= spellName -- current spell is the same
         and GFGetIsMasterSim()
         and pc and pc:IsEnabled() --check controller, we don't need to target if it's not valid
     then 
         --GFDebugPrint(string.format("GFSpellPointer: ENABLE pointer (server) for %s, spell %s", tostring(self.inst), spellName))
-        self._currentSpell:set(spellNamesToID[spellName])
+        self._currentSpell:set(ALL_SPELLS[spellName].id)
         self.currentSpell = spellName
         --EnableSpellTargetingActions(self.inst)
         pc.gfSpellPointerEnabled = true
@@ -172,7 +171,7 @@ function GFSpellPointer:StartTargeting(spellName)
         --GFDebugPrint(string.format("GFSpellPointer: Dummy — disable pointer for %s, reason: spell changed",  tostring(self.inst)))
     end
 
-    self.pointer:Create(spellList[spellName].pointer)
+    self.pointer:Create(ALL_SPELLS[spellName].pointer)
     --GFDebugPrint(string.format("GFSpellPointer: Dummy — enable pointer for %s",  tostring(self.inst)))
 end
 

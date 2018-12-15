@@ -1,5 +1,6 @@
-local ALL_QUESTS = GFQuestList
-local QID_TO_NAME = GFQuestIDToName
+local ALL_QUESTS = GF.GetQuests()
+local QUESTS_IDS = GF.GetQuestsIDs()
+local OFFSETS = GF.InterlocutorOffsets
 
 --client only
 local function DeserializeQuests(inst)
@@ -14,13 +15,18 @@ local function DeserializeQuests(inst)
 
     for _, qData in pairs(qArr) do
         local tmp = qData:split(';')
-        local qName = QID_TO_NAME[tonumber(tmp[1])]
+        local qName = QUESTS_IDS[tonumber(tmp[1])]
         if qName ~= nil then
-            self.quests[qName] = tonumber(tmp[2])
+            local qKey = GetQuestKey(qName, self._hash:value())
+            self.quests[qKey] = 
+            {
+                mode = tonumber(tmp[2]),
+                name = qName
+            }
         end
     end
 
-    if ThePlayer ~= nil and ThePlayer.components.gfquestdoer ~= nil then
+    if ThePlayer ~= nil and ThePlayer.replica.gfquestdoer ~= nil then
         if self:HasQuests() then
             self:StartTrackingPlayer()
         elseif self._listening then
@@ -38,7 +44,9 @@ local QSQuestGiver = Class(function(self, inst)
     self._listening = false
 
     self._follower = nil
-    self._followerOffest = GFQuestGivers[inst.prefab].markOffset or 0
+    self._followerOffest = OFFSETS[inst.prefab] ~= nil 
+        and (OFFSETS[inst.prefab].markOffset or 0)
+        or 0
 
     self._oncameraupdate = function(dt) self:OnCameraUpdate(dt) end
     self._onplayerupdate = function(player) self:CheckQuestsOnPlayer(player) end
@@ -57,8 +65,6 @@ local QSQuestGiver = Class(function(self, inst)
 
     if self.inst.components.gfquestgiver ~= nil then 
         self.quests = self.inst.components.gfquestgiver.quests
-        --self._hash:set_local(self.inst.components.gfquestgiver.hash)
-        --self._hash:set(self.inst.components.gfquestgiver.hash)
     end
 end)
 
@@ -68,40 +74,46 @@ end
 
 function QSQuestGiver:UpdateQuests()
     local function UpdateFn(inst)
+        --for the server-side self.quests is the same to inst.component.gfquestgiver.quests
         local self = inst.replica.gfquestgiver
         self._task = nil
 
         local str = {}
-        for qName, qData in pairs(self.quests) do
-            table.insert(str, string.format("%i;%i", ALL_QUESTS[qName].id, qData))
+        for qKey, qData in pairs(self.quests) do
+            table.insert(str, string.format("%i;%i", ALL_QUESTS[qData.name].id, qData.mode))
         end
         
         local str = table.concat(str, '^')
         
         self._questLine:set_local(str)
         self._questLine:set(str)
+
+        if not GFGetIsDedicatedNet() then
+            if GFGetPlayer() ~= nil and GFGetPlayer().replica.gfquestdoer ~= nil then
+                if self:HasQuests() then
+                    self:StartTrackingPlayer()
+                elseif self._listening then
+                    self:StopTrackingPlayer()
+                end
+            end
+        end
     end
 
     --need to do it with a small delay to prevent multiply calls at one tick
-    --because entity may have a lot of quests
+    --because the entity may have a lot of quests
     if self._task == nil then
         self._task = self.inst:DoTaskInTime(0, UpdateFn)
     end
-
-    self:StartTrackingPlayer()
 end
 
 function QSQuestGiver:CheckQuestsOnPlayer(player)
     --TODO: replace component with replica when it's possible
-    local pcomp = player.components.gfquestdoer
+    local pcomp = player.replica.gfquestdoer
 
-    for qName, qData in pairs(self.quests) do
-        if qData ~= 1 
-            and pcomp:IsQuestDone(qName) 
-            and (not ALL_QUESTS[qName]:CheckHash() 
-                or self._hash:value() == pcomp:GetQuestGiverHash(qName))
-        then
-            print(("QSQuestGiver: %s I can complete a quest %s for %s"):format(tostring(self.inst), qName, tostring(player)))
+    local hash = self._hash:value()
+    for qKey, qData in pairs(self.quests) do
+        if qData.mode ~= 1 and pcomp:IsHashedQuestDone(qKey) then
+            GFDebugPrint(("QSQuestGiver: %s I can complete a quest %s for %s"):format(tostring(self.inst), qKey, tostring(player)))
             if self._follower ~= nil then
                 self._follower.AnimState:PlayAnimation("question" .. self._followerOffest, true)
             end
@@ -109,9 +121,9 @@ function QSQuestGiver:CheckQuestsOnPlayer(player)
         end
     end
 
-    for qName, qData in pairs(self.quests) do
-        if qData ~= 2 and pcomp:CheckQuest(qName) then
-            print(("QSQuestGiver: %s I can give a quest %s to %s"):format(tostring(self.inst), qName, tostring(player)))
+    for qKey, qData in pairs(self.quests) do
+        if qData.mode ~= 2 and pcomp:CanPickHashedQuest(qKey, qData.name) then
+            GFDebugPrint(("QSQuestGiver: %s I can give a quest %s to %s"):format(tostring(self.inst), qKey, tostring(player)))
             if self._follower ~= nil then
                 self._follower.AnimState:PlayAnimation("exclamation" .. self._followerOffest, true)
             end
@@ -122,18 +134,19 @@ function QSQuestGiver:CheckQuestsOnPlayer(player)
     if self._follower ~= nil then
         self._follower.AnimState:PlayAnimation("none", true)
     end
-    print(("QSQuestGiver: %s I don't have any interesting for %s"):format(tostring(self.inst), tostring(player)))
+
+    GFDebugPrint(("QSQuestGiver: %s I don't have any interesting for %s"):format(tostring(self.inst), tostring(player)))
 end
 
 function QSQuestGiver:StartTrackingPlayer()
     if GFGetIsDedicatedNet()    --dedicated don't need to track
         or not self:HasQuests() --don't need to track the player id we don't have any quests
-        --or self._listening      --we are already tracking the player
-        or ThePlayer == nil                         --no valid player,
-        or ThePlayer.components.gfquestdoer == nil  --no track
+        or GFGetPlayer() == nil                         --no valid player,
+        or GFGetPlayer().replica.gfquestdoer == nil  --no valid component
         or self.inst:IsAsleep()
     then
         --GFDebugPrint("QSQuestGiverR: don't need to track the player!")
+        --self:StopTrackingPlayer()
         return 
     end
 
@@ -146,32 +159,31 @@ function QSQuestGiver:StartTrackingPlayer()
          self._follower = SpawnPrefab("gf_quest_mark")
     end
     if self._follower == nil then
-        --GFDebugPrint("QSQuestGiverR: Panic! Can't create a follower!")
+        GFDebugPrint("QSQuestGiver: Panic! Can't create a follower!")
         return
     end
 
-    --self._follower:ListenForEvent("onremove", function() self._follower:Remove() end, self.inst)
     self._listening = true
     TheCamera:AddListener(self, self._oncameraupdate)
     self:CheckQuestsOnPlayer(ThePlayer)
     self.inst:ListenForEvent("gfQSOnQuestUpdate", self._onplayerupdate, ThePlayer)
 
-    --print(("QSQuestGiverR: Now %s watching for %s"):format(tostring(self.inst), tostring(ThePlayer)))
+    GFDebugPrint(("QSQuestGiverR: Now %s watching for %s"):format(tostring(self.inst), tostring(ThePlayer)))
 end
 
 function QSQuestGiver:StopTrackingPlayer()
-    if self._listening then 
-        if self._follower ~= nil and self._follower:IsValid() then
-            self._follower:Remove()
-            self._follower = nil
-        end
+    if not self._listening then return end
 
-        self._listening = false
-        TheCamera:RemoveListener(self, self._oncameraupdate)
-        self.inst:RemoveEventCallback("gfQSOnQuestUpdate", self._onplayerupdate, ThePlayer)
-
-        --print(("QSQuestGiverR: %s stops watching for %s"):format(tostring(self.inst), tostring(ThePlayer)))
+    if self._follower ~= nil and self._follower:IsValid() then
+        self._follower:Remove()
+        self._follower = nil
     end
+
+    self._listening = false
+    TheCamera:RemoveListener(self, self._oncameraupdate)
+    self.inst:RemoveEventCallback("gfQSOnQuestUpdate", self._onplayerupdate, ThePlayer)
+
+    GFDebugPrint(("QSQuestGiverR: %s stops watching for %s"):format(tostring(self.inst), tostring(ThePlayer)))
 end
 
 function QSQuestGiver:OnCameraUpdate(dt)

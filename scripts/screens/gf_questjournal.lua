@@ -4,7 +4,7 @@ local Widget = require "widgets/widget"
 local Image = require "widgets/image"
 local TEMPLATES = require "widgets/redux/templates"
 local ImageButton = require "widgets/imagebutton"
-local ALL_QUESTS = GFQuestList
+local ALL_QUESTS = GF.GetQuests()
 
 local INVALID_TITLE = STRINGS.GF.HUD.INVALID_LINES.INVALID_TITLE
 local INVALID_TEXT = STRINGS.GF.HUD.INVALID_LINES.INVALID_TEXT
@@ -18,9 +18,9 @@ local QCOLOUS =
     FAILED_COLOUR,
 }
 
-local function CancelQuest(owner, qName)
-    if qName and owner and owner.components.gfquestdoer then
-        owner.components.gfquestdoer:HandleButtonClick(qName, 2)
+local function CancelQuest(owner, qName, hash)
+    if qName and owner and owner.components.gfplayerdialog then
+        owner.components.gfplayerdialog:HandleQuestButton(2, qName, hash)
     end
 end
 
@@ -71,23 +71,25 @@ local QuestJournalScreen = Class(Screen, function(self, owner)
     self.closeButton = self.proot:AddChild(TEMPLATES.StandardButton(function() self:Close() end, STRINGS.GF.HUD.JOURNAL.BUTTONS.CLOSE, {180, 60}))
     self.closeButton:SetPosition(0, -250)
     
-    if self.owner.components.gfquestdoer == nil then print("QuestJournalScreen: gfquestdoer component isn't valid!") return end
+    if self.owner.replica.gfquestdoer == nil then print("QuestJournalScreen: gfquestdoer component isn't valid!") return end
     
     self.strings = {}
     
     local hasQuests = false
     local i = 1
-    for qName, v in pairs(self.owner.components.gfquestdoer.currentQuests) do
+    for qKey, qData in pairs(self.owner.replica.gfquestdoer.currentQuests) do
         hasQuests = true
+        local qName = qData.name
         if ALL_QUESTS[qName] ~= nil then
             self.strings[i] = 
             {
                 GetQuestString(self.owner, qName, "title"),
                 string.format(GetQuestString(self.owner, qName, "status"), 
-                    unpack(ALL_QUESTS[qName]:GetStatusData(self.owner))
+                    unpack(ALL_QUESTS[qName]:GetStatusData(self.owner, qData))
                 ),
-                v.status + 1,
+                qData.status + 1,
                 qName,
+                qData.hash,
             }
 
             i = i + 1
@@ -120,13 +122,18 @@ local QuestJournalScreen = Class(Screen, function(self, owner)
             widget.title:SetColour(QCOLOUS[data[3]] or WHITE)
             widget.title:SetString(data[1] or "epmty")
             widget.goal:SetString(data[2] or "epmty")
-            widget.cancelButton:Show()
-            widget.cancelButton:SetOnClick(function() 
-                data[1] = data[1] .. " - cancelled"
-                data[3] = 3
-                CancelQuest(self.owner, data[4]) 
-                self.scroll:RefreshView()
-            end)
+            if data[3] ~= 3 then
+                widget.cancelButton:Show()
+                widget.cancelButton:SetOnClick(function() 
+                    data[1] = data[1] .. " - cancelled"
+                    data[3] = 3
+                    CancelQuest(self.owner, data[4], data[5]) 
+                    self.scroll:RefreshView()
+                end)
+            else
+                widget.cancelButton:Hide()
+                widget.cancelButton:SetOnClick()
+            end
         else
             widget.cancelButton:Hide()
         end

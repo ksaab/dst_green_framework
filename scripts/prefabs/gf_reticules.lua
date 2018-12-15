@@ -1,6 +1,7 @@
 local assets =
 {
     Asset("ANIM", "anim/gf_reticules.zip"),
+    Asset("ANIM", "anim/reticulearc.zip"),
 }
 
 local PAD_DURATION = .1

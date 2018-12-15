@@ -70,9 +70,29 @@ local function netdummyfn()
     return inst
 end
 
+local function redirectdummyfn()
+    local inst = CreateEntity()
+    
+    inst:AddTag("NOCLICK")
+
+    inst.entity:SetPristine()
+    inst.persists = false
+
+    inst:AddComponent("health")
+    inst.components.health:SetMaxHealth(10000)
+    inst.components.health.nofadeout = true
+
+    inst:AddComponent("combat")
+
+    inst:ListenForEvent("attacked", function(inst, data) print("dummy attacked", data.attacker, data.damage) end)
+    inst:ListenForEvent("death", inst.Remove)
+
+    return inst
+end
+
 
 return Prefab( "gf_local_dummy", localdummyfn),
     Prefab( "gf_net_dummy", netdummyfn),
     Prefab( "gf_lightning_dummy", lightningdummyfn),
-    Prefab( "gf_crackle_dummy", crackledummyfn)
-    
+    Prefab( "gf_crackle_dummy", crackledummyfn),
+    Prefab( "gf_redirect_dummy", redirectdummyfn)

@@ -3,16 +3,16 @@ local rawset = GLOBAL.rawset
 local require = GLOBAL.require
 local assert = GLOBAL.assert
 
-if not rawget(GLOBAL, "GFQuestList") then
-    rawset(GLOBAL, "GFQuestList", {})
+if not rawget(GLOBAL, "GF.GetQuests") then
+    rawset(GLOBAL, "GF.GetQuests", {})
 end
 
-if not rawget(GLOBAL, "GFQuestIDToName") then
-    rawset(GLOBAL, "GFQuestIDToName", {})
+if not rawget(GLOBAL, "GF.GetQuestsIDs()") then
+    rawset(GLOBAL, "GF.GetQuestsIDs()", {})
 end
 
-local GFQuestList = GLOBAL.GFQuestList
-local GFQuestIDToName = GLOBAL.GFQuestIDToName
+local GF.GetQuests = GLOBAL.GF.GetQuests
+local GF.GetQuestsIDs() = GLOBAL.GF.GetQuestsIDs()
 
 local questArray = 
 {
@@ -44,14 +44,14 @@ for k, v in pairs (questArray) do
     local q = require(table.concat(route))
     assert(q.name ~= nil, "Quest name isn't setted in file " .. table.concat(route))
     
-    GFQuestList[q.name] = q     --It's a "database" for quests
-    GFQuestList[q.name].id = k  --unique ID for quest (works only in current session, may change in another)
+    GF.GetQuests[q.name] = q     --It's a "database" for quests
+    GF.GetQuests[q.name].id = k  --unique ID for quest (works only in current session, may change in another)
                                 --id are used only for network things, all server/client stuff works with names
 
-    GFQuestIDToName[k] = q.name --cached quests IDs
+    GF.GetQuestsIDs()[k] = q.name --cached quests IDs
 
-    --GFQuestList[v.name].name = v.name
-    --GFQuestList[v.name].id = k
+    --GF.GetQuests[v.name].name = v.name
+    --GF.GetQuests[v.name].id = k
     --GFQuestNameToID[v.name] = k
-    --GFQuestIDToName[k] = v.name
+    --GF.GetQuestsIDs()[k] = v.name
 end

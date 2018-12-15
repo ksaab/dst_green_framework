@@ -1,6 +1,6 @@
 --Green Framework. Please, don't copy any files or functions from this mod, because it can break other mods based on the GF.
 
-local Reaction = require("gf_reaction")
+local Reaction = require("gf_class_reaction")
 
 local function ForceEquipReaction(inst, react)
     if inst.components.equippable and inst.components.equippable:IsEquipped() then

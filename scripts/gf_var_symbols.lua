@@ -16,6 +16,7 @@ return
     beehive = {"beehive_01", -260},	
     tallbird = {"head", -400},	
     lizardman = {"body", -200},	
+    gw_yellow_lizardman = {"body", -200},	
     bishop = {"waist", -200},	
     spiderden = {"c1", -360},	
     spider_dropper = {"body", -100},	

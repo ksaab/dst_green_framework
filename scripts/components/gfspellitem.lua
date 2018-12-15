@@ -1,6 +1,5 @@
 --Green Framework. Please, don't copy any files or functions from this mod, because it can break other mods based on the GF.
-
-local ALL_SPELLS = GFSpellList
+local ALL_SPELLS = GF.GetSpells()
 
 local function AfterCast(self, sName)
     local inst = self.inst
@@ -197,11 +196,13 @@ function GFSpellItem:OnLoad(data)
         local savedata = data.savedata
         local currTime = GetTime()
         for sName, rech in pairs(savedata) do
-            self.spellData[sName] = 
-            {
-                endTime = rech.r + currTime,
-                startTime = currTime - rech.t,
-            }
+            if ALL_SPELLS[sName] ~= nil then
+                self.spellData[sName] = 
+                {
+                    endTime = rech.r + currTime,
+                    startTime = currTime - rech.t,
+                }
+            end
         end
     end
 end

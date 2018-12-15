@@ -2,20 +2,20 @@ local rawget = GLOBAL.rawget
 local rawset = GLOBAL.rawset
 local require = GLOBAL.require
 
-if not rawget(GLOBAL, "GFEffectList") then
-    rawset(GLOBAL, "GFEffectList", {})
+if not rawget(GLOBAL, "GF.GetStatusEffects()") then
+    rawset(GLOBAL, "GF.GetStatusEffects()", {})
 end
 
-if not rawget(GLOBAL, "GFEffectNameToID") then
-    rawset(GLOBAL, "GFEffectNameToID", {})
+if not rawget(GLOBAL, "GF.GetStatusEffectsIDs()") then
+    rawset(GLOBAL, "GF.GetStatusEffectsIDs()", {})
 end
 
 if not rawget(GLOBAL, "GFEffectIDToName") then
     rawset(GLOBAL, "GFEffectIDToName", {})
 end
 
-local GFEffectList = GLOBAL.GFEffectList
-local GFEffectNameToID  = GLOBAL.GFEffectNameToID
+local GF.GetStatusEffects() = GLOBAL.GF.GetStatusEffects()
+local GF.GetStatusEffectsIDs()  = GLOBAL.GF.GetStatusEffectsIDs()
 local GFEffectIDToName = GLOBAL.GFEffectIDToName
 
 local effectArray = 
@@ -33,9 +33,9 @@ for k, v in pairs (effectArray) do
         v.folder or commonFolder,
         v.name
     }
-    GFEffectList[v.name] = require(table.concat(route))
-    GFEffectList[v.name].name = v.name
-    GFEffectList[v.name].id = k
-    GFEffectNameToID[v.name] = k
+    GF.GetStatusEffects()[v.name] = require(table.concat(route))
+    GF.GetStatusEffects()[v.name].name = v.name
+    GF.GetStatusEffects()[v.name].id = k
+    GF.GetStatusEffectsIDs()[v.name] = k
     GFEffectIDToName[k] = v.name
 end

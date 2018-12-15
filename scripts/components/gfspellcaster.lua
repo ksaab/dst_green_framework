@@ -1,6 +1,6 @@
 --Green Framework. Please, don't copy any files or functions from this mod, because it can break other mods based on the GF.
 
-local ALL_SPELLS = GFSpellList
+local ALL_SPELLS = GF.GetSpells()
 
 local GFSpellCaster = Class(function(self, inst)
     self.inst = inst
@@ -106,7 +106,7 @@ function GFSpellCaster:ReduceRecharge(sName, reduce)
 end
 
 --main
-function GFSpellCaster:CastSpell(sName, target, pos, item, spellParams, noRecharge)
+function GFSpellCaster:CastSpell(sName, target, pos, item, noRecharge, spellParams)
     if sName == nil or ALL_SPELLS[sName] == nil then return end
 
     local sInst = ALL_SPELLS[sName]
@@ -128,7 +128,7 @@ function GFSpellCaster:CastSpell(sName, target, pos, item, spellParams, noRechar
 
     self.lastCastTime = GetTime()
 
-    self.inst:PushEvent("gfSCCastSuccess", {sName = sName, target = target, pos = pos, item = item, params = spellParams})
+    self.inst:PushEvent("gfSCCastSuccess", {spell = sInst, target = target, pos = pos, item = item, params = spellParams})
 
     return true
 end
@@ -272,14 +272,16 @@ function GFSpellCaster:OnLoad(data)
         local savedata = data.savedata
         local currTime = GetTime()
         for sName, rech in pairs(savedata) do
-            self.spellData[sName] = 
-            {
-                endTime = rech.r + currTime,
-                startTime = currTime - rech.t,
-            }
+            if ALL_SPELLS[sName] ~= nil then
+                self.spellData[sName] = 
+                {
+                    endTime = rech.r + currTime,
+                    startTime = currTime - rech.t,
+                }
 
-            if self.onClient then
-                self.inst.replica.gfspellcaster:PushRecharge(sName, rech.r, rech.t)
+                if self.onClient then
+                    self.inst.replica.gfspellcaster:PushRecharge(sName, rech.r, rech.t)
+                end
             end
         end
     end
