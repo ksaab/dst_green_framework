@@ -55,7 +55,7 @@ function GFQuestDoer:AcceptQuest(qName, hash)
     --but quests without the soulbound flag are stored without a hash suffix - so player can take only one instace of the quest
     if qKey == nil or not self:CanPickQuest(qName, hash, qKey) then return end
 
-    GFDebugPrint(string.format("%s accepts quest %s", tostring(self.inst), qKey))
+    --GFDebugPrint(string.format("%s accepts quest %s", tostring(self.inst), qKey))
 
     local qInst = ALL_QUESTS[qName]
     local qData = 
@@ -105,7 +105,7 @@ function GFQuestDoer:CompleteQuest(qName, hash, ignore)
     qInst:Complete(self.inst, self.currentQuests[qKey])
 
     --puushing cooldown for the quest
-    if qInst.cooldown > 0 then
+    if qInst.cooldown ~= nil and qInst.cooldown > 0 then
         self.completedQuests[qKey] = 
         {
             qName = qName,
@@ -168,7 +168,7 @@ function GFQuestDoer:SetQuestFailed(qName, hash)
         self.registredQuests[qName][qKey] = nil
         if next(self.registredQuests[qName]) == nil then
             --if inst doesn't have same quest with another hash, then unregistring all events
-            qInst:Unregister(self.inst)
+            ALL_QUESTS[qName]:Unregister(self.inst)
             self.registredQuests[qName] = nil
         end
 
@@ -349,7 +349,7 @@ function GFQuestDoer:GetDebugString()
     local curr, done = {}, {}
     local dstr = "pdf"
     for k, qData in pairs(self.currentQuests) do
-        table.insert(curr, string.format("[%s - %s]", GetQuestKey(qData.qName, qData.hash) or "NONE", dstr[qData.status]))
+        table.insert(curr, string.format("[%s - %s]", k or "NONE", dstr[qData.status] or "u"))
     end
 
     return #curr > 0 and table.concat(curr, ",") or "None"

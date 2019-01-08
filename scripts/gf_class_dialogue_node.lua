@@ -26,7 +26,7 @@ end)
 ------------------------------------------------------------
 
 function DialogueNode:PreCheck(doer, interlocutor)
-    print(self.name, self.preCheckFn == nil or self.preCheckFn(doer, interlocutor))
+    --print(self.name, self.preCheckFn == nil or self.preCheckFn(doer, interlocutor))
     return (self.preCheckFn == nil or self.preCheckFn(doer, interlocutor))
 end
 

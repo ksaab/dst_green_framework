@@ -1,4 +1,4 @@
-name = "Green![dev]"
+name = "Green![DEV]"
 id = "GreenFramework"
 version = "1.3.111"
 author = "ksaab"
@@ -35,9 +35,10 @@ configuration_options =
         label = "Tag overflow fix",
         options = 
         {
-            {description = "Enabled", data = true},
-			{description = "Disabled", data = false},
+            {description = "Auto",      data = 0},
+            {description = "Enabled",   data = 1},
+            {description = "Disabled",  data = 2},
         },
-        default = 0
+        default = 0,
     },
 }

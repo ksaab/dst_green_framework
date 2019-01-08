@@ -187,8 +187,8 @@ end
 ----------------------------------------------------
 
 function GFEffectable:UpdateReplicaEffects(static)
-    --replica effects are needed only for hovers
-    --so client should know aonly about the presense of them
+    --replica effects needs only hovers
+    --so client should know only about the presense of them
     local str = {}
     for eName, _ in pairs(self.effects) do
         local eInst = ALL_EFFECTS[eName]

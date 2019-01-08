@@ -128,6 +128,9 @@ AddPrefabPostInit("player_classified", function(inst)
     inst._gfSCForceRechargesEvent = _G.net_event(inst.GUID, "gfSCForceRechargesEvent") 
     inst._gfSCSpellStream = _G.net_strstream(inst, "GFSpellCaster._gfSCSpellStream", "gfSCEventDirty")
 
+    --pointer
+    inst._gfCurrentSpell = _G.net_int(inst.GUID, "GFSpellPointer._gfCurrentSpell", "gfSPDirty")
+
     local _oldOnEntityReplicated = nil
     if inst.OnEntityReplicated ~= nil then
         _oldOnEntityReplicated = inst.OnEntityReplicated
@@ -146,6 +149,9 @@ AddPrefabPostInit("player_classified", function(inst)
                 if inst._parent.components.gfplayerdialog ~= nil then
                     inst._parent.components.gfplayerdialog:AttachClassified(inst)
                 end
+                if inst._parent.components.gfspellpointer ~= nil then
+                    inst._parent.components.gfspellpointer:AttachClassified(inst)
+                end
             end
         end
     end
@@ -157,11 +163,29 @@ local function PlayerFFCheck(self, target)
         or (self.inst.components.leader and self.inst.components.leader:IsFollower(target))
 end
 
+local function EnableTagFix()
+    return GetModConfigData("tag_overflow_fix") == 1
+        or (GetModConfigData("tag_overflow_fix") == 0 
+            and not (_G.KnownModIndex:IsModEnabled("workshop-1378549454")       -- GEM API has the same fix
+                or _G.KnownModIndex:IsModTempEnabled("workshop-1378549454")))   -- But it doesn't fix issues with replicas
+end
+
+_G.GF.EnableTagFix = EnableTagFix()
+if _G.GF.EnableTagFix then print("Green! Player tag fix is enabled.") end
+
 local function InitPlayer(player)
-    if _G.GFGetIsMasterSim() and GetModConfigData("tag_overflow_fix") then
+    if _G.GFGetIsMasterSim() and _G.GF.EnableTagFix then
         --honestly - I didn't want to make this, 
         --but - I suppose - there is no way to avoid tag-overlow crashes
-        player._tagCounter = -1
+        local nonImportantTags = 
+        {
+            freezable = true,
+            scarytoprey = true,
+            debuffable = true,
+            lightningtarget = true,
+            polite = true,
+        }
+        player._tagCounter = 0
         --print(player:GetDebugString())
         local tags = string.sub(string.match(player:GetDebugString(), "Tags:.-\n"), 7)
         if tags == nil then
@@ -169,10 +193,19 @@ local function InitPlayer(player)
         else
             player._overflowedTags = {}
             --print("tags:", tags)
+
+            local tmptags = {}
+
             for id in tags:gmatch("%S+") do 
-                player._tagCounter = player._tagCounter + 1 
-                player._overflowedTags[id] = true
-                --print(id)
+                if nonImportantTags[id] then --string.sub(id, 1, 1) ~= '_' then
+                    table.insert(tmptags, id)
+                    player:RemoveTag(id)
+                    print("tag", id, "is a server-only tag, removing")
+                else
+                    player._tagCounter = player._tagCounter + 1 
+                    player._overflowedTags[id] = true
+                    print("tag", id, "is a client required tag")
+                end
             end
 
             tags = nil
@@ -188,14 +221,12 @@ local function InitPlayer(player)
             end
 
             function player:AddTag(tag)
+                --print("adding tag via new function, total tags ", player._tagCounter + 1)
                 if player._overflowedTags[tag] == nil then
                     player._overflowedTags[tag] = true
                     player._tagCounter = player._tagCounter + 1 
-                    if player._tagCounter <= 31 then
+                    if player._tagCounter <= 30 then
                         player:_AddTag(tag)
-                    elseif not player._overFlag then
-                        player._overFlag = true
-                        print("tag overflow is registerd for", player)
                     end
                 end
             end
@@ -206,6 +237,10 @@ local function InitPlayer(player)
                     player._tagCounter = player._tagCounter - 1 
                     player:_RemoveTag(tag)
                 end
+            end
+
+            for _, tag in pairs(tmptags) do
+                player:AddTag(tag)
             end
         end
     end
@@ -254,13 +289,10 @@ local invalidPrefabs =
     dragonfly_spawner = true
 }
 
-
-
 AddPrefabPostInitAny(function(inst) 
     local prefab = inst.prefab
 
-    if invalidPrefabs[prefab] then inst:AddTag("NOCLICK") return end    --non-interactive prefabs
-    if inst:HasTag("FX") or inst:HasTag("NOCLICK") then return end      --fx and non-interactive prefabs
+    if inst:HasTag("FX") or inst:HasTag("NOCLICK") or invalidPrefabs[prefab] then return end --fx and non-interactive prefabs
 
     if inst:HasTag("player") then
         InitPlayer(inst)

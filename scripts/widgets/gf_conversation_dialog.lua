@@ -62,19 +62,19 @@ local TYPES =
 local function Accept(owner, qName)
     owner.components.gfplayerdialog:HandleQuestButton(0, qName)
     owner:PushEvent("gfPDCloseDialog")
-    GFDebugPrint("CLIENT: you've accepted the quest.", qName)
+    --GFDebugPrint("CLIENT: you've accepted the quest.", qName)
 end
 
 local function Close(owner, qName)
     owner.components.gfplayerdialog:HandleQuestButton(1)
     owner:PushEvent("gfPDCloseDialog")
-    GFDebugPrint("CLIENT: you've refused the quest.", qName)
+    --GFDebugPrint("CLIENT: you've refused the quest.", qName)
 end
 
 local function Complete(owner, qName)
     owner.components.gfplayerdialog:HandleQuestButton(3, qName)
     owner:PushEvent("gfPDCloseDialog")
-    GFDebugPrint("CLIENT: you've trying to complete the quest.", qName)
+    --GFDebugPrint("CLIENT: you've trying to complete the quest.", qName)
 end
 
 local ConversationDialog = Class(Widget, function(self, owner)

@@ -64,7 +64,7 @@ function QuestInformer:RefreshLines(data)
         and (QEVENTS[data.qEvent + 1] or STRINGS.GF.HUD.ERROR)
         or GetQuestString(self.owner, data.qName, "status")
         
-    print(data.qKey, self.owner.replica.gfquestdoer[data.qKey])
+    --print(data.qKey, self.owner.replica.gfquestdoer[data.qKey])
     local str = string.format("%s - %s", 
         GetQuestString(self.owner, data.qName, "title"), 
         string.format(qString, unpack(ALL_QUESTS[data.qName]:GetStatusData(self.owner, self.owner.replica.gfquestdoer.currentQuests[data.qKey])))

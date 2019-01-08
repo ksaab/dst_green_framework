@@ -99,6 +99,7 @@ function EffectsPanel:UpdatePanel()
 end
 
 function EffectsPanel:UpdateIcon(data)
+    --print("update icon for", data.eName)
     if data == nil or data.eName == nil or not self.checkfn(data.eName) then return end
 
     local eName = data.eName

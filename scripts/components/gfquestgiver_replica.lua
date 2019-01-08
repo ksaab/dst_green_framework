@@ -113,7 +113,7 @@ function QSQuestGiver:CheckQuestsOnPlayer(player)
     local hash = self._hash:value()
     for qKey, qData in pairs(self.quests) do
         if qData.mode ~= 1 and pcomp:IsHashedQuestDone(qKey) then
-            GFDebugPrint(("QSQuestGiver: %s I can complete a quest %s for %s"):format(tostring(self.inst), qKey, tostring(player)))
+            --GFDebugPrint(("QSQuestGiver: %s I can complete a quest %s for %s"):format(tostring(self.inst), qKey, tostring(player)))
             if self._follower ~= nil then
                 self._follower.AnimState:PlayAnimation("question" .. self._followerOffest, true)
             end
@@ -123,7 +123,7 @@ function QSQuestGiver:CheckQuestsOnPlayer(player)
 
     for qKey, qData in pairs(self.quests) do
         if qData.mode ~= 2 and pcomp:CanPickHashedQuest(qKey, qData.name) then
-            GFDebugPrint(("QSQuestGiver: %s I can give a quest %s to %s"):format(tostring(self.inst), qKey, tostring(player)))
+            --GFDebugPrint(("QSQuestGiver: %s I can give a quest %s to %s"):format(tostring(self.inst), qKey, tostring(player)))
             if self._follower ~= nil then
                 self._follower.AnimState:PlayAnimation("exclamation" .. self._followerOffest, true)
             end
@@ -135,7 +135,7 @@ function QSQuestGiver:CheckQuestsOnPlayer(player)
         self._follower.AnimState:PlayAnimation("none", true)
     end
 
-    GFDebugPrint(("QSQuestGiver: %s I don't have any interesting for %s"):format(tostring(self.inst), tostring(player)))
+    --GFDebugPrint(("QSQuestGiver: %s I don't have any interesting for %s"):format(tostring(self.inst), tostring(player)))
 end
 
 function QSQuestGiver:StartTrackingPlayer()
@@ -159,7 +159,7 @@ function QSQuestGiver:StartTrackingPlayer()
          self._follower = SpawnPrefab("gf_quest_mark")
     end
     if self._follower == nil then
-        GFDebugPrint("QSQuestGiver: Panic! Can't create a follower!")
+        --GFDebugPrint("QSQuestGiver: Panic! Can't create a follower!")
         return
     end
 
@@ -168,7 +168,7 @@ function QSQuestGiver:StartTrackingPlayer()
     self:CheckQuestsOnPlayer(ThePlayer)
     self.inst:ListenForEvent("gfQSOnQuestUpdate", self._onplayerupdate, ThePlayer)
 
-    GFDebugPrint(("QSQuestGiverR: Now %s watching for %s"):format(tostring(self.inst), tostring(ThePlayer)))
+    --GFDebugPrint(("QSQuestGiverR: Now %s watching for %s"):format(tostring(self.inst), tostring(ThePlayer)))
 end
 
 function QSQuestGiver:StopTrackingPlayer()
@@ -183,7 +183,7 @@ function QSQuestGiver:StopTrackingPlayer()
     TheCamera:RemoveListener(self, self._oncameraupdate)
     self.inst:RemoveEventCallback("gfQSOnQuestUpdate", self._onplayerupdate, ThePlayer)
 
-    GFDebugPrint(("QSQuestGiverR: %s stops watching for %s"):format(tostring(self.inst), tostring(ThePlayer)))
+    --GFDebugPrint(("QSQuestGiverR: %s stops watching for %s"):format(tostring(self.inst), tostring(ThePlayer)))
 end
 
 function QSQuestGiver:OnCameraUpdate(dt)

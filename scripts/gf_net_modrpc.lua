@@ -37,6 +37,6 @@ AddModRPCHandler("GreenFramework", "GFQUESTRPC", function(inst, event, qName, ha
     then
         inst.components.gfplayerdialog:HandleQuestRPC(event, qName, hash)
     else
-        print("wrong data for GFQUESTRPC ", qName, type(qName), event, type(event))
+        print("wrong data for GFQUESTRPC ", inst, qName, type(qName), event, type(event))
     end
 end)

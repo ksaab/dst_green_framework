@@ -54,28 +54,28 @@ end
 
 function Quest:Register(doer)
     if self.RegisterFn then self:RegisterFn(doer) end
-    GFDebugPrint(("%s has registred events on %s!"):format(self.name, tostring(doer)))
+    --GFDebugPrint(("%s has registred events on %s!"):format(self.name, tostring(doer)))
 end
 
 function Quest:Unregister(doer, qData)
     if self.UnregisterFn then self:UnregisterFn(doer, qData) end
-    GFDebugPrint(("%s has unregistred events on %s!"):format(self.name, tostring(doer)))
+    --GFDebugPrint(("%s has unregistred events on %s!"):format(self.name, tostring(doer)))
 end
 
 function Quest:Accept(doer, qData)
     if self.AcceptFn then self:AcceptFn(doer, qData) end
-    GFDebugPrint(("%s has accepted the quest — %s!"):format(tostring(doer), self.name))
+    --GFDebugPrint(("%s has accepted the quest — %s!"):format(tostring(doer), self.name))
 end
 
 function Quest:Complete(doer, qData)
     if self.CompleteFn then self:CompleteFn(doer, qData) end
     if self.RewardFn then self:RewardFn(doer, qData) end
-    GFDebugPrint(("%s has completed the quest — %s!"):format(tostring(doer), self.name))
+    --GFDebugPrint(("%s has completed the quest — %s!"):format(tostring(doer), self.name))
 end
 
 function Quest:Abandon(doer, qData)
     if self.AbandonFn then self:AbandonFn(doer, qData) end
-    GFDebugPrint(("%s has abandoned the quest — %s!"):format(tostring(doer), self.name))
+    --GFDebugPrint(("%s has abandoned the quest — %s!"):format(tostring(doer), self.name))
 end
 
 function Quest:GiverComplete(giver, doer)

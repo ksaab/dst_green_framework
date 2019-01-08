@@ -1033,6 +1033,8 @@ local gfcraftcast = State
 	},
 }
 
+--that's awful
+--TODO - make this less awful
 local gfparry = State
 {
 	name = "gfparry",
@@ -1044,7 +1046,7 @@ local gfparry = State
 		local act = inst:GetBufferedAction()
 		if act and act.spell then
 			local spellParams = ALL_SPELLS[act.spell]:GetSpellParams()
-			local castTime = math.max(1.5, GetSpellCastTime(act.spell))
+			local castTime = math.max(1.25, GetSpellCastTime(act.spell))
 			local redir = SpawnPrefab("gf_redirect_dummy")
 			absorb = (spellParams ~= nil and spellParams.absorb ~= nil)
 				and spellParams.absorb
@@ -1053,6 +1055,7 @@ local gfparry = State
 			inst.sg.statemem.remain = castTime
 			inst.sg.statemem.redir = redir
 			inst.sg.statemem.absorb = absorb
+			inst.sg.statemem.readytoparry = false
 
 			inst.components.combat.redirectdamagefn = function(inst, attacker, damage, weapon, stimuli) 
 				if inst.sg.statemem.redir ~= nil 
@@ -1062,16 +1065,21 @@ local gfparry = State
 				then
 					local x, y, z = inst.Transform:GetWorldPosition()
 					local xa, ya, za = attacker.Transform:GetWorldPosition()
-					local angle = (math.atan2(xa - x, za - z) - math.pi * 0.5) / _G.DEGREES
-					local look = inst.Transform:GetRotation()
+					local angle = (math.atan2(xa - x, za - z) - 1.5708) --/ _G.DEGREES
+					local look = inst.Transform:GetRotation() * _G.DEGREES
 
-					return (math.abs(look - angle) < 90) and inst.sg.statemem.redir or nil
+					--print(("before look %.2f, angle %.2f"):format(look, angle))
+
+					angle = angle < -math.pi and angle + 6.28319 or angle
+					look = look < -math.pi and look + 6.28319 or look
+
+					--print(("after look %.2f, angle %.2f"):format(look, angle))
+
+					return (math.abs(look - angle) < 1.5708) and inst.sg.statemem.redir or nil
 				end
 
 				return nil
 			end
-
-			inst:PerformBufferedAction()
 
 			inst.AnimState:PlayAnimation("parry_pre", false) 
 			inst.AnimState:PushAnimation("parry_loop", true) 
@@ -1089,6 +1097,7 @@ local gfparry = State
 
 	onexit = function(inst)
 		inst.components.combat.redirectdamagefn = nil
+		inst.sg.statemem.readytoparry = false
 		if inst.sg.statemem.redir ~= nil and inst.sg.statemem.redir:IsValid() then
 			inst.sg.statemem.redir:Remove()
 		end
@@ -1096,8 +1105,10 @@ local gfparry = State
 
 	timeline =
     {
-        TimeEvent(10 * FRAMES, function(inst)
-            inst.sg:RemoveStateTag("busy")
+        TimeEvent(4 * FRAMES, function(inst)
+			inst.sg:RemoveStateTag("busy")
+			inst:PerformBufferedAction()
+			inst.sg.statemem.readytoparry = true
         end),
     },
 
@@ -1112,7 +1123,7 @@ local gfparry = State
 			inst:PushEvent("attacked_hax", data)
 		end), 
 		EventHandler("attacked_hax", function(inst, data) 
-			if inst.sg.statemem.absorb > 0 then
+			if inst.sg.statemem.readytoparry and inst.sg.statemem.absorb > 0 then
 				if data.damageresolved == 0 then
 					inst.sg.statemem.absorb = inst.sg.statemem.absorb - data.damage
 					inst.AnimState:PlayAnimation("parryblock", false) 
@@ -1135,7 +1146,7 @@ local gfparry = State
 				inst.sg.statemem.talktask = nil
 				inst.SoundEmitter:KillSound("talk")
 			end
-			if DoTalkSound(inst) then
+			if true --[[_G.DoTalkSound(inst)]] then
 				inst.sg.statemem.talktask =
 					inst:DoTaskInTime(1.5 + math.random() * .5,
 						function()

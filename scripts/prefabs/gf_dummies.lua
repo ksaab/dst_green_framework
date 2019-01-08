@@ -84,7 +84,7 @@ local function redirectdummyfn()
 
     inst:AddComponent("combat")
 
-    inst:ListenForEvent("attacked", function(inst, data) print("dummy attacked", data.attacker, data.damage) end)
+    --inst:ListenForEvent("attacked", function(inst, data) print("dummy attacked", data.attacker, data.damage) end)
     inst:ListenForEvent("death", inst.Remove)
 
     return inst

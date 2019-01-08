@@ -88,7 +88,6 @@ function GFInterlocutor:StartConversation(doer)
     local important, quests
 
     for k, v in pairs(self.conversations) do
-        print("looking for", v.name, "node")
         if self:CheckMood(v) and v:PreCheck(doer, self.inst) then
             self.isBusy = true
             v:RunNode(doer, self.inst)

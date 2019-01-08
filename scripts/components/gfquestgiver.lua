@@ -66,13 +66,13 @@ function QSQuestGiver:AddQuest(qName, mode)
     self.inst.replica.gfquestgiver:UpdateQuests()
 
     --debug, do not forget to remove
-    if mode == 0 then
+    --[[if mode == 0 then
         GFDebugPrint(("%s now offers and completes quest %s "):format(tostring(self.inst), qName))
     elseif mode == 1 then
         GFDebugPrint(("%s now offers quest %s "):format(tostring(self.inst), qName))
     elseif mode == 2 then
         GFDebugPrint(("%s now completes quest %s "):format(tostring(self.inst), qName))
-    end
+    end]]
 end
 
 function QSQuestGiver:SetMode(qName, mode)
@@ -84,13 +84,30 @@ function QSQuestGiver:SetMode(qName, mode)
     self.inst.replica.gfquestgiver:UpdateQuests()
 
     --debug, do not forget to remove
-    if mode == 0 then
+    --[[if mode == 0 then
         GFDebugPrint(("%s now offers and completes quest %s "):format(tostring(self.inst), qName))
     elseif mode == 1 then
         GFDebugPrint(("%s now only offers quest %s "):format(tostring(self.inst), qName))
     elseif mode == 2 then
         GFDebugPrint(("%s now only completes quest %s "):format(tostring(self.inst), qName))
+    end]]
+end
+
+function QSQuestGiver:UpdateQuestMode(qName, appear, hide)
+    local qKey = GetQuestKey(qName, self.hash)
+    if qKey == nil or self.quests[qKey] == nil then return end
+
+    if self.quests[qKey].mode ~= 2 then
+        if math.random() < appear then
+            self.quests[qKey].mode = 0
+            --GFDebugPrint(("%s now offers and completes quest %s "):format(tostring(self.inst), qName))
+        end
+    elseif math.random() < hide then
+        self.quests[qKey].mode = 2
+        --GFDebugPrint(("%s now only completes quest %s "):format(tostring(self.inst), qName))
     end
+
+    self.inst.replica.gfquestgiver:UpdateQuests()
 end
 
 function QSQuestGiver:RemoveQuest(qName)
@@ -99,7 +116,7 @@ function QSQuestGiver:RemoveQuest(qName)
     self.quests[qKey] = nil
     
     self.inst.replica.gfquestgiver:UpdateQuests()
-    GFDebugPrint(("%s now doesn't have quest %s "):format(tostring(self.inst), qName))
+    --GFDebugPrint(("%s now doesn't have quest %s "):format(tostring(self.inst), qName))
 end
 
 function QSQuestGiver:HasQuests()
@@ -135,17 +152,17 @@ end
 
 function QSQuestGiver:HasQuest(qName)
     local qKey = GetQuestKey(qName, self.hash)
-    return qKey ~= nil and self.quests[qName] ~= nil
+    return qKey ~= nil and self.quests[qKey] ~= nil
 end
 
 function QSQuestGiver:IsGiverFor(qName)
     local qKey = GetQuestKey(qName, self.hash)
-    return self.quests[qKey] ~= nil and self.quests[qKey] ~= 2
+    return self.quests[qKey] ~= nil and self.quests[qKey].mode ~= 2
 end
 
 function QSQuestGiver:IsCompleterFor(qName)
     local qKey = GetQuestKey(qName, self.hash)
-    return self.quests[qKey] ~= nil and self.quests[qKey] ~= 1
+    return self.quests[qKey] ~= nil and self.quests[qKey].mode ~= 1
 end
 
 -----------------------------------------
@@ -166,7 +183,7 @@ end
 
 function QSQuestGiver:OnQuestAbandoned(qName, doer)
     local qInst = ALL_QUESTS[qName]
-    print(self.inst, doer, "has abandoned my quest", qName)
+    --print(self.inst, doer, "has abandoned my quest", qName)
     if qInst.hideOnPick and self:IsCompleterFor(qName) then self:SetMode(qName, 0) end
 end
 

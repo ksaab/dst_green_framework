@@ -6,7 +6,7 @@ local DIALOGUE_NODES_IDS = GF.GetDialogueNodesIDs()
 local function DeserealizeDialogStrings(classified)
     if classified._parent == nil then return end
 
-    print("Deserelizing", classified._gfPDPushDialog:value())
+    --print("Deserelizing", classified._gfPDPushDialog:value())
     local strArr = classified._gfPDPushDialog:value():split('^')
 
     --strArr[1] - dialog string
@@ -126,8 +126,6 @@ end
 function GFPlayerDialog:PushDialog(strid, events, offer, complete)--, strings)
     if not GFGetIsMasterSim() then return false end
 
-    print(strid, events, offer, complete)
-
     self._trackQuests = {}
     self._trackEvents = {}
     self._trackDialog = {}
@@ -157,7 +155,6 @@ function GFPlayerDialog:PushDialog(strid, events, offer, complete)--, strings)
         for i = 1, #events do
             if ALL_DIALOGUE_NODES[events[i]] ~= nil then
                 self._trackEvents[events[i]] = true
-                print(events[i], ALL_DIALOGUE_NODES, ALL_DIALOGUE_NODES[events[i]])
                 events[i] = ALL_DIALOGUE_NODES[events[i]].id
             end
         end
@@ -242,7 +239,7 @@ function GFPlayerDialog:HandleQuestButton(event, qName, hash)
 end
 
 function GFPlayerDialog:HandleQuestRPC(event, qName, hash)
-    print("handling rpc", event, qName, hash, self:GetTrackingHash())
+    --print("handling rpc", event, qName, hash, self:GetTrackingHash())
      ------------------------
     --events:
     --0 - accept a quest
@@ -292,7 +289,7 @@ function GFPlayerDialog:StartTrack(interlocutor, checkDistance)
         self._trackTask = self.inst:DoPeriodicTask(0.5, TrackInterlocutor, nil, interlocutor)
     end
 
-    GFDebugPrint(("%s has started tracking %s"):format(tostring(self.inst), tostring(self._trackInterlocutor)))
+    --GFDebugPrint(("%s has started tracking %s"):format(tostring(self.inst), tostring(self._trackInterlocutor)))
     return true
 end
 
@@ -306,7 +303,7 @@ function GFPlayerDialog:StopTrack()
         self._trackTask = nil
     end
 
-    GFDebugPrint(("%s has stopped tracking %s"):format(tostring(self.inst), tostring(self._trackInterlocutor)))
+    --GFDebugPrint(("%s has stopped tracking %s"):format(tostring(self.inst), tostring(self._trackInterlocutor)))
     self._trackInterlocutor = nil
 end
 

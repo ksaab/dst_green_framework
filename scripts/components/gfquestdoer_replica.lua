@@ -13,7 +13,7 @@ local function QRStatusChanged(doer, event, qKey, qName)
         doer:PushEvent("gfQSInformerPush", {qKey = qKey, qName = qName, qEvent = event})
     end
 
-    GFDebugPrint(("QDoerReplica: Quest %s has new status %i on %s"):format(qKey, event, tostring(doer)))
+    --GFDebugPrint(("QDoerReplica: Quest %s has new status %i on %s"):format(qKey, event, tostring(doer)))
 end
 
 local function QRCreate(doer, event, qKey, qName, hash)
@@ -32,7 +32,7 @@ local function QRCreate(doer, event, qKey, qName, hash)
         doer:PushEvent("gfQSInformerPush", {qKey = qKey, qName = qName, qEvent = event})
     end
 
-    GFDebugPrint(("QDoerReplica: Strating quest %s on %s"):format(qKey, tostring(doer)))
+    --GFDebugPrint(("QDoerReplica: Strating quest %s on %s"):format(qKey, tostring(doer)))
 end
 
 local function QRRemove(doer, event, qKey, qName)
@@ -46,7 +46,7 @@ local function QRRemove(doer, event, qKey, qName)
         doer:PushEvent("gfQSInformerPush", {qKey = qKey, qName = qName, qEvent = event})
     end
 
-    GFDebugPrint(("QDoerReplica: Removing quest %s from %s"):format(qKey, tostring(doer)))
+    --GFDebugPrint(("QDoerReplica: Removing quest %s from %s"):format(qKey, tostring(doer)))
 end
 
 local function QRCooldown(doer, event, qKey, qName)
@@ -78,7 +78,7 @@ local function DeserealizeEventStream(classified)
     --4 - quest abandoned - same as above but also pushes an event for an informer
     --5 - quest completed - player completed the quest, need to remove the replica
     ------------------------------------------------------------------
-    print(classified._gfQSEventStream:value())
+    --print(classified._gfQSEventStream:value())
     local dataArr = classified._gfQSEventStream:value():split('^')
 
     for _, qData in pairs(dataArr) do
@@ -115,7 +115,7 @@ local function DoDeserealizeInformerStream(classified)
     --                  first quest                           |second quest                   |etc...
     --------------------------------------------------------------------------------------------------------
     --if NOINFO ~= nil then a hud event will not be fired
-    print(classified._gfQSInfoStream:value())
+    --print(classified._gfQSInfoStream:value())
     local dataArr = classified._gfQSInfoStream:value():split('^')
     local self = classified._parent.replica.gfquestdoer
 

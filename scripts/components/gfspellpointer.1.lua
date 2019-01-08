@@ -10,18 +10,15 @@ local function DisablePointerOnUnequipped(inst)
     end
 end
 
-local function OnDirty(classified)
-    local inst = classified._parent
-    if inst == nil or inst ~= ThePlayer then return end
+local function OnDirty(inst)
+    if inst ~= ThePlayer then return end
 
     local self = inst.components.gfspellpointer
     local spellID = self._currentSpell:value()
     --GFDebugPrint(string.format("GFSpellPointer: dirty (client/host) for %s, spell id %s", tostring(self.inst), spellID))
     if spellID ~= 0 then
-        --GFDebugPrint(string.format("start targeting on %s", GFGetIsMasterSim() and "server" or "client"))
         self:StartTargeting(spellIDToNames[spellID])
     else
-        --GFDebugPrint(string.format("stop targeting on %s", GFGetIsMasterSim() and "server" or "client"))
         self:StopTargeting()
     end
 end
@@ -103,7 +100,7 @@ local GFSpellPointer = Class(function(self, inst)
     self.pointer = nil
     self.withItem = nil
 
-    self._currentSpell = 0--net_int(inst.GUID, "GFSpellPointer._currentSpell", "gfspellpointerdirty")
+    self._currentSpell = net_int(inst.GUID, "GFSpellPointer._currentSpell", "gfspellpointerdirty")
     --self._currentSpell:set_local(0)
 
     --need to disable pointers, when an item is unequipped or a player dies
@@ -118,33 +115,14 @@ local GFSpellPointer = Class(function(self, inst)
 
     if not GFGetIsDedicatedNet() then
         inst:DoTaskInTime(0, function()
-            if inst == ThePlayer and self.classified ~= nil then
+            if inst == ThePlayer then
+                inst:ListenForEvent("gfspellpointerdirty", OnDirty)
                 inst:AddComponent("gfpointer")
-                self.inst:ListenForEvent("gfSPDirty", OnDirty, self.classified)
                 self.pointer = self.inst.components.gfpointer
             end
         end)
     end
 end)
-
-function GFSpellPointer:AttachClassified(classified)
-    if self.classified ~= nil then return end
-
-    self.classified = classified
-    --default things, like in the others replicatable components
-    self.ondetachclassified = function() self:DetachClassified() end
-    self.inst:ListenForEvent("onremove", self.ondetachclassified, classified)
-
-    self._currentSpell = classified._gfCurrentSpell
-end
-
-function GFSpellPointer:DetachClassified()
-    --default things, like in the others replicatable components
-    self:Disable()
-    self._currentSpell = 0
-    self.classified = nil
-    self.ondetachclassified = nil
-end
 
 function GFSpellPointer:SetOnClient() --not used
     self.inst:ListenForEvent("gfspellpointerdirty", OnDirty)
@@ -160,7 +138,6 @@ function GFSpellPointer:Enable(spellName)
     local pc = self.inst.components.playercontroller
     if spellName ~= nil 
         and ALL_SPELLS[spellName] ~= nil --spell isn't exists
-        and self.classified ~= nil
         --and self.currentSpell ~= spellName -- current spell is the same
         and GFGetIsMasterSim()
         and pc and pc:IsEnabled() --check controller, we don't need to target if it's not valid
@@ -191,16 +168,13 @@ function GFSpellPointer:Disable()
 end
 
 function GFSpellPointer:StartTargeting(spellName)
-    if spellName == nil or ALL_SPELLS[spellName] == nil then
-        print(("GFSpellPointer: PANIC - an invalid spell <%s> was catched!"):format(tostring(spellName)))
-        return
-    end
     --check controller, we don't need to target if it's not valid
     local pc = self.inst.components.playercontroller
     if not (pc and pc:IsEnabled()) then 
         self:Disable()
         return 
     end
+
     --GFDebugPrint(string.format("GFSpellPointer: Start Targeting (client/host) for %s, spell %s", tostring(self.inst), spellName))
     if not GFGetIsMasterSim() then
         --the host toggled these params when ran the Enable function
@@ -208,12 +182,16 @@ function GFSpellPointer:StartTargeting(spellName)
         self.currentSpell = spellName
         pc.gfSpellPointerEnabled = true
     end
+    
     if self.inst.components.gfpointer then
-        --GFDebugPrint(string.format("GFSpellPointer: Dummy — disable pointer for %s, reason: spell changed",  tostring(self.inst)))
         self.pointer:Destroy()
-        --GFDebugPrint(string.format("GFSpellPointer: Dummy — enable pointer for %s",  tostring(self.inst)))
-        self.pointer:Create(ALL_SPELLS[spellName].pointer)
+        --self.inst:RemoveComponent("gfpointer")
+        --self.pointer = nil
+        --GFDebugPrint(string.format("GFSpellPointer: Dummy — disable pointer for %s, reason: spell changed",  tostring(self.inst)))
     end
+
+    self.pointer:Create(ALL_SPELLS[spellName].pointer)
+    --GFDebugPrint(string.format("GFSpellPointer: Dummy — enable pointer for %s",  tostring(self.inst)))
 end
 
 function GFSpellPointer:StopTargeting()

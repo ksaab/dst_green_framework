@@ -65,7 +65,7 @@ AddAction("GFSTARTSPELLTARGETING", STRINGS.ACTIONS.GFSTARTSPELLTARGETING, functi
             if item.components.gfspellitem:CanCastSpell(itemSpell) 
                 and doer.components.gfspellcaster:PreCastCheck(itemSpell)
             then
-                doer.components.gfspellpointer.withItem = true
+                doer.components.gfspellpointer.withItem = item
                 doer.components.gfspellpointer:Enable(itemSpell)
                 return true
             end
@@ -257,6 +257,32 @@ AddComponentAction("INVENTORY", "gfdrinkable", function(inst, doer, actions, rig
 		and not doer:HasTag("cantdrink")
     then
         table.insert(actions, ACTIONS.GFDRINKIT)
+    end
+end)
+
+AddComponentAction("INVENTORY", "gfspellitem", function(inst, doer, actions, right)
+    if inst.replica.equippable == nil
+        and not doer.replica.inventory:GetActiveItem() ~= inst
+    then
+        local gfsp = doer.components.gfspellpointer
+        local spellName
+        local spell
+        if not gfsp:IsEnabled() then
+            spellName = inst.replica.gfspellitem:GetCurrentSpell()
+            if spellName ~= nil then
+                spell = ALL_SPELLS[spellName]
+                if spell 
+                    and inst.replica.gfspellitem:CanCastSpell(spellName)
+                    and doer.replica.gfspellcaster:CanCastSpell(spellName) 
+                then
+                    if not spell.instant then
+                        table.insert(actions, ACTIONS.GFSTARTSPELLTARGETING)
+                    else
+                        table.insert(actions, ACTIONS.GFCASTSPELL)
+                    end
+                end
+            end
+        end
     end
 end)
 
