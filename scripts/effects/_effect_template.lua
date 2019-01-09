@@ -1,99 +1,81 @@
-local GFEffect = require("gf_effect")
-
-local function OnApply(self, inst, effectParam)
-    print(("Effect %s applied to %s"):format(self.name, tostring(inst)))
+local function OnApply(effect, inst, effectParam)
+    print(("Effect %s applied to %s"):format(effect.name, tostring(inst)))
 end
 
-local function OnRefresh(self, inst, effectParam)
-    print(("Effect %s refreshed on %s"):format(self.name, tostring(inst)))
+local function OnRefresh(effect, inst, effectParam)
+    print(("Effect %s refreshed on %s"):format(effect.name, tostring(inst)))
 end
 
-local function OnUpdate(self, inst)
-    print(("Effect %s updated on %s"):format(self.name, tostring(inst)))
+local function OnUpdate(effect, inst)
+    print(("Effect %s updated on %s"):format(effect.name, tostring(inst)))
 end
 
-local function OnRemove(self, inst)
-    print(("Effect %s removed from %s"):format(self.name, tostring(inst)))
+local function OnRemove(effect, inst)
+    print(("Effect %s removed from %s"):format(effect.name, tostring(inst)))
 end
 
-local function DoCheck(self, inst, effectParam)
+local function DoCheck(effect, inst, effectParam)
     --check for required components, tags and other things
     return true
 end
 
-local function HudOnApply(self, inst)
-    print(("Effect %s HUD OnApply for %s"):format(self.name, tostring(inst)))
+local function HudOnApply(effect, inst)
+    print(("Effect %s HUD OnApply for %s"):format(effect.name, tostring(inst)))
 end
 
-local function HudOnRefresh(self, inst)
-    print(("Effect %s Hud OnRefresh for %s"):format(self.name, tostring(inst)))
+local function HudOnRemove(effect, inst)
+    print(("Effect %s Hud OnRemove for %s"):format(effect.name, tostring(inst)))
 end
 
-local function HudOnRemove(self, inst)
-    print(("Effect %s Hud OnRemove for %s"):format(self.name, tostring(inst)))
-end
+local function fn()
+    local effect = GF.CreateStatusEffect()
 
-local Effect = Class(GFEffect, function(self, name)
-    --[[SERVER AND CLIENT]]
-    GFEffect._ctor(self, "Effectname") --inheritance
-    self.type = 0 --Effect type: 0 - server side only, 1 - positive, 2 - negative, 3 - affix, 4 - enchant
+    --type defines colour and position for text
+    effect.type = 1 --0 - server only, 1 - positive, 2 - negative, 3 - affix, 4 enchant
 
-    --image
-    self.icon = nil
-    self.iconAtlas = nil
+    --network
+    effect.pushToReplica = true    --need to push to all clients (hover on an entity)
+    effect.pushToClassified = true --need to push to the affected player (icon on the panel)
 
-    --text info
-    self.enchantText = nil --text ABOVE name
-    self.hoverText = nil --text UNDER name
-    self.titleText = nil --title for icon
-    self.descText = nil --text for icon
+    --image - for panel only (doesn't do anything if pushToClassified = false)
+    effect.icon = nil       --texture
+    effect.iconAtlas = nil  --atlas
+
+    --effects strings should be defined in global STRINGS
+    --STRINGS.GF.EFFECTS.MY_FIRST_EFFECT = {}
+    --STRINGS.GF.EFFECTS.MY_FIRST_EFFECT.TITLE = "My Effect"        --only for pushToClassified
+    --STRINGS.GF.EFFECTS.MY_FIRST_EFFECT.DESC = "It's my effect."   --only for pushToClassified
+    --STRINGS.GF.EFFECTS.MY_FIRST_EFFECT.HOVER = "my effect."       --only for pushToReplica
+    --where MY_FIRST_EFFECT is the effects name (check the last string of this file) in the upper case
+
+    --functions
+    effect.checkfn = DoCheck
+    effect.onapplyfn = OnApply
+    effect.onrefreshfn = OnRefresh
+    effect.onupdatefn = OnUpdate
+    effect.onremovefn = OnRemove
+
+    --hud functions
+    effect.hudonapplyfn = HudOnApply    --called on clients when the effect is applied or refreshed
+    effect.hudonremovefn = HudOnRemove  --called on clients when the effect is removed
 
     --flags
-    self.wantsIcon = false
-    self.wantsHover = false
+    effect.savable = false --save effect or not
+    effect.nonRefreshable = false --can effect be refreshed or not
 
-    --hudfunctions are called on clients, when
-    self.hudonapplyfn = HudOnApply --effect applied
-    self.hudonrefreshfn = HudOnRefresh --effect refreshed
-    self.hudonremovefn = HudOnRemove --effect removed
+    effect.updateDurationOnRefresh = true
+    effect.updateStacksOnRefresh = false
+    effect.updateable = true            --need to update on ticks or not
+    effect.static = true                --for static effects without timers (affixes and etc)
+    effect.sleeper = false              --effects will not updated if entity is asleep (not sleeper component!)
+    effect.removableByStacks = true     --can be removed by consuming stacks or not
 
-    --flags
-    self.nonRefreshable = false --can effect be refreshed or not
-    self.updateDurationOnRefresh = true
-    self.updateStacksOnRefresh = true
-    self.updateable = true --need to update on ticks or not
-    self.static = true --for static effects without timers (affixes and etc)
-    self.savable = false --save effect or not
-    self.removableByStacks = true --can be removed by consuming stacks or not
+    --numbers
+    effect.maxStacks = 1
+    effect.baseDuration = 10    --base duration
+    effect.tickPeriod = 1       --how often the onupdate function will be called 
 
-    --effect data
-    self.tags = {} --can be used for resists checks, event listeners and etc
-    self.applier = nil --who apply the effect
-    self.stacks = 0 --current amount of stacks
-    self.maxStacks = 1 --max amount of stacks
+    return effect
+end
 
-    --effect timers
-    self.expirationTime = 0
-    self.applicationTime = 0
-    self.updateTime = 0 --this will be setted is gfeffectable
-    self.baseDuration = 10 --base duration
-    self.tickPeriod = 1 --how often onupdate function will be called 
-
-    --effect fx
-    --fx will be attached only if has Follower
-    self.applyPrefab = nil --this will be not removed by component
-    self.applyPrefabOffset = false --if true the applyPrefab will be shown above the target
-    self.followPrefab = nil --this wili be removed by component
-    self.followPrefabOffset = false --if true the followPrefab will be shown above the target
-    
-    --functions, feel free to set any to nil
-    self.checkfn = DoCheck
-    self.onapplyfn = OnApply
-    self.onrefreshfn = OnRefresh
-    self.onupdatefn = OnUpdate
-    self.onremovefn = OnRemove
-
-    GFDebugPrint(("Effect: effect %s created"):format(self.name))
-end)
-
-return Effect
+return GF.StatusEffect("my_first_effect", fn)

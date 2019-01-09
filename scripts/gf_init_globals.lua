@@ -6,7 +6,7 @@ rawset(_G, "GF", GF)
 rawset(GF, "DevMode", DEVMODE)
 
 function GF.CheckVersion() return true end
-function GF.GetVersion() return 1.3 end
+function GF.GetVersion() return 2.0 end
 
 --############################################
 ----------------------------------------------
@@ -362,15 +362,23 @@ local function IsDepreciated()
     print("GREEN: function " .. call .. " is depreciated!")
 end
 
-function GFAddCustomSpell(name, route, id)
+function GFAddCustomSpell()
     IsDepreciated()
 end
 
-function GFAddCustomEffect(name, route, id)
+function GFAddCustomEffect()
     IsDepreciated()
 end
 
-function GFAddCustomQuest(name, route, modname, id)
+function GFAddCustomQuest()
+    IsDepreciated()
+end
+
+function GFAddBaseSpells()
+    IsDepreciated()
+end
+
+function GFAddBaseEffects()
     IsDepreciated()
 end
 
@@ -383,7 +391,10 @@ end
 local PostGreenInit = {player = {}}
 local EntitiesBaseEffects = {}
 local EntitiesBaseSpells = {}
-local InterlocutorOffsets = {}
+local InterlocutorOffsets = 
+{
+    pigman = 3;
+}
 
 rawset(GF, "PostGreenInit", PostGreenInit)
 rawset(GF, "EntitiesBaseEffects", EntitiesBaseEffects)

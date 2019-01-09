@@ -187,8 +187,8 @@ end
 
 function GFSpellCaster:HandleIconClick(sName)
     local inst = self.inst
-    if sName 
-        and ALL_SPELLS[sName] 
+    if sName ~= nil
+        and ALL_SPELLS[sName] ~= nil
         and not (inst:HasTag("playerghost") or inst:HasTag("corpse"))
         and not inst:HasTag("busy")
         and (not inst.replica.rider or not inst.replica.rider:IsRiding())
@@ -200,8 +200,10 @@ function GFSpellCaster:HandleIconClick(sName)
 end
 
 function GFSpellCaster:ForceRechargesDirty(sName)
-    if self.inst == ThePlayer and not GFGetIsDedicatedNet() then self.inst:PushEvent("gfRWPush") 
-    elseif self.classified ~= nil then self.classified._gfSCForceRechargesEvent:push()
+    if self.inst == ThePlayer and not GFGetIsDedicatedNet() then 
+        self.inst:PushEvent("gfRWPush") 
+    elseif self.classified ~= nil then 
+        self.classified._gfSCForceRechargesEvent:push()
     end
 end
 

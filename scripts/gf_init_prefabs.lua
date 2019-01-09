@@ -200,11 +200,11 @@ local function InitPlayer(player)
                 if nonImportantTags[id] then --string.sub(id, 1, 1) ~= '_' then
                     table.insert(tmptags, id)
                     player:RemoveTag(id)
-                    print("tag", id, "is a server-only tag, removing")
+                    --print("tag", id, "is a server-only tag, removing")
                 else
                     player._tagCounter = player._tagCounter + 1 
                     player._overflowedTags[id] = true
-                    print("tag", id, "is a client required tag")
+                    --print("tag", id, "is a client required tag")
                 end
             end
 

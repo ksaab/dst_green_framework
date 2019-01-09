@@ -44,10 +44,7 @@ local QSQuestGiver = Class(function(self, inst)
     self._listening = false
 
     self._follower = nil
-    self._followerOffest = OFFSETS[inst.prefab] ~= nil 
-        and (OFFSETS[inst.prefab].markOffset or 0)
-        or 0
-
+    self._followerOffest = OFFSETS[inst.prefab] or 0
     self._oncameraupdate = function(dt) self:OnCameraUpdate(dt) end
     self._onplayerupdate = function(player) self:CheckQuestsOnPlayer(player) end
 

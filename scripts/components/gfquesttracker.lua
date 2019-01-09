@@ -48,12 +48,24 @@ local GFQuestTracker = Class(function(self, inst)
         end
     end
 
-    inst:ListenForEvent("ms_playeractivated", function(inst, player) self:HandlePlayerLeaving(player) end)
+    --inst:ListenForEvent("ms_playeractivated", function(inst, player) self:HandlePlayerLeaving(player) end)
 end)
 
 function GFQuestTracker:QuestAbandoned(doer, qName, hash)
-    if ALL_QUESTS[qName].soulbound and hash ~= nil and self.giverHashes[hash] ~= nil then
+    if hash ~= nil and self.giverHashes[hash] ~= nil then
         self.giverHashes[hash].components.gfquestgiver:OnQuestAbandoned(qName, doer)
+    end
+end
+
+function GFQuestTracker:QuestAccepted(doer, qName, hash)
+    if hash ~= nil and self.giverHashes[hash] ~= nil then 
+        self.giverHashes[hash].components.gfquestgiver:OnQuestAccepted(qName, doer)
+    end
+end
+
+function GFQuestTracker:QuestCompleted(doer, qName, hash)
+    if hash ~= nil and self.giverHashes[hash] ~= nil then 
+        self.giverHashes[hash].components.gfquestgiver:OnQuestCompleted(qName, doer)
     end
 end
 

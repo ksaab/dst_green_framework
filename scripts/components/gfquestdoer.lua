@@ -78,6 +78,8 @@ function GFQuestDoer:AcceptQuest(qName, hash)
     self.currentQuests[qKey] = qData --saving the quest data to the components
     self:UpdateQuestList(qName, hash, 3) --sending info about new quest to replica
 
+    GFGetWorld().components.gfquesttracker:QuestAccepted(self.inst, qName, hash)
+
     return self.currentQuests[qKey]
 end
 
@@ -118,6 +120,8 @@ function GFQuestDoer:CompleteQuest(qName, hash, ignore)
 
     self:UpdateQuestList(qName, hash, 5) --tell the replica about successful quest completion
     self.currentQuests[qKey] = nil --removing the quest data from the component
+
+    GFGetWorld().components.gfquesttracker:QuestCompleted(self.inst, qName, hash)
 
     return true
 end
