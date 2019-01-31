@@ -193,6 +193,7 @@ end
 function GFSpellPointer:StartTargeting(spellName)
     if spellName == nil or ALL_SPELLS[spellName] == nil then
         print(("GFSpellPointer: PANIC - an invalid spell <%s> was catched!"):format(tostring(spellName)))
+        self:Disable()
         return
     end
     --check controller, we don't need to target if it's not valid

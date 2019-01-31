@@ -90,6 +90,13 @@ local function redirectdummyfn()
     return inst
 end
 
+local function _onreplicated(inst)
+    local parent = inst.entity:GetParent()
+    if parent ~= nil then
+        print(string.format("set parent %s for %s", tostring(parent), tostring(inst)))
+        parent._tagfixent = inst
+    end
+end
 
 return Prefab( "gf_local_dummy", localdummyfn),
     Prefab( "gf_net_dummy", netdummyfn),

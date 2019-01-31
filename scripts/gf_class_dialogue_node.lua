@@ -4,19 +4,20 @@
 --INFO------------------------------------------------------
 ------------------------------------------------------------
 --All methods are unsafe, do not use them directly
---Valid ways to work with effects are implemented in
---gfinterlocutor component
+--Valid ways to work with nodes are implemented in
+--the gfinterlocutor component
 ------------------------------------------------------------
 
 local DialogueNode = Class(function(self, name)
     --[[SERVER AND CLIENT]]
     self.name = name
 
-    self.global = false
-    self.priority = 0
+    self.isLast = false     --if true - dialog window will be closed, when player run the node
+    self.hasQuests = false  --collect quests for this node or not
+    self.priority = 0       --interlocutor component picks node with the highest priority (if checkFn for it return true)
 
-    self.preCheckFn = nil
-    self.checkFn = nil
+    self.preCheckFn = nil   --this function runs when the interlocutor picks a node to run
+    self.checkFn = nil      --this when server runs the event
 
     self.nodeFn = nil
 end)
@@ -36,10 +37,20 @@ end
 
 function DialogueNode:RunNode(doer, interlocutor)
     if self.nodeFn ~= nil then
-        self.nodeFn(doer, interlocutor)
+        local res = self.nodeFn(doer, interlocutor)
+        if res ~= nil then
+            if type(res) == "table" then
+                doer.components.gfplayerdialog:StartConversationWith(interlocutor, res, self.hasQuests)
+            elseif type(res) == "string" then
+                doer.components.gfplayerdialog:StartConversationWith(interlocutor, {res}, self.hasQuests)
+            end
+        end
     else
         print("DialogueNode", self.name, "doesn't have an event function!")
     end
+
+    --closing a dialog if node marked as last
+    if self.isLast then doer.components.gfplayerdialog:CloseDialog() end
 end
 
 function DialogueNode:CollectQuests(doer, interlocutor)

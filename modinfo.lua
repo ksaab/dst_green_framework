@@ -1,6 +1,6 @@
 name = "Green![DEV]"
 id = "GreenFramework"
-version = "2.0.1"
+version = "2.0.3"
 author = "ksaab"
 
 description = "Enhanced magic system for Don't Starve Together"
@@ -30,7 +30,7 @@ configuration_options =
         }, 
         default = 0
     }, ]]
-    {
+    --[[ {
         name = "tag_overflow_fix",
         label = "Tag overflow fix",
         options = 
@@ -40,5 +40,5 @@ configuration_options =
             {description = "Disabled",  data = 2},
         },
         default = 0,
-    },
+    }, ]]
 }

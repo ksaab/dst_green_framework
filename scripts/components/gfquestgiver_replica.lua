@@ -17,12 +17,7 @@ local function DeserializeQuests(inst)
         local tmp = qData:split(';')
         local qName = QUESTS_IDS[tonumber(tmp[1])]
         if qName ~= nil then
-            local qKey = GetQuestKey(qName, self._hash:value())
-            self.quests[qKey] = 
-            {
-                mode = tonumber(tmp[2]),
-                name = qName
-            }
+            self.quests[qName] = tonumber(tmp[2]) or 0
         end
     end
 
@@ -33,6 +28,16 @@ local function DeserializeQuests(inst)
             self:StopTrackingPlayer()
         end
     end
+end
+
+local function SpawnMark(self)
+    if self._follower ~= nil then return false end
+    local mark = SpawnPrefab("gf_quest_mark")
+    if mark ~= nil then
+        self._follower = mark
+    end
+
+    return mark ~= nil
 end
 
 local QSQuestGiver = Class(function(self, inst)
@@ -76,8 +81,8 @@ function QSQuestGiver:UpdateQuests()
         self._task = nil
 
         local str = {}
-        for qKey, qData in pairs(self.quests) do
-            table.insert(str, string.format("%i;%i", ALL_QUESTS[qData.name].id, qData.mode))
+        for qName, qMode in pairs(self.quests) do
+            table.insert(str, string.format("%i;%i", ALL_QUESTS[qName].id, qMode))
         end
         
         local str = table.concat(str, '^')
@@ -104,24 +109,23 @@ function QSQuestGiver:UpdateQuests()
 end
 
 function QSQuestGiver:CheckQuestsOnPlayer(player)
-    --TODO: replace component with replica when it's possible
     local pcomp = player.replica.gfquestdoer
 
     local hash = self._hash:value()
-    for qKey, qData in pairs(self.quests) do
-        if qData.mode ~= 1 and pcomp:IsHashedQuestDone(qKey) then
-            --GFDebugPrint(("QSQuestGiver: %s I can complete a quest %s for %s"):format(tostring(self.inst), qKey, tostring(player)))
-            if self._follower ~= nil then
+    for qName, qMode in pairs(self.quests) do
+        if qMode ~= 1 and pcomp:IsQuestDone(qName, hash) then
+            --GFDebugPrint(("QSQuestGiver: %s I can complete a quest %s#%s for %s"):format(tostring(self.inst), qName, hash, tostring(player)))
+            if self._follower ~= nil or SpawnMark(self) then
                 self._follower.AnimState:PlayAnimation("question" .. self._followerOffest, true)
             end
             return
         end
     end
 
-    for qKey, qData in pairs(self.quests) do
-        if qData.mode ~= 2 and pcomp:CanPickHashedQuest(qKey, qData.name) then
-            --GFDebugPrint(("QSQuestGiver: %s I can give a quest %s to %s"):format(tostring(self.inst), qKey, tostring(player)))
-            if self._follower ~= nil then
+    for qName, qMode in pairs(self.quests) do
+        if qMode ~= 2 and pcomp:CanPickQuest(qName, hash) then
+            --GFDebugPrint(("QSQuestGiver: %s I can give a quest %s#%s to %s"):format(tostring(self.inst), qName, hash, tostring(player)))
+            if self._follower ~= nil or SpawnMark(self) then
                 self._follower.AnimState:PlayAnimation("exclamation" .. self._followerOffest, true)
             end
             return
@@ -129,10 +133,12 @@ function QSQuestGiver:CheckQuestsOnPlayer(player)
     end
 
     if self._follower ~= nil then
-        self._follower.AnimState:PlayAnimation("none", true)
+        self._follower:Remove()
+        self._follower = nil
+        --self._follower.AnimState:PlayAnimation("none", true)
     end
 
-    --GFDebugPrint(("QSQuestGiver: %s I don't have any interesting for %s"):format(tostring(self.inst), tostring(player)))
+    --GFDebugPrint(("QSQuestGiver: %s #%s I don't have any interesting for %s"):format(tostring(self.inst), hash, tostring(player)))
 end
 
 function QSQuestGiver:StartTrackingPlayer()
@@ -152,13 +158,7 @@ function QSQuestGiver:StartTrackingPlayer()
         return
     end
 
-    if self._follower == nil then
-         self._follower = SpawnPrefab("gf_quest_mark")
-    end
-    if self._follower == nil then
-        --GFDebugPrint("QSQuestGiver: Panic! Can't create a follower!")
-        return
-    end
+    SpawnMark(self)
 
     self._listening = true
     TheCamera:AddListener(self, self._oncameraupdate)

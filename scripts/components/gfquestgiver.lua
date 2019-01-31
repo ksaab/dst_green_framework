@@ -7,12 +7,14 @@ local function SetHash(inst)
     local self = inst.components.gfquestgiver
     if self.hash == nil then
         self.hash = GFGetWorld().components.gfquesttracker:TrackGiver(inst)
-        self.inst.replica.gfquestgiver._hash:set(self.hash)
+        if self.inst.replica.gfquestgiver ~= nil then
+            self.inst.replica.gfquestgiver._hash:set(self.hash)
+        end
 
         --if some quests were added before hash is ready
-        for k, v in pairs(self._quests) do
-            self:AddQuest(k, v)
-        end
+        --for k, v in pairs(self._quests) do
+        --    self:AddQuest(k, v)
+        --end
 
         self._quests = nil
         self._hashTask = nil
@@ -47,22 +49,13 @@ function QSQuestGiver:AddQuest(qName, mode)
     --2 - only complete
     ----------------------------------
 
-    mode = mode or 0
     --if we don't have a hash, we can't push quests to component
     --need to wait a bit until the hash will be ready
-    if self.hash == nil then self._quests[qName] = mode return end
-
-    local qKey = GetQuestKey(qName, self.hash)
+    --if self.hash == nil then self._quests[qName] = mode return end
     --component stores quests by qName .. '#' .. hash, so we can pick more then one quest of same type
     --but quests without the soulbound flag are stored without a hash suffix - so player can take only one instace of the quest
 
-    local t = 
-    {
-        mode = mode,
-        name = qName,
-    }
-
-    self.quests[qKey] = t
+    self.quests[qName] = mode or 0
     self.inst.replica.gfquestgiver:UpdateQuests()
 
     --debug, do not forget to remove
@@ -76,11 +69,9 @@ function QSQuestGiver:AddQuest(qName, mode)
 end
 
 function QSQuestGiver:SetMode(qName, mode)
-    local qKey = GetQuestKey(qName, self.hash)
+    if qName == nil or self.quests[qName] == nil then return end
 
-    if qKey == nil or self.quests[qKey] == nil then return end
-
-    self.quests[qKey].mode = mode or 0
+    self.quests[qName] = mode or 0
     self.inst.replica.gfquestgiver:UpdateQuests()
 
     --debug, do not forget to remove
@@ -94,16 +85,15 @@ function QSQuestGiver:SetMode(qName, mode)
 end
 
 function QSQuestGiver:UpdateQuestMode(qName, appear, hide)
-    local qKey = GetQuestKey(qName, self.hash)
-    if qKey == nil or self.quests[qKey] == nil then return end
+    if qName == nil or self.quests[qName] == nil then return end
 
-    if self.quests[qKey].mode ~= 2 then
+    if self.quests[qName] ~= 2 then
         if math.random() < appear then
-            self.quests[qKey].mode = 0
+            self.quests[qName] = 0
             --GFDebugPrint(("%s now offers and completes quest %s "):format(tostring(self.inst), qName))
         end
     elseif math.random() < hide then
-        self.quests[qKey].mode = 2
+        self.quests[qName] = 2
         --GFDebugPrint(("%s now only completes quest %s "):format(tostring(self.inst), qName))
     end
 
@@ -111,9 +101,8 @@ function QSQuestGiver:UpdateQuestMode(qName, appear, hide)
 end
 
 function QSQuestGiver:RemoveQuest(qName)
-    local qKey = GetQuestKey(qName, self.hash)
-    if qKey == nil or self.quests[qKey] == nil then return end
-    self.quests[qKey] = nil
+    if qName == nil or self.quests[qName] == nil then return end
+    self.quests[qName] = nil
     
     self.inst.replica.gfquestgiver:UpdateQuests()
     --GFDebugPrint(("%s now doesn't have quest %s "):format(tostring(self.inst), qName))
@@ -132,13 +121,13 @@ function QSQuestGiver:PickQuests(doer)
     if doercomp == nil or not self:HasQuests() then return end
     local offer, complete, inprogress = {}, {}, {}
 
-    for qKey, qData in pairs(self.quests) do
-        if doercomp:HasHashedQuest(qKey) then
-            if qData.mode ~= 1 then
-                table.insert(doercomp.currentQuests[qKey].status == 1 and complete or inprogress, qData.name)
+    for qName, qMode in pairs(self.quests) do
+        if doercomp:HasQuest(qName, self.hash) then
+            if qMode ~= 1 then
+                table.insert(doercomp:IsQuestDone(qName, self.hash) and complete or inprogress, qName)
             end
-        elseif qData.mode ~= 2 and doercomp:CanPickHashedQuest(qKey, qData.name) then
-            table.insert(offer, qData.name)
+        elseif qMode ~= 2 and doercomp:CanPickQuest(qName, self.hash) then
+            table.insert(offer, qName)
         end
     end
 
@@ -151,24 +140,20 @@ function QSQuestGiver:PickQuests(doer)
 end
 
 function QSQuestGiver:HasQuest(qName)
-    local qKey = GetQuestKey(qName, self.hash)
-    return qKey ~= nil and self.quests[qKey] ~= nil
+    return qName ~= nil and self.quests[qName] ~= nil
 end
 
 function QSQuestGiver:IsGiverFor(qName)
-    local qKey = GetQuestKey(qName, self.hash)
-    return self.quests[qKey] ~= nil and self.quests[qKey].mode ~= 2
+    return self.quests[qName] ~= nil and self.quests[qName] ~= 2
 end
 
 function QSQuestGiver:IsCompleterFor(qName)
-    local qKey = GetQuestKey(qName, self.hash)
-    return self.quests[qKey] ~= nil and self.quests[qKey].mode ~= 1
+    return self.quests[qName] ~= nil and self.quests[qName] ~= 1
 end
 
 -----------------------------------------
 --unsafe methods-------------------------
 -----------------------------------------
-
 function QSQuestGiver:OnQuestAccepted(qName, doer)
     local qInst = ALL_QUESTS[qName]
     if qInst.hideOnPick then self:SetMode(qName, 2) end
@@ -192,7 +177,7 @@ end
 -----------------------------------------
 
 --onsleep|onwake functions are required for hosts without caves
---don't need to update marks or anything else if theentity sleeps
+--don't need to update marks or anything else if the entity is sleeping
 function QSQuestGiver:OnEntitySleep()
     if not GFGetIsDedicatedNet() and self:HasQuests() then
         self.inst.replica.gfquestgiver:StopTrackingPlayer()
@@ -206,37 +191,18 @@ function QSQuestGiver:OnEntityWake()
 end
 
 function QSQuestGiver:OnSave()
-    local savedata = {}
-    savedata.hash = self.hash
-    savedata.quests = {}
-    for k, v in pairs(self.quests) do
-        savedata.quests[k] = 
-        {
-            mode = v.mode,
-            name = v.name
-        }
-    end
-
-    return savedata
+    return {hash = self.hash}
 end
 
 function QSQuestGiver:OnLoad(data)
-    if data then
-        if data.hash then
-            if self._hashTask ~= nil then
-                self._hashTask:Cancel()
-                self._hashTask = nil
-            end
-
-            self.hash = GFGetWorld().components.gfquesttracker:TrackGiver(self.inst, data.hash)
-            self.inst.replica.gfquestgiver._hash:set(self.hash)
+    if data and data.hash then
+        if self._hashTask ~= nil then
+            self._hashTask:Cancel()
+            self._hashTask = nil
         end
 
-        if data.quests then
-            for k, v in pairs(data.quests) do
-                self:AddQuest(v.name, v.mode)
-            end
-        end
+        self.hash = GFGetWorld().components.gfquesttracker:TrackGiver(self.inst, data.hash)
+        self.inst.replica.gfquestgiver._hash:set(self.hash)
     end
 end
 
@@ -244,11 +210,11 @@ function QSQuestGiver:GetDebugString()
     local give = {}
     local pass = {}
 
-    for qName, qData in pairs(self.quests) do
-        if qData.mode ~= 2 then
+    for qName, qMode in pairs(self.quests) do
+        if qMode ~= 2 then
             table.insert(give, qName)
         end
-        if qData.mode ~= 1 then
+        if qMode ~= 1 then
             table.insert(pass, qName)
         end
     end

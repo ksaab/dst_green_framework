@@ -39,6 +39,7 @@ Assets =
 }
 
 local GF = require "gf_init_globals"
+require "memspikefix"
 
 modimport "scripts/gf_var_tuning.lua"
 modimport "scripts/gf_var_strings.lua"
@@ -61,3 +62,6 @@ modimport "scripts/gf_creatures_brains.lua"
 GF.InitStatusEffect("damage_boost")
 GF.InitStatusEffect("movement_boost")
 GF.InitDialogueNode("default_node")
+--GF.InitQuest("kill_five_spiders")
+--GF.InitQuest("kill_one_tentacle")
+--GF.InitQuest("_collect_items")

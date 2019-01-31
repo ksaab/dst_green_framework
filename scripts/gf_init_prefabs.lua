@@ -1,21 +1,26 @@
 --Green Framework. Please, don't copy any files or functions from this mod, because it can break other mods based on the GF.
 local _G = GLOBAL
+local tonumber = _G.tonumber
+local ALL_QUESTS = _G.GF.GetQuests()
+local QUESTS_IDS = _G.GF.GetQuestsIDs()
+local ALL_DIALOGUE_NODES = _G.GF.GetDialogueNodes()
+local DIALOGUE_NODES_IDS = _G.GF.GetDialogueNodesIDs()
 
 --[[Init specified prefabs]]--------
 ------------------------------------
-local function PigmanFrindlyFireCheck(self, target)
+local function PigmanFriendlyFireCheck(self, target)
     return self.inst.components.combat.target ~= target
         and ((target:HasTag("pig") and not target:HasTag("werepig")) 
             or (self.inst.components.follower and self.inst.components.follower.leader == target))
 end
 
-local function BunnymanFrindlyFireCheck(self, target)
+local function BunnymanFriendlyFireCheck(self, target)
     return self.inst.components.combat.target ~= target
         and (target:HasTag("manrabbit")
             or (self.inst.components.follower and self.inst.components.follower.leader == target))
 end
 
-local function ChessFrindlyFireCheck(self, target)
+local function ChessFriendlyFireCheck(self, target)
     return self.inst.components.combat.target ~= target
         and (target:HasTag("chess")
             or (self.inst.components.follower and self.inst.components.follower.leader == target))
@@ -30,7 +35,7 @@ local prefabs_post_init =
     pigman = function(inst) 
         if _G.GFGetIsMasterSim() then
             inst:AddComponent("gfspellcaster")
-            inst.components.gfspellcaster:SetIsTargetFriendlyFn(PigmanFrindlyFireCheck)
+            inst.components.gfspellcaster:SetIsTargetFriendlyFn(PigmanFriendlyFireCheck)
 
             inst:AddComponent("gfinterlocutor")
             inst.components.gfinterlocutor.phrase = "PIGMAN_DEFAULT"
@@ -38,9 +43,12 @@ local prefabs_post_init =
             inst.components.gfinterlocutor.defaultNode = true
 
             inst:AddComponent("gfquestgiver")
+            inst.components.gfquestgiver:AddQuest("kill_five_spiders")
+            inst.components.gfquestgiver:AddQuest("kill_one_tentacle")
+            inst.components.gfquestgiver:AddQuest("collect_ten_rocks")
         end
     end,
-    pigking = function(inst) 
+--[[     pigking = function(inst) 
         if _G.GFGetIsMasterSim() then
             inst:AddComponent("gfinterlocutor")
             inst.components.gfinterlocutor.phrase = "PIGKING_DEFAULT"
@@ -51,7 +59,7 @@ local prefabs_post_init =
     bunnyman = function(inst) 
         if _G.GFGetIsMasterSim() then
             inst:AddComponent("gfspellcaster")
-            inst.components.gfspellcaster:SetIsTargetFriendlyFn(BunnymanFrindlyFireCheck)
+            inst.components.gfspellcaster:SetIsTargetFriendlyFn(BunnymanFriendlyFireCheck)
 
             inst:AddComponent("gfinterlocutor")
             inst:AddComponent("gfquestgiver")
@@ -60,25 +68,14 @@ local prefabs_post_init =
     knight = function(inst) 
         if _G.GFGetIsMasterSim() then
             inst:AddComponent("gfspellcaster")
-            inst.components.gfspellcaster:SetIsTargetFriendlyFn(ChessFrindlyFireCheck)
+            inst.components.gfspellcaster:SetIsTargetFriendlyFn(ChessFriendlyFireCheck)
         end
-    end,
+    end, ]]
 }
 
 for prefab, fn in pairs(prefabs_post_init) do
     AddPrefabPostInit(prefab, fn)
 end
-
---init interlocutors
---want to talk functions
-
-
---add prefabs to the communicative entities list
---GFAddCommunicative("pigman", "PIGMAN_DEFAULT", PigWantToTalk, PigTalkReact, true, 3)
---GFAddCommunicative("bunnyman", "BUNNYMAN_DEFAULT", PigWantToTalk, PigTalkReact, true, 4)
---GFAddCommunicative("pigking", "PIGKING_DEFAULT", nil, nil, true, 4)
---GFAddCommunicative("livingtree", "LIVINGTREE_DEFAULT", nil, nil, true, 4)
---GFAddCommunicative("livingtree_halloween", "LIVINGTREE_DEFAULT", nil, nil, true, 4)
 
 --[[Init the world]]----------------
 ------------------------------------
@@ -97,39 +94,73 @@ end)
 
 --[[Init player]]-------------------
 ------------------------------------
+local function DeserealizeDialogStrings(classified)
+    local _parent = classified._parent
+    if _parent == nil --[[or _parent ~= _G.GFGetPlayer()]] then return end
+    --print("Deserelizing", classified._gfPDPushDialog:value())
+    local strArr = classified._gfPDPushDialog:value():split('^')
+    --strArr[1] - dialog string
+    --strArr[2] - offered quests
+    --strArr[3] - completable quests
+    --strArr[4] - events (handled by click)
+    --strArr[5] - string (no handle, just info)
+
+    local offer, complete, events, strings = {}, {}, {}, {}
+
+    if strArr[2] ~= '_' then
+        for k, qID in pairs(strArr[2]:split(';')) do
+            local qName = QUESTS_IDS[tonumber(qID)]
+            if qName ~= nil then table.insert(offer, qName) end
+        end
+    end
+
+    if strArr[3] ~= '_' then
+        for k, qID in pairs(strArr[3]:split(';')) do
+            local qName = QUESTS_IDS[tonumber(qID)]
+            if qName ~= nil then table.insert(complete, qName) end
+        end
+    end
+
+    if strArr[4] ~= '_' then
+        for k, deid in pairs(strArr[4]:split(';')) do
+            local deName = DIALOGUE_NODES_IDS[tonumber(deid)]
+            if deName ~= nil then table.insert(events, deName) end
+        end
+    end
+
+    _parent:PushEvent("gfPDChoiseDialog", 
+    {
+        dString = strArr[1], 
+        gQuests = offer,
+        cQuests = complete,
+        events = events,
+    })
+end
+
+local function  CloseDialogDirty(classified)
+    local _parent = classified._parent
+    if _parent ~= nil --[[and _parent == _G.GFGetPlayer()]] then _parent:PushEvent("gfPDCloseDialog") end
+end
+
 AddPrefabPostInit("player_classified", function(inst)
-    --spell casting system
-    --inst._spellString = _G.net_string(inst.GUID, "GFSpellCaster._spellString", "gfsetspellsdirty") --all spells for player (these spell appear on the spell panel)
-    --inst._spellRecharges = _G.net_string(inst.GUID, "GFSpellCaster._spellRecharges", "gfsetrechargesdirty") --all recharges for player (doesn't include any item recharges)
-    --inst._forceUpdateRecharges = _G.net_event(inst.GUID, "gfupdaterechargesdirty") --trigger which forces updating for client interface
-
-    --quest system
-    --inst._pushQuest = _G.net_string(inst.GUID, "GFQuestDoer._pushQuest", "gfquestpushdirty") --contains offered quest
-    --inst._completeQuest = _G.net_string(inst.GUID, "GFQuestDoer._completeQuest", "gfquestcompletedirty") --contains completed quest, may be should be united with the previous one
-    --inst._forceCloseDialog = _G.net_event(inst.GUID, "gfquestclosedialogdirty") --push event to the client, if a quest giver is to far
-    --inst._infoLine = _G.net_string(inst.GUID, "GFQuestDoer._infoLine", "gfquestinfodirty") --sending an info about quest stages
-    --inst._currQuestsList = _G.net_string(inst.GUID, "GFQuestDoer._currQuestsList", "GF.GetQuestsdirty")
-
-    --events
-    inst._gfPDPushDialog = _G.net_string(inst.GUID, "GFQuestDoer._gfPDPushDialog", "gfPDPushDialogDirty")
-    inst._gfPDCloseDialog = _G.net_event(inst.GUID, "gfPDCloseDialogDirty") 
-    --syncs
-    --inst._gfQSOfferString = _G.net_string(inst.GUID, "GFQuestDoer._gfQSOfferString", "gfQSOfferDirty")
-    --inst._gfQSCompleteString = _G.net_string(inst.GUID, "GFQuestDoer._gfQSCompleteString", "gfQSCompleteDirty")
-    --inst._gfQSCurrentString = _G.net_string(inst.GUID, "GFQuestDoer._gfQSCurrentString", "gfQSCurrentDirty")
-    --streams
+    --quests
     inst._gfQSEventStream = _G.net_strstream(inst, "GFQuestDoer._gfQSEventStream", "gfQSEventDirty")
     inst._gfQSInfoStream = _G.net_strstream(inst, "GFQuestDoer._gfQSInfoStream", "gfQSInfoDirty")
-
     --effects
     inst._gfEFEventStream = _G.net_strstream(inst, "GFEffectable._gfEFEventStream", "gfEFEventDirty")
-
     --caster
     inst._gfSCForceRechargesEvent = _G.net_event(inst.GUID, "gfSCForceRechargesEvent") 
     inst._gfSCSpellStream = _G.net_strstream(inst, "GFSpellCaster._gfSCSpellStream", "gfSCEventDirty")
-
     --pointer
     inst._gfCurrentSpell = _G.net_int(inst.GUID, "GFSpellPointer._gfCurrentSpell", "gfSPDirty")
+    --dialogues
+    inst._gfPDPushDialog = _G.net_string(inst.GUID, "GFQuestDoer._gfPDPushDialog", "gfPDPushDialogDirty")
+    inst._gfPDCloseDialog = _G.net_event(inst.GUID, "gfPDCloseDialogDirty") 
+    --dialogues sync
+    if not _G.GFGetIsMasterSim() then
+        inst:ListenForEvent("gfPDPushDialogDirty", DeserealizeDialogStrings)
+        inst:ListenForEvent("gfPDCloseDialogDirty", CloseDialogDirty)
+    end
 
     local _oldOnEntityReplicated = nil
     if inst.OnEntityReplicated ~= nil then
@@ -159,96 +190,16 @@ end)
 
 --this function checks spell friendlyfire for players
 local function PlayerFFCheck(self, target)
-    return (target:HasTag("player") and not isPVPEnabled)
+    return self.inst == target
+        or (target:HasTag("player") and not isPVPEnabled)
         or (self.inst.components.leader and self.inst.components.leader:IsFollower(target))
 end
 
-local function EnableTagFix()
-    return GetModConfigData("tag_overflow_fix") == 1
-        or (GetModConfigData("tag_overflow_fix") == 0 
-            and not (_G.KnownModIndex:IsModEnabled("workshop-1378549454")       -- GEM API has the same fix
-                or _G.KnownModIndex:IsModTempEnabled("workshop-1378549454")))   -- But it doesn't fix issues with replicas
-end
-
-_G.GF.EnableTagFix = EnableTagFix()
-if _G.GF.EnableTagFix then print("Green! Player tag fix is enabled.") end
-
 local function InitPlayer(player)
-    if _G.GFGetIsMasterSim() and _G.GF.EnableTagFix then
-        --honestly - I didn't want to make this, 
-        --but - I suppose - there is no way to avoid tag-overlow crashes
-        local nonImportantTags = 
-        {
-            freezable = true,
-            scarytoprey = true,
-            debuffable = true,
-            lightningtarget = true,
-            polite = true,
-        }
-        player._tagCounter = 0
-        --print(player:GetDebugString())
-        local tags = string.sub(string.match(player:GetDebugString(), "Tags:.-\n"), 7)
-        if tags == nil then
-            print("can not calculate counter for existing tags!")
-        else
-            player._overflowedTags = {}
-            --print("tags:", tags)
-
-            local tmptags = {}
-
-            for id in tags:gmatch("%S+") do 
-                if nonImportantTags[id] then --string.sub(id, 1, 1) ~= '_' then
-                    table.insert(tmptags, id)
-                    player:RemoveTag(id)
-                    --print("tag", id, "is a server-only tag, removing")
-                else
-                    player._tagCounter = player._tagCounter + 1 
-                    player._overflowedTags[id] = true
-                    --print("tag", id, "is a client required tag")
-                end
-            end
-
-            tags = nil
-
-            player._HasTag = player.HasTag
-            player._AddTag = player.AddTag
-            player._RemoveTag = player.RemoveTag
-
-            player._overFlag = false
-
-            function player:HasTag(tag)
-                return --[[player:_HasTag(tag) or ]]player._overflowedTags[tag] ~= nil
-            end
-
-            function player:AddTag(tag)
-                --print("adding tag via new function, total tags ", player._tagCounter + 1)
-                if player._overflowedTags[tag] == nil then
-                    player._overflowedTags[tag] = true
-                    player._tagCounter = player._tagCounter + 1 
-                    if player._tagCounter <= 30 then
-                        player:_AddTag(tag)
-                    end
-                end
-            end
-
-            function player:RemoveTag(tag)
-                if player._overflowedTags[tag] then
-                    player._overflowedTags[tag] = nil
-                    player._tagCounter = player._tagCounter - 1 
-                    player:_RemoveTag(tag)
-                end
-            end
-
-            for _, tag in pairs(tmptags) do
-                player:AddTag(tag)
-            end
-        end
-    end
-
     player:AddComponent("gfspellpointer")
-    player:AddComponent("gfplayerdialog")
     
     if _G.GFGetIsMasterSim() then
+        player:AddComponent("gfplayerdialog")
         player:AddComponent("gfquestdoer")
         player:AddComponent("gfeffectable")
         player:AddComponent("gfeventreactor")
@@ -270,6 +221,14 @@ local function InitPlayer(player)
         end)
     end
 
+    player:ListenForEvent("gfDialogButton", function(inst, data)
+        if _G.GFGetIsMasterSim() then
+            inst.components.gfplayerdialog:HandleButton(data.event, data.name, data.hash)
+        else
+            SendModRPCToServer(_G.MOD_RPC["GreenFramework"]["GFDIALOGRPC"], data.event, data.name, data.hash)
+        end
+    end)
+
     player:PushEvent("gfQGUpdateQuests")
 end
 
@@ -286,7 +245,8 @@ local invalidPrefabs =
     tumbleweedspawner = true,
     antlion_spawner = true,
     multiplayer_portal = true,
-    dragonfly_spawner = true
+    dragonfly_spawner = true,
+    gf_tag_fix = true
 }
 
 AddPrefabPostInitAny(function(inst) 

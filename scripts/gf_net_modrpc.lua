@@ -14,29 +14,18 @@ AddModRPCHandler("GreenFramework", "GFCLICKSPELLBUTTON", function(inst, spellNam
     end
 end)
 
-AddModRPCHandler("GreenFramework", "GFEVENTRPC", function(inst, event)
-    if type(event) == "string" and inst.components.gfplayerdialog ~= nil then
-        inst.components.gfplayerdialog:HandleEventButton(event)
-    end
-end)
-
-AddModRPCHandler("GreenFramework", "GFQUESTRPC", function(inst, event, qName, hash)
-
-    ------------------------
-    --events:
-    --0 - accept a quest
-    --1 - decline a quest
-    --2 - abandon a quest
-    --3 - complete 
-    ------------------------
-
-    if type(event) == "number"
-        and (qName == nil or type(qName) == "string")
-        and (hash == nil or type(hash) == "string")
-        and inst.components.gfplayerdialog ~= nil
-    then
-        inst.components.gfplayerdialog:HandleQuestRPC(event, qName, hash)
-    else
-        print("wrong data for GFQUESTRPC ", inst, qName, type(qName), event, type(event))
+AddModRPCHandler("GreenFramework", "GFDIALOGRPC", function(inst, event, name, hash)
+    --type: 0 - close, 1 - dialogue node, 2 - accept a quest, 3 - complete a quest, 4 - abandon a quest
+    if event ~= nil and type(event) == "number" and inst.components.gfplayerdialog ~= nil then
+        if event == 0 then
+            inst.components.gfplayerdialog:HandleButton(0)
+        elseif event >= 1 and event <= 3 and type(name) == "string" then
+            inst.components.gfplayerdialog:HandleButton(event, name)
+        elseif event == 4 and type(name) == "string" and type(hash) == "string" then
+            inst.components.gfplayerdialog:HandleButton(4, name, hash)
+        else
+            _G.GFDebugPrint(string.format("Green! Invalid RPC data for %s, event - %s, name - %s, hash - %s",
+                tostring(inst), tostring(event), tostring(name), tostring(hash)))
+        end
     end
 end)

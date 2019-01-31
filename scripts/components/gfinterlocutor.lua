@@ -56,11 +56,12 @@ function GFInterlocutor:WantsToTalk(doer)
             and (inst.components.burnable == nil   or not inst.components.burnable:IsBurning()) 
             and (inst.components.freezable == nil  or not inst.components.freezable:IsFrozen()) 
             and (inst.components.sleeper == nil    or not inst.components.sleeper:IsAsleep()) 
+            and (inst.components.health == nil     or not inst.components.health:IsDead())
 end
 
 function GFInterlocutor:SetMoodUpdateFn(event, fn)
     if event == nil or fn == nil then return end
-    self.inst:WatchWorldState(event, fn)
+    self.inst:WatchWorldState(event or "cycle", fn)
 end
 
 function GFInterlocutor:SetMood(mood, val)
@@ -82,10 +83,14 @@ function GFInterlocutor:CheckMood(node)
 end
 
 function GFInterlocutor:StartConversation(doer)
-    if doer == nil or doer.components.gfplayerdialog == nil then return end
-    
-    local conversations = {}
-    local important, quests
+    if doer == nil 
+        or doer.components.gfplayerdialog == nil 
+        or not doer:IsValid()
+        or not self.inst:IsValid()
+        or not self:WantsToTalk(doer)
+    then 
+        return false
+    end
 
     for k, v in pairs(self.conversations) do
         if self:CheckMood(v) and v:PreCheck(doer, self.inst) then
@@ -102,35 +107,6 @@ function GFInterlocutor:StartConversation(doer)
     end
 
     return false
-
-    --[[ for k, v in pairs(self.conversations) do
-        if v:PreCheck(doer, self.inst) then
-            if v.priority ~= 0 then
-                if important == nil or v.priority > important.priority then important = v end
-            else
-                table.insert(conversations, v.name)
-            end
-        end
-    end
-
-    if important ~= nil then 
-        important:RunNode(doer, self.inst) 
-        return true
-    end
-
-    if self.inst.components.gfquestgiver and doer.components.gfquestdoer then
-        quests = self.inst.components.gfquestgiver:PickQuests(doer)
-    end
-
-    local dialogData = 
-    {
-        [1] = self.phrase,
-        [2] = conversations,
-        [3] = quests ~= nil and quests.offer or nil,
-        [4] = quests ~= nil and quests.complete or nil,
-    }
-
-    doer.components.gfplayerdialog:StartConversationWith(self.inst, dialogData) ]]
 end
 
 function GFInterlocutor:RemoveListeners()

@@ -74,3 +74,66 @@ AddComponentPostInit( "health", function(self)
         _oldDoDelta(self, amount, overtime, cause, ignore_invincible, afflicter, ignore_absorb)
     end
 end)
+
+local function tryconsume(self, v, amount)
+    if v.components.stackable == nil then
+        self:RemoveItem(v):Remove()
+        return 1
+    elseif v.components.stackable.stacksize > amount then
+        v.components.stackable:SetStackSize(v.components.stackable.stacksize - amount)
+        return amount
+    else
+        amount = v.components.stackable.stacksize
+        self:RemoveItem(v, true):Remove()
+        return amount
+    end
+
+    return 0
+end
+
+AddComponentPostInit("inventory", function(self) 
+    function self:ConsumeItemsByFn(fn, amount)
+        if amount == nil or amount <= 0 then
+            return
+        end
+
+        for k = 1, self.maxslots do
+            local v = self.itemslots[k]
+            if v ~= nil and fn(v) then
+                amount = amount - tryconsume(self, v, amount)
+                if amount <= 0 then
+                    return
+                end
+            end
+        end
+
+        if self.activeitem ~= nil and self.activeitem.prefab == item then
+            amount = amount - tryconsume(self, self.activeitem, amount)
+            if amount <= 0 then
+                return
+            end
+        end
+    
+        local overflow = self:GetOverflowContainer()
+        if overflow ~= nil then
+            overflow:ConsumeItemsByFn(fn, amount)
+        end
+    end
+end)
+
+AddComponentPostInit("container", function(self) 
+    function self:ConsumeItemsByFn(fn, amount)
+        if amount <= 0 then
+            return
+        end
+
+        for k, v in pairs(self.slots) do
+            if fn(v) then
+                amount = amount - tryconsume(self, v, amount)
+                if amount <= 0 then
+                    return
+                end
+            end
+        end
+    end
+end)

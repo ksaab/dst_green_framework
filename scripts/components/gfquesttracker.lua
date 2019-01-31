@@ -22,6 +22,7 @@ local GFQuestTracker = Class(function(self, inst)
     self.giverHashes = {}
     self.questDoers = AllPlayers
 
+    self.hash = "_wld"
     self.worldHash = GenerateHash()
 
     self._giverRemoved = function(giver)

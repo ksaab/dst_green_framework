@@ -141,31 +141,12 @@ AddAction("GFLETSTALK", "Talk", function(act)
     local giver = act.target
     local doer = act.doer
 
-    if giver ~= nil 
-        and doer.components.gfplayerdialog ~= nil
-        and giver.components.gfinterlocutor ~= nil
-        and (not giver.components.health or not giver.components.health:IsDead())
-    then
-        --check is character is busy
-        if not giver.components.gfinterlocutor:WantsToTalk(doer) then
+    if giver ~= nil and giver.components.gfinterlocutor ~= nil then
+        if giver.components.gfinterlocutor:StartConversation(doer) then
+            return true
+        else
             return false, "TARGETBUSY"
         end
-
-        return giver.components.gfinterlocutor:StartConversation(doer)
-        --[[ local giveComp = giver.components.gfinterlocutor
-        local quests, events, strings = giver.components.gfinterlocutor:Collect(doer)
-        local dString = giver.components.gfinterlocutor:GetString()
-
-        local offer, complete, inprogress
-        if quests ~= nil then
-            offer = quests.offer
-            complete = quests.complete
-            inprogress = quests.inprogress
-            --print(_G.PrintTable(quests))
-        end
-
-        doer.components.gfplayerdialog:PushDialog(dString, offer, complete, events, strings)
-        doer.components.gfplayerdialog:StartTrack(giver, true) ]]
     end
 
     return true

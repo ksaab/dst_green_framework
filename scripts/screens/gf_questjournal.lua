@@ -19,9 +19,7 @@ local QCOLOUS =
 }
 
 local function CancelQuest(owner, qName, hash)
-    if qName and owner and owner.components.gfplayerdialog then
-        owner.components.gfplayerdialog:HandleQuestButton(2, qName, hash)
-    end
+    owner:PushEvent("gfDialogButton", {event = 4, name = qName, hash = hash})
 end
 
 local QuestJournalScreen = Class(Screen, function(self, owner)
@@ -72,29 +70,7 @@ local QuestJournalScreen = Class(Screen, function(self, owner)
     self.closeButton:SetPosition(0, -250)
     
     if self.owner.replica.gfquestdoer == nil then print("QuestJournalScreen: gfquestdoer component isn't valid!") return end
-    
-    self.strings = {}
-    
-    local hasQuests = false
-    local i = 1
-    for qKey, qData in pairs(self.owner.replica.gfquestdoer.currentQuests) do
-        hasQuests = true
-        local qName = qData.name
-        if ALL_QUESTS[qName] ~= nil then
-            self.strings[i] = 
-            {
-                GetQuestString(self.owner, qName, "title"),
-                string.format(GetQuestString(self.owner, qName, "status"), 
-                    unpack(ALL_QUESTS[qName]:GetStatusData(self.owner, qData))
-                ),
-                qData.status + 1,
-                qName,
-                qData.hash,
-            }
-
-            i = i + 1
-        end
-    end
+    self.strings = self.owner.replica.gfquestdoer:GetInfoForJournal()
 
     local function RowConstructor(context, index)
         local widget = Widget("QuestBlock")
@@ -119,7 +95,7 @@ local QuestJournalScreen = Class(Screen, function(self, owner)
 
     local function ApplyFn(context, widget, data, index) 
         if data and not data.empty then 
-            widget.title:SetColour(QCOLOUS[data[3]] or WHITE)
+            widget.title:SetColour(QCOLOUS[data[3] + 1] or WHITE)
             widget.title:SetString(data[1] or "epmty")
             widget.goal:SetString(data[2] or "epmty")
             if data[3] ~= 3 then
@@ -152,7 +128,7 @@ local QuestJournalScreen = Class(Screen, function(self, owner)
         scrollbar_height_offset = -100,
     }
 
-    if hasQuests then
+    if self.strings ~= nil then
         self.scroll = self.proot:AddChild(TEMPLATES.ScrollingGrid(self.strings, opts))
     else
         self.noquests = self.proot:AddChild(Text(UIFONT, 35, STRINGS.GF.HUD.JOURNAL.NOQUESTS))

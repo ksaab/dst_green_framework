@@ -75,8 +75,9 @@ STRINGS.GF.HUD =
     },
     QUEST_INFORMER = 
     {
-        QUEST_STARTED = "Quest strated.",
+        QUEST_STARTED = "Quest strated!",
         QUEST_ABANDONED = "Quest abandoned.",
+        QUEST_COMPLETED = "Quest completed!",
         QUEST_DONE = "done!",
         QUEST_UNDONE = "conditions are no longer met.",
         QUEST_FAILED = "failed!",
@@ -128,6 +129,31 @@ STRINGS.GF.CONVERSATIONS =
 STRINGS.GF.QUESTS = 
 {
     DEFAULT_REMINDER = "I think I've promised to help here.",
+    KILL_FIVE_SPIDERS = 
+    {
+        TITLE = "Pesky spiders",
+        DESC = "This spiders annoy me. &name, please, take them away from here.",
+        COMPLETION = "Thanks, &name. Take this. Don't ask where I stored it.",
+        GOAL = "Kill five spiders",
+        STATUS = "Spiders killed: %s/%s",
+    },
+    KILL_ONE_TENTACLE = 
+    {
+        TITLE = "Horrible Thing",
+        DESC = "Tentacles are dangerous. Kill one and make this world a bit safer.",
+        COMPLETION = "Thanks, &name. Take this.",
+        GOAL = "Kill a purple tentacle",
+        STATUS = "Tentacle killed",
+    },
+    COLLECT_TEN_ROCKS = 
+    {
+        TITLE = "Stone Home",
+        DESC = "I need rocks, don't aks why, just bring them.",
+        COMPLETION = "Thanks, &name. Take this.",
+        GOAL = "Find 10 rocks",
+        STATUS = "Rocks collected %s/%s.",
+    },
+
     _EX_KILL_FIVE_SPIDERS = 
     {
         TITLE = "Pesky spiders.",

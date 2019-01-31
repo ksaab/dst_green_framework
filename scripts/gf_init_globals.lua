@@ -1,6 +1,6 @@
 --Green Framework. Please, don't copy any files or functions from this mod, because it can break other mods based on the GF.
 local GF = {}
-local DEVMODE = true
+local DEVMODE = false
 
 rawset(_G, "GF", GF)
 rawset(GF, "DevMode", DEVMODE)
@@ -310,8 +310,16 @@ end
 
 --returns an instance of the dialogue_node class
 --should be used like the CreateEntity function but for nodes
-function GF.CreateQuest()
-    local quest = require "gf_class_quest"
+function GF.CreateQuest(archetype)
+    local quest
+
+    if archetype ~= nil then
+        quest = require("quests/archetypes/" .. archetype)
+        assert(quest, "could not load a spell " .. (archetype or ""))
+    else
+        quest = require "gf_class_quest"
+    end
+
     return quest()
 end
 
@@ -441,7 +449,6 @@ end
 --THE SIM HELPERS-----------------------------
 ----------------------------------------------
 --############################################
-
 function GF.PumpkinTest(entity)
     entity = entity or AllPlayers[1]
     local x, y, z = entity.Transform:GetWorldPosition()
@@ -599,11 +606,21 @@ end
 ----------------------------------------------
 --############################################
 
-function GetQuestKey(qName, hash)
+--[[ function GetQuestKey(qName, hash)
     if qName ~= nil and Quests[qName] ~= nil then
         return Quests[qName].unique
             and qName
             or (hash ~= nil and qName .. '#' .. hash or nil)
+    end
+
+    return nil
+end ]]
+
+function GetQuestKey(qName, hash)
+    if qName ~= nil and Quests[qName] ~= nil then
+        return Quests[qName].unique
+            and "_wld"
+            or (hash ~= nil) and hash or "_wld"
     end
 
     return nil

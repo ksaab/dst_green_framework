@@ -43,37 +43,31 @@ local QuestInformer = Class(Widget, function(self, owner)
 end)
 
 function QuestInformer:RefreshLines(data)
-    if data == nil or data.qName == nil then return end
+    if data == nil or self.owner.replica.gfquestdoer == nil then return end
 
-    for i = self.lineCount, 2, -1 do
-        local str = self.textLines[i - 1]:GetString()
-        if str ~= "" then
-            local line = self.textLines[i]
-            line:SetString(str)
-            line:Show()
-            line.lifetime = self.textLines[i - 1].lifetime
-            line.showed = true
+    local qString = self.owner.replica.gfquestdoer:GetInformerLine(data.qEvent, data.qName, data.qKey)
+    if qString ~= nil and qString ~= self.textLines[1]:GetString() then        --don't want to show repeated lines
+        for i = self.lineCount, 2, -1 do                    --move old strings down
+            local str = self.textLines[i - 1]:GetString()
+            if str ~= "" then
+                local line = self.textLines[i]
+                line:SetString(str)
+                line:Show()
+                line.lifetime = self.textLines[i - 1].lifetime
+                line.showed = true
+            end
         end
-    end
 
-    if self.textLines[1]:GetString() == "" then
-        self:StartUpdating()
-    end
+        if self.textLines[1]:GetString() == "" then
+            self:StartUpdating()
+        end
 
-    local qString = data.qEvent ~= nil 
-        and (QEVENTS[data.qEvent + 1] or STRINGS.GF.HUD.ERROR)
-        or GetQuestString(self.owner, data.qName, "status")
-        
-    --print(data.qKey, self.owner.replica.gfquestdoer[data.qKey])
-    local str = string.format("%s - %s", 
-        GetQuestString(self.owner, data.qName, "title"), 
-        string.format(qString, unpack(ALL_QUESTS[data.qName]:GetStatusData(self.owner, self.owner.replica.gfquestdoer.currentQuests[data.qKey])))
-    )
-    local line = self.textLines[1]
-    line:SetString(str)
-    line:Show()
-    line.lifetime = MAX_LIFETIME
-    line.showed = true
+        local line = self.textLines[1]
+        line:SetString(qString)
+        line:Show()
+        line.lifetime = MAX_LIFETIME
+        line.showed = true
+    end
 end
 
 function QuestInformer:OnUpdate(dt)

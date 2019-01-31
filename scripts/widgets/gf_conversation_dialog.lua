@@ -59,20 +59,30 @@ local TYPES =
     }
 }
 
-local function Accept(owner, qName)
-    owner.components.gfplayerdialog:HandleQuestButton(0, qName)
-    owner:PushEvent("gfPDCloseDialog")
-    --GFDebugPrint("CLIENT: you've accepted the quest.", qName)
-end
-
-local function Close(owner, qName)
-    owner.components.gfplayerdialog:HandleQuestButton(1)
+local function Close(owner)
+    --owner.components.gfplayerdialog:HandleQuestButton(1)
+    owner:PushEvent("gfDialogButton", {event = 0})
     owner:PushEvent("gfPDCloseDialog")
     --GFDebugPrint("CLIENT: you've refused the quest.", qName)
 end
 
+local function Node(owner, qName)
+    --owner.components.gfplayerdialog:HandleQuestButton(1)
+    owner:PushEvent("gfDialogButton", {event = 1, name = qName})
+    --owner:PushEvent("gfPDCloseDialog")
+    --GFDebugPrint("CLIENT: you've refused the quest.", qName)
+end
+
+local function Accept(owner, qName)
+    --owner.components.gfplayerdialog:HandleQuestButton(0, qName)
+    owner:PushEvent("gfDialogButton", {event = 2, name = qName})
+    owner:PushEvent("gfPDCloseDialog")
+    --GFDebugPrint("CLIENT: you've accepted the quest.", qName)
+end
+
 local function Complete(owner, qName)
-    owner.components.gfplayerdialog:HandleQuestButton(3, qName)
+    --owner.components.gfplayerdialog:HandleQuestButton(3, qName)
+    owner:PushEvent("gfDialogButton", {event = 3, name = qName})
     owner:PushEvent("gfPDCloseDialog")
     --GFDebugPrint("CLIENT: you've trying to complete the quest.", qName)
 end
@@ -218,8 +228,9 @@ function ConversationDialog:ShowChoiseDialog(data)
         local event = events[j]
         lines[i] = window:AddChild(TEMPLATES.StandardButton(
             function() 
-                self:CloseDialog()
-                self.owner.components.gfplayerdialog:HandleEventButton(event)
+                --self:CloseDialog()
+                Node(self.owner, event)
+                --self.owner.components.gfplayerdialog:HandleEventButton(event)
             end, 
             GetConversationString(self.owner, event, "line"),  
             {200, 40}
@@ -232,7 +243,7 @@ function ConversationDialog:ShowChoiseDialog(data)
     self:Show()
     window.middleButton:Show()
     window.middleButton:SetText(TYPE.MIDDLE_BUTTON.TEXT)
-    window.middleButton:SetOnClick(function() Close(self.owner, "_") end)
+    window.middleButton:SetOnClick(function() Close(self.owner) end)
 
     window.title:Show()
     window.body:Show()

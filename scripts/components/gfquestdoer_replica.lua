@@ -1,61 +1,71 @@
 local ALL_QUESTS = GF.GetQuests()
 local QUESTS_IDS = GF.GetQuestsIDs()
 
-local function QRStatusChanged(doer, event, qKey, qName)
-    if not GFGetIsDedicatedNet() then
-        local self = doer.replica.gfquestdoer
-        if not GFGetIsMasterSim() and qKey ~= nil and self.currentQuests[qKey] ~= nil then
-            --update quest replica on the client side
-            self.currentQuests[qKey].status = event
-        end
+--TODO - rewrite this mess
+local QEVENTS = 
+{
+    [0] = STRINGS.GF.HUD.QUEST_INFORMER.QUEST_UNDONE,
+    [1] = STRINGS.GF.HUD.QUEST_INFORMER.QUEST_DONE,
+    [2] = STRINGS.GF.HUD.QUEST_INFORMER.QUEST_FAILED,
+    [3] = STRINGS.GF.HUD.QUEST_INFORMER.QUEST_STARTED,
+    [4] = STRINGS.GF.HUD.QUEST_INFORMER.QUEST_ABANDONED,
+    [5] = STRINGS.GF.HUD.QUEST_INFORMER.QUEST_COMPLETED,
+}
 
-        --push event
-        doer:PushEvent("gfQSInformerPush", {qKey = qKey, qName = qName, qEvent = event})
+local function QRStatusChanged(doer, event, qKey, qName)
+    local self = doer.replica.gfquestdoer
+
+    if self.currentQuests[qName] ~= nil and self.currentQuests[qName][qKey] ~= nil then
+        self.currentQuests[qName][qKey].status = event
     end
 
+    doer:PushEvent("gfQSInformerPush", {qKey = qKey, qName = qName, qEvent = event})
     --GFDebugPrint(("QDoerReplica: Quest %s has new status %i on %s"):format(qKey, event, tostring(doer)))
 end
 
-local function QRCreate(doer, event, qKey, qName, hash)
-    if not GFGetIsMasterSim() then
-        local self = doer.replica.gfquestdoer
-        --create a local quest for clients
-        if self.currentQuests[qKey] == nil then
-            local t = {status = 0, name = qName, hash = hash}
-            self.currentQuests[qKey] = t
-            ALL_QUESTS[qName]:Accept(doer, t)
-        end
+local function QRCreate(doer, event, qKey, qName)
+    local self = doer.replica.gfquestdoer
+
+    if self.currentQuests[qName] == nil then 
+        self.currentQuests[qName] = {}
+    end
+    if self.currentQuests[qName][qKey] == nil then
+        local t = {status = 0}
+        self.currentQuests[qName][qKey] = t
+        ALL_QUESTS[qName]:Accept(doer, t)
     end
 
-    --push event
-    if not GFGetIsDedicatedNet() then
-        doer:PushEvent("gfQSInformerPush", {qKey = qKey, qName = qName, qEvent = event})
-    end
-
+    doer:PushEvent("gfQSInformerPush", {qKey = qKey, qName = qName, qEvent = event})
     --GFDebugPrint(("QDoerReplica: Strating quest %s on %s"):format(qKey, tostring(doer)))
 end
 
 local function QRRemove(doer, event, qKey, qName)
-    --remove a local quest for clients
-    if not GFGetIsMasterSim() then
-        doer.replica.gfquestdoer.currentQuests[qKey] = nil
+    local self = doer.replica.gfquestdoer
+
+    if self.currentQuests[qName] ~= nil and self.currentQuests[qName][qKey] ~= nil then
+        self.currentQuests[qName][qKey] = nil
+        if next(self.currentQuests[qName]) == nil then
+            self.currentQuests[qName] = nil
+        end
     end
 
-    --push event
-    if not GFGetIsDedicatedNet() and event == 4 then
-        doer:PushEvent("gfQSInformerPush", {qKey = qKey, qName = qName, qEvent = event})
-    end
-
+    if event == 4 then doer:PushEvent("gfQSInformerPush", {qKey = qKey, qName = qName, qEvent = event}) end
     --GFDebugPrint(("QDoerReplica: Removing quest %s from %s"):format(qKey, tostring(doer)))
 end
 
 local function QRCooldown(doer, event, qKey, qName)
-    
-    --remove a local quest for clients
-    if not GFGetIsMasterSim() then
-        --local qKey = GetQuestKey(qName, hash)
-        local self = doer.replica.gfquestdoer
-        self.completedQuests[qKey] = event == 8 and true or nil
+    local self = doer.replica.gfquestdoer
+
+    if event == 8 then
+        if self.completedQuests[qName] == nil then 
+            self.completedQuests[qName] = {}
+        end
+        self.completedQuests[qName][qKey] = true
+    elseif self.completedQuests[qName] ~= nil and self.completedQuests[qName][qKey] ~= nil then
+        self.completedQuests[qName][qKey] = nil
+        if next(self.completedQuests[qName]) == nil then
+            self.completedQuests[qName] = nil
+        end
     end
 
     --GFDebugPrint(("QDoerReplica: %s cooldown changed for %s"):format(qName, tostring(doer)))
@@ -87,13 +97,12 @@ local function DeserealizeEventStream(classified)
             local qName = QUESTS_IDS[tonumber(qArr[2])]
             if qName ~= nil then
                 local qEvent = tonumber(qArr[1])
-                local hash = qArr[3]
-                local qKey = GetQuestKey(qName, hash)
+                local qKey = qArr[3]
 
                 if qEvent <= 2 then
                     QRStatusChanged(classified._parent, qEvent, qKey, qName)
                 elseif qEvent == 3 then
-                    QRCreate(classified._parent, qEvent, qKey, qName, hash)
+                    QRCreate(classified._parent, qEvent, qKey, qName)
                 elseif qEvent == 4 or qEvent == 5 then
                     QRRemove(classified._parent, qEvent, qKey, qName)
                 elseif qEvent == 8 or qEvent == 9 then
@@ -124,16 +133,11 @@ local function DoDeserealizeInformerStream(classified)
         if #qArr == 3 or #qArr == 4 then --don't want to process if the string is wrong
             local qName = QUESTS_IDS[tonumber(qArr[1])]
             if qName ~= nil then
-                local qKey = GetQuestKey(qName, qArr[2])
-                if self.currentQuests[qKey] ~= nil then
-                    if not GFGetIsMasterSim() then
-                        ALL_QUESTS[qName]:Deserialize(classified._parent, self.currentQuests[qKey], qArr[3])
-                    end
-
+                local qKey = qArr[2]
+                if self.currentQuests[qName][qKey] ~= nil then
+                    ALL_QUESTS[qName]:Deserialize(classified._parent, self.currentQuests[qName][qKey], qArr[3])
                     if qArr[4] == nil then
-                        if not GFGetIsDedicatedNet() then
-                            classified._parent:PushEvent("gfQSInformerPush", {qKey = qKey, qName = qName})
-                        end
+                        classified._parent:PushEvent("gfQSInformerPush", {qKey = qKey, qName = qName})
                     end
                 end
             end
@@ -175,21 +179,10 @@ function GFQuestDoer:AttachClassified(classified)
 
     --collecting events directly from the classified prefab
     if not GFGetIsMasterSim() then 
-        
-    end
-
-    if not GFGetIsDedicatedNet() then
         self.inst:ListenForEvent("gfQSEventDirty", DeserealizeEventStream, classified)
         self.inst:ListenForEvent("gfQSInfoDirty", DeserealizeInformerStream, classified)
-        --[[ self.inst:ListenForEvent("gfQSOfferDirty", DeserealizeOfferString, classified)
-        self.inst:ListenForEvent("gfQSEventCDialogDirty", PushCloseDialog, classified)
-        self.inst:ListenForEvent("gfQSCompleteDirty", DeserealizeCompleteString, classified) ]]
     end
 end
-
------------------------------------
---safe methods---------------------
------------------------------------
 
 function GFQuestDoer:DetachClassified()
     --default things, like in the others replicatable components
@@ -197,75 +190,120 @@ function GFQuestDoer:DetachClassified()
     self.ondetachclassified = nil
 end
 
-function GFQuestDoer:UpdateQuestList(qName, qHash, status)
-    local qKey = GetQuestKey(qName, qHash)
-    if qKey == nil then return end
+-----------------------------------
+--data methods---------------------
+-----------------------------------
+function GFQuestDoer:GetInfoForJournal()
+    local res = {}
+    local i = 1
+    for qName, qStorage in pairs(self.currentQuests) do
+        for qKey, qData in pairs(qStorage) do
+            res[i] = 
+            {
+                GetQuestString(self.inst, qName, "title"),
+                string.format(GetQuestString(self.inst, qName, "status"), 
+                    unpack(ALL_QUESTS[qName]:GetStatusData(self.inst, qData))),
+                qData.status,
+                qName,
+                qKey,
+            }
 
-    --if self.inst ~= ThePlayer or not GFGetIsDedicatedNet() then
-    self.classified._gfQSEventStream:push_string(string.format("%i;%i;%s", 
-        status, ALL_QUESTS[qName].id, qHash or '_'))
-    --end
+            i = i + 1
+        end
+    end
+
+    return (#res > 0) and res or nil
 end
 
-function GFQuestDoer:UpdateQuestInfo(qName, qHash, nopush)
-    local qKey = GetQuestKey(qName, qHash)
-    if qKey == nil then return end
+function GFQuestDoer:GetInformerLine(qEvent, qName, qKey)
+    local qString = ""
+    if qName == nil or qKey == nil then return false end
+    
+    if qEvent ~= nil then
+        qString = string.format("%s - %s", 
+            GetQuestString(self.inst, qName, "title"), 
+            string.format(QEVENTS[qEvent] or STRINGS.GF.HUD.ERROR))
+    elseif self:HasQuest(qName, qKey) then 
+        qString = string.format("%s - %s", 
+            GetQuestString(self.inst, qName, "title"), 
+            string.format(GetQuestString(self.inst, qName, "status"), 
+                unpack(ALL_QUESTS[qName]:GetStatusData(self.inst, self.currentQuests[qName][qKey]))))
+    end
 
-    local qInst = ALL_QUESTS[qName]
-    local qData = self.currentQuests[qKey]
+    return qString
+end
 
-    if nopush then
-        self.classified._gfQSInfoStream:push_string(string.format("%i;%s;%s;0", 
-            qInst.id, qHash or '_', qInst:Serialize(self.inst, qData)))
+function GFQuestDoer:UpdateQuestList(qName, qKey, status)
+    if GFGetPlayer() == self.inst then
+        if not GFGetIsDedicatedNet() then
+            self.inst:PushEvent("gfQSOnQuestUpdate")
+            if status ~= 8 and status ~= 9 then
+                self.inst:PushEvent("gfQSInformerPush", {qKey = qKey, qName = qName, qEvent = status})
+            end
+        end
     else
-        self.classified._gfQSInfoStream:push_string(string.format("%i;%s;%s", 
-            qInst.id, qHash or '_', qInst:Serialize(self.inst, qData)))
+        self.classified._gfQSEventStream:push_string(string.format("%i;%i;%s", 
+            status, ALL_QUESTS[qName].id, qKey or '_'))
     end
 end
 
---get info by quest name + giver hash
--------------------------------------------
-function GFQuestDoer:CanPickQuest(qName, hash)
-    local qKey = GetQuestKey(qName, hash)
+function GFQuestDoer:UpdateQuestInfo(qName, qKey, nopush)
+    local qInst = ALL_QUESTS[qName]
+    local qData = self.currentQuests[qName][qKey]
+
+    if GFGetPlayer() == self.inst then
+        if not GFGetIsDedicatedNet() then
+            self.inst:PushEvent("gfQSInformerPush", {qKey = qKey, qName = qName})
+        end
+    else
+        self.classified._gfQSInfoStream:push_string(string.format(nopush == true and "%i;%s;%s;0" or "%i;%s;%s", 
+            qInst.id, qKey or '_', qInst:Serialize(self.inst, qData)))
+    end
+end
+
+-----------------------------------------
+--info methods---------------------------
+-----------------------------------------
+function GFQuestDoer:CanPickQuest(qName, qGiver)
+    local qKey = GetQuestKey(qName, qGiver)
+    return qKey ~= nil --q is valid
+        and (self.currentQuests[qName] == nil or self.currentQuests[qName][qKey] == nil)    --don't has this quest (same quest and giver)
+        and (self.completedQuests[qKey] == nil or self.completedQuests[qName][qKey] == nil) --don't has cooldown for this quest
+        and ALL_QUESTS[qName]:CheckBeforeGive(self.inst) --player can pick the quest (maybe we don't want to give the quest to a specified character)
+end
+
+function GFQuestDoer:CanCompleteQuest(qName, qGiver)
+    local qKey = GetQuestKey(qName, qGiver)
+    local qData = (self.currentQuests[qName] ~= nil) and self.currentQuests[qName][qKey] or nil
     return qKey ~= nil 
-        and self.currentQuests[qKey] == nil 
-        and self.completedQuests[qKey] == nil
-        and ALL_QUESTS[qName]:CheckBeforeGive(self.inst)
+        and qData ~= nil 
+        and qData.status == 1
+        and ALL_QUESTS[qName]:CheckBeforeComplete(self.inst, qData)
 end
 
-function GFQuestDoer:HasQuest(qName, hash)
-    local qKey = GetQuestKey(qName, hash)
-    return qKey ~= nil and self.currentQuests[qKey] ~= nil
-end
-
-function GFQuestDoer:IsQuestDone(qName, hash)
-    local qKey = GetQuestKey(qName, hash)
+function GFQuestDoer:HasQuest(qName, qGiver)
+    local qKey = GetQuestKey(qName, qGiver)
     return qKey ~= nil 
-        and self.currentQuests[qKey] ~= nil 
-        and self.currentQuests[qKey].status == 1
+        and self.currentQuests[qName] ~= nil
+        and self.currentQuests[qName][qKey] ~= nil
 end
 
---get info by key
--------------------------------------------
-function GFQuestDoer:CanPickHashedQuest(qKey, qName)
+function GFQuestDoer:HasNamedQuest(qName)
+    return self.currentQuests[qName] ~= nil
+end
+
+function GFQuestDoer:IsQuestDone(qName, qGiver)
+    local qKey = GetQuestKey(qName, qGiver)
+    local qData = (self.currentQuests[qName] ~= nil) and self.currentQuests[qName][qKey] or nil
     return qKey ~= nil 
-        and self.currentQuests[qKey] == nil 
-        and self.completedQuests[qKey] == nil
-        and ALL_QUESTS[qName]:CheckBeforeGive(self.inst)
+        and qData ~= nil 
+        and qData.status == 1
 end
 
-function GFQuestDoer:IsHashedQuestDone(qKey)
-    return qKey ~= nil 
-        and self.currentQuests[qKey] ~= nil 
-        and self.currentQuests[qKey].status == 1
+function GFQuestDoer:GetQuestsDetalis()
+    print(PrintTable(self.currentQuests))
+    print(PrintTable(self.completedQuests))
 end
 
-function GFQuestDoer:HasHashedQuest(qKey)
-    return qKey ~= nil and self.currentQuests[qKey] ~= nil
-end
-
------------------------------------
---unsafe methods-------------------
------------------------------------
 
 return GFQuestDoer

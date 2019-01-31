@@ -21,6 +21,10 @@ local Quest = Class(function(self, qName)
     self.RegisterFn = nil
     self.UnregisterFn = nil
 
+    --main
+    self.event = nil
+    self.MainFn = nil
+
     --status
     self.AcceptFn = nil
     self.CompleteFn = nil
@@ -29,6 +33,10 @@ local Quest = Class(function(self, qName)
     --checks
     self.CheckOnGiveFn = nil
     self.CheckOnCompleteFn = nil
+
+    --save
+    self.SaveFn = nil
+    self.LoadFn = nil
 
     --reward
     self.RewardFn = nil
@@ -78,6 +86,14 @@ function Quest:Abandon(doer, qData)
     --GFDebugPrint(("%s has abandoned the quest — %s!"):format(tostring(doer), self.name))
 end
 
+function Quest:RunMainFn(doer, qData, event, eventData)
+    --print(("%s runs main function, %s"):format(self.name, event))
+    if self.MainFn then 
+        self:MainFn(doer, qData, eventData, event) 
+    end
+    --GFDebugPrint(("%s has abandoned the quest — %s!"):format(tostring(doer), self.name))
+end
+
 function Quest:GiverComplete(giver, doer)
     if self.GiverCompleteFn then self:GiverCompleteFn(giver, doer) end
     --GFDebugPrint(("%s has completed the quest — %s!"):format(tostring(doer), self.name))
@@ -96,13 +112,13 @@ function Quest:GetName()
     return self.name
 end
 
-function Quest:OnSave(qData)
-    return self.SaveFn and self:SaveFn(qData) or nil
+function Quest:OnSave(doer, qData)
+    return self.SaveFn and self:SaveFn(doer, qData) or nil
     --return (self.savable and self.SerializeFn and self.DeserializeFn) and self:SerializeFn(doer, data) or false
 end
 
-function Quest:OnLoad(qData, string)
-    if self.LoadFn ~= nil then self:LoadFn(qData, string) end
+function Quest:OnLoad(doer, qData, string)
+    if self.LoadFn ~= nil then return self:LoadFn(doer, qData, string) end
     --if self.DeserializeFn then self:DeserializeFn(doer, data) end
 end
 
