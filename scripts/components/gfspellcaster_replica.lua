@@ -193,7 +193,7 @@ function GFSpellCaster:HandleIconClick(sName)
         and not inst:HasTag("busy")
         and (not inst.replica.rider or not inst.replica.rider:IsRiding())
         and self:IsSpellValidForCaster(sName)
-        and self:PreCastCheck(sName)
+        --and self:PreCastCheck(sName)
     then
         SendModRPCToServer(MOD_RPC["GreenFramework"]["GFCLICKSPELLBUTTON"], sName)
     end

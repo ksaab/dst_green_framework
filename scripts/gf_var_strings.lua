@@ -104,6 +104,10 @@ STRINGS.GF.CONVERSATIONS =
         TITLE = "Conversation",
         TEXT = "Hello, do you want to talk with me?",
     },
+    TRADE_DEFAULT = 
+    {
+        LINE = "Let's trade.",
+    },
     PIGMAN_DEFAULT = 
     {
         TITLE = "Pigman",
@@ -190,5 +194,9 @@ STRINGS.GF.SPELLS = {
     SHOOT = 
     {
         TITLE = "Shoot"
+    },
+    THROW_WEAPON = 
+    {
+        TITLE = "Throw"
     },
 }

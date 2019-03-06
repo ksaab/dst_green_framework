@@ -146,10 +146,17 @@ local ConversationDialog = Class(Widget, function(self, owner)
     self.inst:ListenForEvent("gfPDCloseDialog", function(player) self:CloseDialog() end, owner)
     self.inst:ListenForEvent("gfPDCompleteDialog", function(player, data) self:ShowCompleteDialog(data) end, owner)
     
+    --self.inst:ListenForEvent("gfShopOpen", function(player, list) self:OpenShop(list) end, owner)
+    --self.inst:ListenForEvent("gfShopClose", function(player) self:CloseShop() end, owner)
+    
     print("Quest dialog was added to ", owner)
 end)
 
 function ConversationDialog:CloseDialog(data)
+    if self.shopDialog ~= nil then
+        self.shopDialog:Close()
+    end
+
     self:Hide()
 
     local window = self.window
@@ -308,6 +315,20 @@ function ConversationDialog:ShowCompleteDialog(data)
     window.body:Show()
     window.title:SetString(GetQuestString(self.owner, qName, "title"))
     window.body:SetString(GetQuestString(self.owner, qName, "completion"))
+end
+
+function ConversationDialog:OpenShop(list)
+    print(list, PrintTable(list))
+    
+    if self.shopDialog ~= nil then
+        self.shopDialog:Open(list)
+    end
+end
+
+function ConversationDialog:CloseShop()
+    if self.shopDialog ~= nil then
+        self.shopDialog:Close()
+    end
 end
 
 

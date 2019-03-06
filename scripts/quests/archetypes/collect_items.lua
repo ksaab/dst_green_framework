@@ -25,20 +25,20 @@ local function CountItems(self, doer)
 end
 
 local function QuestTrack(self, doer, qData, eData)
-    if data == nil or data.item == nil or self.checkItemFn(data.item) then
+    if eData == nil or eData.item == nil or self.checkItemFn(eData.item) then
         local qDoerComp = doer.components.gfquestdoer
         local has = CountItems(self, doer)
         if has >= self.requiredNumber then
             if qData.status == 0 then
                 qData.count = math.min(has, self.requiredNumber)
-                qDoerComp:SetQuestDone(self.name, qGiver, true)
+                qDoerComp:SetQuestDone(self.name, qData.key, true)
             end
         else
             qData.count = has
             if qData.status == 1 then
-                qDoerComp:SetQuestDone(self.name, qGiver, false)
+                qDoerComp:SetQuestDone(self.name, qData.key, false)
             else
-                qDoerComp:UpdateQuestInfo(self.name, qGiver)
+                qDoerComp:UpdateQuestInfo(self.name, qData.key)
             end
         end
     end

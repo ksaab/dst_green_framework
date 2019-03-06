@@ -10,11 +10,13 @@ local defaultRMBAction = STRINGS.GF.HUD.CONTROLLER_DEFAULTS.RMB
 
 --screens
 local PopJournal = require "screens/gf_questjournal"
+local PopShop = require "screens/gf_shop"
 
 --widgets
 local EffectsPanel = require "widgets/gf_effects_panel"
 local SpellPanel = require "widgets/gf_spellpanel"
 local ConversationDialog = require "widgets/gf_conversation_dialog"
+local ShopDialog = require "widgets/gf_shop_dialog"
 local QuestInformer = require "widgets/gf_questinformer"
 local ImageButton = require "widgets/imagebutton"
 
@@ -33,6 +35,8 @@ AddClassPostConstruct( "widgets/controls", function(self)
 	self.inv.gfSpellPanel = self.inv:AddChild(SpellPanel(owner))
 
 	self.gfConversationDialog = self:AddChild(ConversationDialog(owner))
+	--self.gfConversationDialog.shopDialog = self:AddChild(ShopDialog(owner))
+
 	self.gfQuestInformer = self.top_root:AddChild(QuestInformer(owner)) 
 
 	self.mapcontrols.gfJournalButton = self.mapcontrols:AddChild(ImageButton("images/gfquestjournal.xml", "journalbutton.tex", "journalbutton.tex", nil, nil, nil, {1,1}, {0,0}))

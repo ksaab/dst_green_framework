@@ -72,7 +72,7 @@ local function GetInterlocutor(inst)
 end
 
 local function KeepConversation(inst)
-	return inst.components.gfinterlocutor.isBusy
+	return inst.components.gfinterlocutor ~= nil and inst.components.gfinterlocutor.isBusy
 end
 
 local function MakeCalmChatter(self)
@@ -96,3 +96,5 @@ AddBrainPostInit("pigbrain", MakeCaster)
 AddBrainPostInit("pigbrain", MakeCalmChatter)
 AddBrainPostInit("bunnymanbrain", MakeCaster)
 AddBrainPostInit("knightbrain", MakeCaster)
+AddBrainPostInit("ghostbrain", MakeCaster)
+AddBrainPostInit("abigailbrain", MakeCaster)

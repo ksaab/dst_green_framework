@@ -20,6 +20,7 @@ PrefabFiles =
     "gf_dummies",
     "gf_reticules",
     "gf_quest_mark",
+    "gf_dummy_throw",
 }
 
 Assets = 
@@ -39,7 +40,7 @@ Assets =
 }
 
 local GF = require "gf_init_globals"
-require "memspikefix"
+--require "memspikefix"
 
 modimport "scripts/gf_var_tuning.lua"
 modimport "scripts/gf_var_strings.lua"
@@ -62,6 +63,25 @@ modimport "scripts/gf_creatures_brains.lua"
 GF.InitStatusEffect("damage_boost")
 GF.InitStatusEffect("movement_boost")
 GF.InitDialogueNode("default_node")
+--GF.InitDialogueNode("trade_default")
+
+GF.InitSpell("spell_throw")
+
+GF.MakeEquipThrowable("spear", "fly")
+GF.MakeEquipThrowable("spear_wathgrithr", "fly")
+
+--GF.MakeEquipThrowable("axe", "vspin")
+--GF.MakeEquipThrowable("hammer", "hspin")
+--GF.MakeEquipThrowable("shovel", "rfly")
+
 --GF.InitQuest("kill_five_spiders")
 --GF.InitQuest("kill_one_tentacle")
 --GF.InitQuest("_collect_items")
+
+--GF.AddCurrency("meat", "meat.tex", "images/inventoryimages.xml")
+--GF.AddCurrency("gem", "redgem.tex")
+--GF.AddCurrency("gold")
+
+--GF.AddShopItem("spear",     "Spear",        "spear", nil,       nil,    "spear.tex",    "images/inventoryimages.xml")
+--GF.AddShopItem("meat",      "Meat",         nil, "gem",     5,      "meat.tex",     "images/inventoryimages.xml")
+--GF.AddShopItem("armorruins",  "Tulecite Armor",    "strawhat", "meat",    10,     "armorruins.tex", "images/inventoryimages.xml")

@@ -27,42 +27,8 @@ local pigmanCastSpell = State{
 	},
 }
 
---[[ local pigmanQuestReact = State{
-    name = "gfquestreaction",
-    tags = { "busy" },
-
-	onenter = function(inst)
-		inst.Physics:Stop()
-        inst.AnimState:PlayAnimation("idle_happy")
-        inst.SoundEmitter:PlaySound("dontstarve/pig/oink")
-	end,
-
-    events =
-    {
-        EventHandler("animover", function(inst)
-			inst.sg:GoToState("idle")
-		end),
-	},
-} ]]
-
 AddStategraphState("pig", pigmanCastSpell)
---AddStategraphState("pig", pigmanQuestReact)
-
 AddStategraphActionHandler("pig", ActionHandler(ACTIONS.GFCASTSPELL, "castspell"))
---[[ AddStategraphEvent("pig", EventHandler("gfQGGetAttention", function(inst)
-		print("event listened")
-        if (inst.components.health ~= nil and not inst.components.health:IsDead())
-            or (giver.components.combat ~= nil and giver.components.combat.target ~= nil) 
-            or (giver.components.burnable ~= nil and giver.components.burnable:IsBurning()) 
-            or (giver.components.freezable ~= nil and giver.components.freezable:IsFrozen()) 
-            or (giver.components.sleeper ~= nil and giver.components.sleeper:IsAsleep()) 
-        then
-            return
-        end
-
-        inst.sg:GoToState("gfquestreaction")
-    end)
-) ]]
 
 local knightCastSpell = State{
     name = "castspell",
@@ -89,3 +55,32 @@ local knightCastSpell = State{
 
 AddStategraphState("knight", knightCastSpell)
 AddStategraphActionHandler("knight", ActionHandler(ACTIONS.GFCASTSPELL, "castspell"))
+
+local ghostCastSpell = State{
+    name = "castspell",
+    tags = { "casting", "busy" },
+
+	onenter = function(inst)
+		inst.Physics:Stop()
+        inst.AnimState:PlayAnimation("dissipate")
+        inst.AnimState:PushAnimation("appear")
+        inst.SoundEmitter:PlaySound(inst:HasTag("girl") and "dontstarve/ghost/ghost_girl_howl" or "dontstarve/ghost/ghost_howl")
+	end,
+	
+    events =
+    {
+        EventHandler("animover", function(inst)
+			if not inst.AnimState:AnimDone() then
+                if inst.AnimState:IsCurrentAnimation("appear") then
+                    inst.SoundEmitter:PlaySound(inst:HasTag("girl") and "dontstarve/ghost/ghost_girl_howl" or "dontstarve/ghost/ghost_howl")
+                    inst:PerformBufferedAction()
+                end
+            else
+                inst.sg:GoToState("idle")
+			end
+		end),
+	},
+}
+
+AddStategraphState("ghost", ghostCastSpell)
+AddStategraphActionHandler("ghost", ActionHandler(ACTIONS.GFCASTSPELL, "castspell"))

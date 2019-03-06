@@ -44,7 +44,7 @@ end)
 
 --set component
 function GFSpellCaster:AddSpell(sName)
-    if sName == nil or ALL_SPELLS[sName] == nil then return false end
+    if sName == nil or ALL_SPELLS[sName] == nil or self.spells[sName] == true then return false end
 
     self.spells[sName] = true
     if self.onClient then
@@ -60,6 +60,7 @@ function GFSpellCaster:AddSpells(spells)
 end
 
 function GFSpellCaster:RemoveSpell(sName)
+    if self.spells[sName] == nil then return end
     self.spells[sName] = nil
     if self.onClient then
         self.inst.replica.gfspellcaster:RemoveSpell(sName)
@@ -111,7 +112,9 @@ function GFSpellCaster:CastSpell(sName, target, pos, item, noRecharge, spellPara
 
     local sInst = ALL_SPELLS[sName]
 
-    if not sInst:DoCastSpell(self.inst, target, pos, item, spellParams) then return false end
+    --if not sInst:DoCastSpell(self.inst, target, pos, item, spellParams) then return false end
+    local res, reason = sInst:DoCastSpell(self.inst, target, pos, item, spellParams)
+    if not res then return false, reason end
 
     if not noRecharge then
         local doerRecharge = sInst:GetDoerRecharge(self.inst)
@@ -154,8 +157,12 @@ function GFSpellCaster:CanCastSpell(sName)
     end
 end
 
+function GFSpellCaster:IsSpellReady(sName)
+    return self.spellData[sName] == nil or GetTime() > self.spellData[sName].endTime
+end
+
 function GFSpellCaster:IsSpellValidForCaster(sName)
-    return self.spells[sName] ~= nil and self:CanCastSpell(sName)
+    return not ALL_SPELLS[sName].passive and self.spells[sName] ~= nil
 end
 
 --get component info
@@ -231,21 +238,23 @@ end
 
 function GFSpellCaster:HandleIconClick(sName)
     local inst = self.inst
-    if sName 
-        and ALL_SPELLS[sName] 
-        and not (inst:HasTag("playerghost") or inst:HasTag("corpse"))
-        and not inst:HasTag("busy")
-        and (not inst.components.rider or not inst.components.rider:IsRiding())
-        and self:IsSpellValidForCaster(sName)
-        and self:PreCastCheck(sName)
+    if sName and ALL_SPELLS[sName] --spell is correct
+        and self:IsSpellValidForCaster(sName) --player has the spell
+        and not (inst:HasTag("playerghost") or inst:HasTag("corpse")) --player is ready to
+        and not inst:HasTag("busy")                                   --cast the spell
+        and (not inst.components.rider or not inst.components.rider:IsRiding()) --player isn't mounted
     then
-        if ALL_SPELLS[sName].instant then
-            local act = BufferedAction(inst, inst, ACTIONS.GFCASTSPELL)
-            act.spell = sName
-            inst:ClearBufferedAction()
-            inst.components.locomotor:PushAction(act, true, true)
-        elseif inst.components.gfspellpointer then
-            inst.components.gfspellpointer:Enable(sName)
+        if self:IsSpellReady(sName) then
+            if ALL_SPELLS[sName].instant then
+                local act = BufferedAction(inst, inst, ACTIONS.GFCASTSPELL)
+                act.spell = sName
+                inst:ClearBufferedAction()
+                inst.components.locomotor:PushAction(act, true, true)
+            elseif inst.components.gfspellpointer then
+                inst.components.gfspellpointer:Enable(sName)
+            end
+        else
+            self.inst:PushEvent("gfSCCastFailed", "NOTREADY")
         end
     end
 end

@@ -29,3 +29,17 @@ AddModRPCHandler("GreenFramework", "GFDIALOGRPC", function(inst, event, name, ha
         end
     end
 end)
+
+AddModRPCHandler("GreenFramework", "GFSHOPRPC", function(inst, event, itemID)
+    --events: 0 - close, 1 - buy
+    if event ~= nil and type(event) == "number" and inst.components.gfplayerdialog ~= nil then
+        if event == 0 then
+            inst.components.gfplayerdialog:HandleShopButton(0)
+        elseif event == 1 and type(itemID) == "number" then
+            inst.components.gfplayerdialog:HandleShopButton(1, itemID)
+        else
+            _G.GFDebugPrint(string.format("Green! Invalid RPC data for %s, event - %s, item - %s",
+                tostring(inst), tostring(event), tostring(itemID)))
+        end
+    end
+end)

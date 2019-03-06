@@ -30,6 +30,18 @@ local function PigmanWantToTalk(talker, inst)
     return not inst:HasTag("werepig") and not inst:HasTag("sfhostile")
 end
 
+local pigkingShopList = 
+{
+    {
+        name = "spear",
+    },
+    {
+        name = "armorruins",
+        currency = "gem",
+        price = 5,
+    },
+}
+
 local prefabs_post_init = 
 {
     pigman = function(inst) 
@@ -43,26 +55,45 @@ local prefabs_post_init =
             inst.components.gfinterlocutor.defaultNode = true
 
             inst:AddComponent("gfquestgiver")
-            inst.components.gfquestgiver:AddQuest("kill_five_spiders")
-            inst.components.gfquestgiver:AddQuest("kill_one_tentacle")
-            inst.components.gfquestgiver:AddQuest("collect_ten_rocks")
+            --inst.components.gfquestgiver:AddQuest("kill_five_spiders")
+            --inst.components.gfquestgiver:AddQuest("kill_one_tentacle")
+            --inst.components.gfquestgiver:AddQuest("collect_ten_rocks")
         end
     end,
---[[     pigking = function(inst) 
+    ghost = function(inst)
         if _G.GFGetIsMasterSim() then
-            inst:AddComponent("gfinterlocutor")
-            inst.components.gfinterlocutor.phrase = "PIGKING_DEFAULT"
-
-            inst:AddComponent("gfquestgiver")
+            inst:AddComponent("gfspellcaster")
         end
     end,
+    abigail = function(inst)
+        if _G.GFGetIsMasterSim() then
+            inst:AddComponent("gfspellcaster")
+        end
+    end,
+    pigking = function(inst) 
+        if _G.GFGetIsMasterSim() then
+        inst:AddComponent("gfinterlocutor")
+        inst.components.gfinterlocutor.phrase = "PIGKING_DEFAULT"
+        inst.components.gfinterlocutor.defaultNode = true
+
+        inst:AddComponent("gfquestgiver")
+        --inst:AddComponent("gfshop")
+        --inst.components.gfshop:SetItemList(pigkingShopList)
+        end
+    end,
+    --[[goldnugget = function(inst)
+        if _G.GFGetIsMasterSim() then
+            inst:AddComponent("gfcurrency")
+            inst.components.gfcurrency:SetValue("gold", 1)
+        end
+    end]]
     bunnyman = function(inst) 
         if _G.GFGetIsMasterSim() then
             inst:AddComponent("gfspellcaster")
             inst.components.gfspellcaster:SetIsTargetFriendlyFn(BunnymanFriendlyFireCheck)
 
-            inst:AddComponent("gfinterlocutor")
-            inst:AddComponent("gfquestgiver")
+            --inst:AddComponent("gfinterlocutor")
+            --inst:AddComponent("gfquestgiver")
         end
     end,
     knight = function(inst) 
@@ -70,7 +101,7 @@ local prefabs_post_init =
             inst:AddComponent("gfspellcaster")
             inst.components.gfspellcaster:SetIsTargetFriendlyFn(ChessFriendlyFireCheck)
         end
-    end, ]]
+    end,
 }
 
 for prefab, fn in pairs(prefabs_post_init) do
@@ -142,10 +173,29 @@ local function  CloseDialogDirty(classified)
     if _parent ~= nil --[[and _parent == _G.GFGetPlayer()]] then _parent:PushEvent("gfPDCloseDialog") end
 end
 
+local function OpenShopDirty(classified)
+    local _parent = classified._parent
+    if _parent == nil then return end
+
+    local items = {}
+    local strArr = classified._gfShopString:value():split('^')
+    for _, item in pairs(strArr) do
+        local itemData = item:split(';')
+        local t = 
+        {
+            id = tonumber(itemData[1]),
+            currency = tonumber(itemData[2]),
+            price = itemData[3],
+        }
+        table.insert(items, t)
+    end
+
+    print("owner, list", owner, items)
+    _parent:PushEvent("gfShopOpen", items)
+    --_G.TheFrontEnd:PushScreen(PopShop(_parent, items))
+end
+
 AddPrefabPostInit("player_classified", function(inst)
-    --quests
-    inst._gfQSEventStream = _G.net_strstream(inst, "GFQuestDoer._gfQSEventStream", "gfQSEventDirty")
-    inst._gfQSInfoStream = _G.net_strstream(inst, "GFQuestDoer._gfQSInfoStream", "gfQSInfoDirty")
     --effects
     inst._gfEFEventStream = _G.net_strstream(inst, "GFEffectable._gfEFEventStream", "gfEFEventDirty")
     --caster
@@ -153,15 +203,21 @@ AddPrefabPostInit("player_classified", function(inst)
     inst._gfSCSpellStream = _G.net_strstream(inst, "GFSpellCaster._gfSCSpellStream", "gfSCEventDirty")
     --pointer
     inst._gfCurrentSpell = _G.net_int(inst.GUID, "GFSpellPointer._gfCurrentSpell", "gfSPDirty")
+    --dialogues sync
     --dialogues
     inst._gfPDPushDialog = _G.net_string(inst.GUID, "GFQuestDoer._gfPDPushDialog", "gfPDPushDialogDirty")
     inst._gfPDCloseDialog = _G.net_event(inst.GUID, "gfPDCloseDialogDirty") 
-    --dialogues sync
+    --quests
+    inst._gfQSEventStream = _G.net_strstream(inst, "GFQuestDoer._gfQSEventStream", "gfQSEventDirty")
+    inst._gfQSInfoStream = _G.net_strstream(inst, "GFQuestDoer._gfQSInfoStream", "gfQSInfoDirty")
+    --shopping
+    inst._gfShopString = _G.net_string(inst.GUID, "GFShopper._gfShopString", "gfShopDirty")
     if not _G.GFGetIsMasterSim() then
         inst:ListenForEvent("gfPDPushDialogDirty", DeserealizeDialogStrings)
         inst:ListenForEvent("gfPDCloseDialogDirty", CloseDialogDirty)
+        inst:ListenForEvent("gfShopDirty", OpenShopDirty)
     end
-
+    
     local _oldOnEntityReplicated = nil
     if inst.OnEntityReplicated ~= nil then
         _oldOnEntityReplicated = inst.OnEntityReplicated
@@ -219,6 +275,12 @@ local function InitPlayer(player)
                 player.components.talker:Say(_G.GetActionFailString(player, "GFDRINKIT", reason or "GENERIC"), 2.5)
             end
         end)
+
+        player:ListenForEvent("gfSCCastFailed", function(player, reason) 
+            if player.components.talker ~= nil then
+                player.components.talker:Say(_G.GetActionFailString(player, "GFCASTSPELL", reason or "GENERIC"), 2.5)
+            end
+        end)
     end
 
     player:ListenForEvent("gfDialogButton", function(inst, data)
@@ -226,6 +288,14 @@ local function InitPlayer(player)
             inst.components.gfplayerdialog:HandleButton(data.event, data.name, data.hash)
         else
             SendModRPCToServer(_G.MOD_RPC["GreenFramework"]["GFDIALOGRPC"], data.event, data.name, data.hash)
+        end
+    end)
+
+    player:ListenForEvent("gfShopButton", function(inst, data)
+        if _G.GFGetIsMasterSim() then
+            inst.components.gfplayerdialog:HandleShopButton(data.event, data.itemID)
+        else
+            SendModRPCToServer(_G.MOD_RPC["GreenFramework"]["GFSHOPRPC"], data.event, data.itemID)
         end
     end)
 
@@ -246,7 +316,6 @@ local invalidPrefabs =
     antlion_spawner = true,
     multiplayer_portal = true,
     dragonfly_spawner = true,
-    gf_tag_fix = true
 }
 
 AddPrefabPostInitAny(function(inst) 
@@ -262,13 +331,12 @@ AddPrefabPostInitAny(function(inst)
     if _G.GFGetIsMasterSim() then
         inst:AddComponent("gfeffectable")
         inst:AddComponent("gfeventreactor")
-        if inst.components.equippable 
-            and inst.components.equippable.equipslot == _G.EQUIPSLOTS.HANDS 
-            and inst.components.gfspellitem == nil
-        then
-            inst:AddComponent("gfspellitem")
-            if _G.GF.EntitiesBaseSpells[prefab] ~= nil then 
-                inst.components.gfspellitem:AddSpells(_G.GF.EntitiesBaseSpells[prefab]) 
+        if inst.components.equippable then
+            if inst.components.equippable.equipslot == _G.EQUIPSLOTS.HANDS and inst.components.gfspellitem == nil then
+                inst:AddComponent("gfspellitem")
+                if _G.GF.EntitiesBaseSpells[prefab] ~= nil then 
+                    inst.components.gfspellitem:AddSpells(_G.GF.EntitiesBaseSpells[prefab]) 
+                end
             end
         end
     end

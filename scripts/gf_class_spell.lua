@@ -159,7 +159,8 @@ function Spell:CanBeCastedBy(inst)
 end
 
 function Spell:DoCastSpell(...)
-    return self:spellfn(...)
+    local res, reason = self:spellfn(...)
+    return res, reason
 end
 
 --[[ function Spell:HasPostCast()

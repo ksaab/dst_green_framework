@@ -1,9 +1,11 @@
 --Green Framework. Please, don't copy any files or functions from this mod, because it can break other mods based on the GF.
 local GF = {}
-local DEVMODE = false
+local DEVMODE = true
+local DisableCritical = false
 
 rawset(_G, "GF", GF)
 rawset(GF, "DevMode", DEVMODE)
+rawset(GF, "DisableCritical", DisableCritical)
 
 function GF.CheckVersion() return true end
 function GF.GetVersion() return 2.0 end
@@ -65,6 +67,15 @@ local QuestsPostInits = {}
 rawset(GF, "Quests", Quests)
 rawset(GF, "QuestsIDs", QuestsIDs)
 
+local Currencies = {}
+local CurrenciesLinks = {}
+local ShopItems = {}
+local ShopItemsLinks = {}
+rawset(GF, "Currencies", Currencies)
+rawset(GF, "ShopItems", ShopItems)
+rawset(GF, "CurrenciesLinks", CurrenciesLinks)
+rawset(GF, "ShopItemsLinks", ShopItemsLinks)
+
 function GF.PostInitItemOfType(type, name, fn)
     local itemTypes = 
     {
@@ -92,6 +103,7 @@ end
 
 --*modmain* - this one loads a node from a file and adds it to the game
 function GF.InitDialogueNode(route)
+    --if GF.DisableCritical then print("InitDialogueNode function is inaccessible. Critical content is disabled") return false end
     local res = require("dialogue_nodes/" .. route)
     assert(res, "could not load an node " .. route)
 end
@@ -299,6 +311,7 @@ end
 
 --*modmain* - this one loads a node from a file and adds it to the game
 function GF.InitQuest(route)
+    --if GF.DisableCritical then print("InitQuest function is inaccessible. Critical content is disabled") return false end
     local res = require("quests/" .. route)
     assert(res, "could not load a quest " .. route)
 end
@@ -444,11 +457,70 @@ function GF.AddBaseSpells(prefab, ...)
     end
 end
 
+GF.ThrowableParams = {}
+
+function GF.MakeEquipThrowable(prefab, anim, onland, onhit, weight)
+    GF.AddBaseSpells(prefab, "throw_weapon")
+    GF.ThrowableParams[prefab] = anim
+    --[[{
+        anim = anim or "fly", --fly, hspin, vspin
+        onland = onland,
+        onhit = onhit,
+        weight = weight,
+    }]]
+end
+
+--############################################
+--trading-------------------------------------
+--############################################
+function GF.AddCurrency(name, image, atlas, warning)
+    --if GF.DisableCritical then print("AddCurrency function is inaccessible. Critical content is disabled") return false end
+    if CurrenciesLinks[name] == nil then
+        local currency = require("gf_class_currency")()
+        local id = #Currencies + 1
+
+        currency.name = name
+        currency.atlas = atlas or "images/inventoryimages.xml"
+        currency.image = image or "goldnugget.tex"
+        currency.warning = warning
+        currency.id = id
+
+        Currencies[id] = currency
+        CurrenciesLinks[name] = Currencies[id]
+    end
+end
+
+function GF.AddShopItem(name, dispname, onbuy, currency, value, image, atlas)
+    --if GF.DisableCritical then print("AddShopItem function is inaccessible. Critical content is disabled") return false end
+    currency = currency or "gold"
+    if ShopItemsLinks[name] == nil and CurrenciesLinks[currency] ~= nil then
+        local item = require("gf_class_shop_item")()
+        local id = #ShopItems + 1
+
+        item.name = name
+        item.dispname = dispname or name
+        item.onbuy = onbuy
+        item.currency = currency or "gold"
+        item.price = value or 1
+        item.atlas = atlas
+        item.image = image
+        item.id = id
+
+        ShopItems[id] = item
+        ShopItemsLinks[name] = ShopItems[id]
+
+        print(string.format("Shop Item with id %s created - currency - %s, price - %i", name, currency or "gold", value or 1))
+    end
+end
 --############################################
 ----------------------------------------------
 --THE SIM HELPERS-----------------------------
 ----------------------------------------------
 --############################################
+function GF:ForceDisableCriticalContent()
+    self.DisableCritical = true
+end
+
 function GF.PumpkinTest(entity)
     entity = entity or AllPlayers[1]
     local x, y, z = entity.Transform:GetWorldPosition()

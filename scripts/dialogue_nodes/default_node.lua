@@ -1,5 +1,9 @@
 local function RunNode(doer, interlocutor)
-    return {interlocutor.components.gfinterlocutor:GetString()}
+    local nodes
+    if interlocutor.components.gfshop ~= nil then
+        nodes = {"trade_default"}
+    end
+    return {interlocutor.components.gfinterlocutor:GetString(), nodes}
 end
 
 local function fn()

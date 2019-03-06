@@ -17,6 +17,9 @@ local function CreateEffect(id, value)
         effect:AddTag("positive")
         effect:AddTag("damage")
 
+        effect.pushToReplica = true    --need to push to all clients (hover on an entity)
+        effect.pushToClassified = true --need to push to the affected player (icon on the panel)
+
         effect.static = false
         effect.shared = "damage_boost"
 

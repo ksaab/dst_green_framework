@@ -2,6 +2,7 @@ local ALL_QUESTS = GF.GetQuests()
 local QUESTS_IDS = GF.GetQuestsIDs()
 local ALL_DIALOGUE_NODES = GF.GetDialogueNodes()
 local DIALOGUE_NODES_IDS = GF.GetDialogueNodesIDs()
+local PopShop = require "screens/gf_shop"
 
 local function TrackFail(inst)
     inst.components.gfplayerdialog:CloseDialog()
@@ -69,7 +70,7 @@ function GFPlayerDialog:StartConversationWith(interlocutor, data, pushQuests) --
 
     if pushQuests then
         local quests = (interlocutor.components.gfquestgiver ~= nil)
-            and interlocutor.components.gfquestgiver:PickQuests(doer)
+            and interlocutor.components.gfquestgiver:PickQuests(self.inst)
             or nil
         if quests ~= nil then
             self:PushDialog(data[1], data[2], quests.offer, quests.complete)
@@ -201,9 +202,17 @@ end
 --track methods--------------------------
 -----------------------------------------
 function GFPlayerDialog:StartTrack(interlocutor, checkDistance)
-    self:StopTrack()
-    if interlocutor == nil or interlocutor.components.gfinterlocutor == nil then return false end
+    if interlocutor == nil or interlocutor.components.gfinterlocutor == nil then 
+        print("ilocutor is nil")
+        self:StopTrack()
+        return false 
+    elseif self._trackInterlocutor == interlocutor then
+        print("ilocutor is same")
+        return true
+    end
 
+    self:StopTrack()
+    
     self._trackInterlocutor = interlocutor
     interlocutor.components.gfinterlocutor:SetListeners(self.inst)
 
@@ -211,7 +220,7 @@ function GFPlayerDialog:StartTrack(interlocutor, checkDistance)
         self._trackTask = self.inst:DoPeriodicTask(0.5, TrackInterlocutor, nil, interlocutor)
     end
 
-    --GFDebugPrint(("%s has started tracking %s"):format(tostring(self.inst), tostring(self._trackInterlocutor)))
+    GFDebugPrint(("%s has started tracking %s"):format(tostring(self.inst), tostring(self._trackInterlocutor)))
     return true
 end
 
@@ -225,7 +234,7 @@ function GFPlayerDialog:StopTrack()
         self._trackTask = nil
     end
 
-    --GFDebugPrint(("%s has stopped tracking %s"):format(tostring(self.inst), tostring(self._trackInterlocutor)))
+    GFDebugPrint(("%s has stopped tracking %s"):format(tostring(self.inst), tostring(self._trackInterlocutor)))
     self._trackInterlocutor = nil
 end
 
@@ -291,6 +300,44 @@ function GFPlayerDialog:HandleButton(event, name, hash)
         end
     else
         SendModRPCToServer(MOD_RPC["GreenFramework"]["GFDIALOGRPC"], event, name, hash)
+    end
+end
+
+function GFPlayerDialog:StartTradingWith(shop)
+    if shop == nil or shop.components.gfshop == nil then return false end
+    if self:StartTrack(shop) then
+        self:PushShopScreen(shop.components.gfshop:GetList())
+    end
+end
+
+function GFPlayerDialog:PushShopScreen(list)
+    if GFGetPlayer() == self.inst then
+        local t = {}
+        for k, v in pairs(list) do
+            table.insert(t, {id = k, currency = v.currency, price = v.price})
+        end
+
+        self.inst:PushEvent("gfShopOpen", t)
+        --TheFrontEnd:PushScreen(PopShop(self.inst, t))
+    else
+        local str = {}
+        for id, item in pairs(list) do
+            table.insert(str, string.format("%i;%i;%i", id, item.currency.id, item.price))
+        end
+        self.classified._gfShopString:set_local(str)
+        self.classified._gfShopString:set(str)
+    end
+end
+
+function GFPlayerDialog:HandleShopButton(event, itemID, num)
+    --events - 0 close dialog, 1 - buy something
+    if event == 0 then
+        print(self.inst, "closed shop")
+    elseif event == 1 then
+        local shop = self:GetTrackingEntity()
+        if shop ~= nil and shop.components.gfshop ~= nil and shop.components.gfshop:SellItems(self.inst, itemID, num) then
+            print(self.inst, "bought", GF.ShopItems[itemID].dispname)
+        end
     end
 end
 
