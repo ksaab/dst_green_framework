@@ -30,18 +30,15 @@ local function IsValidGround(pos)
 	return _G.TheWorld.Map:IsPassableAtPoint(pos:Get()) and not _G.TheWorld.Map:IsGroundTargetBlocked(pos)
 end
 
-local function CanCastSpell(spell, inst, item)
-    local itemValid = true
-    --check item if exists
-    if item and item.replica.gfspellitem then 
-        itemValid = item.replica.gfspellitem:CanCastSpell(spell)
-    end
+local function CanCastSpell(sName, inst, item, target, pos)
+	if not inst.replica.gfspellcaster:IsSpellReady(sName) then
+		return false, "NOTREADY"
+	end
+	if item and item.replica.gfspellitem and not item.replica.gfspellitem:IsSpellReady(sName) then --check item if exists
+		return false, "ITEMNOTREADY"
+	end
 
-    --check doer
-	local instValid = inst.replica.gfspellcaster and inst.replica.gfspellcaster:CanCastSpell(spell)
-	local precastCheck = ALL_SPELLS[spell]:PreCastCheck(inst)
-
-	return instValid and itemValid and precastCheck
+	return inst.replica.gfspellcaster:PreCastCheck(sName, target, pos)
 end
 
 --drink
@@ -835,50 +832,70 @@ AddStategraphActionHandler("wilson_client", ActionHandler(ACTIONS.GFLETSTALK, "g
 --AddStategraphActionHandler("wilson_client", ActionHandler(ACTIONS.GFTALKFORQUEST, "gfmakeattention"))
 
 AddStategraphActionHandler("wilson_client", ActionHandler(ACTIONS.GFCASTSPELL, function(inst)
-    local act = inst:GetBufferedAction()
+    if inst.components.gfspellpointer == nil or inst.replica.gfspellcaster == nil then return "idle" end
+
+	local act = inst:GetBufferedAction()
 	local item = act.invobject
-	local gfsp = inst.components.gfspellpointer 
-	local spell
-	local spellName
+	local gfsp = inst.components.gfspellpointer
     
-	if gfsp == nil or (act.pos == nil and act.target == nil) then return "idle" end
-
-	if gfsp.currentSpell ~= nil then
-		spellName = gfsp.currentSpell
-	--Well, I don't know how to hook the name for an item-instant-spell in any other way
-	elseif item and item.replica.gfspellitem then
-		spellName = item.replica.gfspellitem:GetCurrentSpell()	
-	end
-
-	if spellName == nil or ALL_SPELLS[spellName] == nil then return "idle" end --invalid spell name
-
-	--gfsp:Disable()
-	spell = ALL_SPELLS[spellName]
-
-	if spell then
-		if act.pos == nil then act.pos = Vector3(act.target.Transform:GetWorldPosition()) end
-		local spellRange = spell:GetRange()
-		if inst:GetDistanceSqToPoint(act.pos) > spellRange * spellRange then
-			--print("to far")
-			--if distace is greater then spell range, need to rebuffer the action 
-			--and push a destination point to the locomotor
-			inst:ClearBufferedAction()
-			act.distance = spellRange
-			act.spell = spellName
-			inst:PushEvent("gfforcemove", {act = act})
-
-			return "idle"
+	--some spell need a position, but the "equipped" collector returns only a target
+	if act.pos == nil then
+		if act.target == nil then
+			--if we don't have a target too (an instant spell from inventory or spell from panel) set caster as default target and get its position
+			act.target = inst
+			act.pos = Vector3(inst.Transform:GetWorldPosition())
 		else
-			--print("close enough")
-			--if distance is valid and item is not recharging
-			--then go to item spell state
-			if CanCastSpell(spellName, inst, item) then
-				act.spell = spellName
-				return spell:GetPlayerState()
-			end
+			act.pos = Vector3(inst.Transform:GetWorldPosition())
 		end
 	end
 
+	local spellName
+	if act.spell ~= nil then --an instant spell without item (from the spell panel)
+		spellName = act.spell
+	elseif gfsp.currentSpell ~= nil then --get spell from the spell pointer
+		spellName = gfsp.currentSpell
+	elseif item and item.replica.gfspellitem then --an instant spell with item
+		--there is a chance that the item's current spell will be changed next frame after a player clicks a button
+		--and incorrect spell will be picked? Maybe should push the spell in collectors?
+		spellName = item.replica.gfspellitem:GetCurrentSpell()
+	end
+
+	if spellName == nil or ALL_SPELLS[spellName] == nil or ALL_SPELLS[spellName].passive then return "idle" end --invalid spell
+
+	local check, reason = CanCastSpell(spellName, inst, item, act.target, act.pos)
+	if not check then
+		inst:PushEvent("gfSCCastFailed", reason)
+		return "idle"
+	end
+
+	local spell = ALL_SPELLS[spellName]
+	local spellRange = spell:GetRange()
+
+	if inst:GetDistanceSqToPoint(act.pos) > spellRange * spellRange then
+		--if distance is greater then spell range, need to rebuffer the action 
+		--and push a destination point to the locomotor
+		--print("too far")
+		inst:ClearBufferedAction()
+		act.distance = spellRange
+		act.spell = spellName
+		inst:PushEvent("gfforcemove", {act = act})
+
+		return "idle"
+	else
+		--if distance is valid then return the spell state
+		--print("close enough")
+		act.spell = spellName
+		--gfsp:Disable()
+
+		if not ALL_SPELLS[spellName].needTarget 
+			and act.target ~= nil 
+			and not ALL_SPELLS[spellName]:CheckTarget(inst, act.target) 
+		then 
+			act.target = nil 
+		end
+
+		return spell:GetPlayerState()
+	end
     --action data is not valid for spell cast
 	return "idle"
 end))

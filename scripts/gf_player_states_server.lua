@@ -47,12 +47,6 @@ local function IsValidGround(pos)
 	return _G.TheWorld.Map:IsPassableAtPoint(pos:Get()) and not _G.TheWorld.Map:IsGroundTargetBlocked(pos)
 end
 
---[[ local function GetSpellPostCast(spellName)
-	if spellName and ALL_SPELLS[spellName] then 
-		return ALL_SPELLS[spellName]:HasPostCast()
-	end
-end ]]
-
 local function ToggleOffPhysics(inst)
     inst.sg.statemem.isphysicstoggle = true
     inst.Physics:ClearCollisionMask()
@@ -69,17 +63,15 @@ local function ToggleOnPhysics(inst)
     inst.Physics:CollidesWith(COLLISION.GIANTS)
 end
 
-local function CanCastSpell(spell, inst, item)
-    local itemValid = true
-    --check item if exists
-    if item and item.components.gfspellitem then 
-        itemValid = item.components.gfspellitem:CanCastSpell(spell)
-    end
-    --check doer
-	local instValid = inst.components.gfspellcaster and inst.components.gfspellcaster:CanCastSpell(spell)
-	local precastCheck = inst.components.gfspellcaster:PreCastCheck(spell)
+local function CanCastSpell(sName, inst, item, target, pos)
+	if not inst.components.gfspellcaster:IsSpellReady(sName) then
+		return false, "NOTREADY"
+	end
+	if item and item.components.gfspellitem and not item.components.gfspellitem:IsSpellReady(sName) then --check item if exists
+		return false, "ITEMNOTREADY"
+	end
 
-	return instValid and itemValid and precastCheck
+	return inst.components.gfspellcaster:PreCastCheck(sName, target, pos)
 end
 
 --STATES--
@@ -1242,66 +1234,87 @@ end))
 
 --Add actions handlers----
 AddStategraphActionHandler("wilson", ActionHandler(ACTIONS.GFDRINKIT, function(inst, act)
-		local drink = act.target or act.invobject
-		if drink == nil or drink.components.gfdrinkable == nil then return end
-		local check, reason = drink.components.gfdrinkable:CheckBeforeDrunk(inst)
-		if check then 
-			return "gfdodrink"
-		else
-			inst:PushEvent("gfRefuseDrink", {reason = reason})
-			return "idle"
-		end
-	end)
-)
+	local drink = act.target or act.invobject
+	if drink == nil or drink.components.gfdrinkable == nil then return end
+	local check, reason = drink.components.gfdrinkable:CheckBeforeDrunk(inst)
+	if check then 
+		return "gfdodrink"
+	else
+		inst:PushEvent("gfRefuseDrink", {reason = reason})
+		return "idle"
+	end
+end))
 AddStategraphActionHandler("wilson", ActionHandler(ACTIONS.GFENHANCEITEM, "dolongaction"))
 AddStategraphActionHandler("wilson", ActionHandler(ACTIONS.GFLETSTALK, "gfmakeattention"))
 --AddStategraphActionHandler("wilson", ActionHandler(ACTIONS.GFTALKFORQUEST, "gfmakeattention"))
 
 AddStategraphActionHandler("wilson", ActionHandler(ACTIONS.GFCASTSPELL, function(inst)
-    local act = inst:GetBufferedAction()
-	local item = act.invobject
-	local gfsp = inst.components.gfspellpointer 
-	local spell
-	local spellName
-    
-	if gfsp == nil or (act.pos == nil and act.target == nil) then return "idle" end
+	if inst.components.gfspellpointer == nil or inst.components.gfspellcaster == nil then return "idle" end
 
-	if act.spell ~= nil then
-		spellName = act.spell
-	elseif gfsp.currentSpell ~= nil then
-		spellName = gfsp.currentSpell
-	--Well, I don't know how to hook the name for an item-instant-spell in any other way
-	elseif item and item.replica.gfspellitem then
-		spellName = item.replica.gfspellitem:GetCurrentSpell()	
+	local act = inst:GetBufferedAction()
+	local item = act.invobject
+	local gfsp = inst.components.gfspellpointer
+
+	--some spell need a position, but the "equipped" collector returns only a target
+	if act.pos == nil then
+		if act.target == nil then
+			--if we don't have a target too (an instant spell from inventory or spell from panel) set caster as default target and get its position
+			act.target = inst
+			act.pos = Vector3(inst.Transform:GetWorldPosition())
+		else
+			act.pos = Vector3(act.target.Transform:GetWorldPosition())
+		end
 	end
 
-	if spellName == nil or ALL_SPELLS[spellName] == nil then return "idle" end --invalid spell name
+	local spellName
+	if act.spell ~= nil then --an instant spell without item (from the spell panel)
+		spellName = act.spell
+	elseif gfsp.currentSpell ~= nil then --get spell from the spell pointer
+		spellName = gfsp.currentSpell
+	elseif item and item.components.gfspellitem then --an instant spell with item
+		--there is a chance that the item's current spell will be changed next frame after a player clicks a button
+		--and incorrect spell will be picked? Maybe should push the spell in collectors?
+		spellName = item.components.gfspellitem:GetCurrentSpell()
+	end
 
-	spell = ALL_SPELLS[spellName]
+	if spellName == nil or ALL_SPELLS[spellName] == nil or ALL_SPELLS[spellName].passive then return "idle" end --invalid spell
 
-	if spell then
-		if act.pos == nil then act.pos = Vector3(act.target.Transform:GetWorldPosition()) end
-		local spellRange = spell:GetRange()
-		if inst:GetDistanceSqToPoint(act.pos) > spellRange * spellRange then
-			--print("to far")
-			--if distace is greater then spell range, need to rebuffer the action 
-			--and push a destination point to the locomotor
-			inst:ClearBufferedAction()
-			act.distance = spellRange
-			act.spell = spellName
-			inst:PushEvent("gfforcemove", {act = act})
+	local check, reason = CanCastSpell(spellName, inst, item, act.target, act.pos)
+	if not check then
+		inst:PushEvent("gfSCCastFailed", reason)
+		return "idle"
+	end
 
-			return "idle"
-		else
-			--print("close enough")
-			--if distance is valid and item is not recharging
-			--then go to item spell state
-			if CanCastSpell(spellName, inst, item) == true then
-				act.spell = spellName
-				gfsp:Disable()
-				return spell:GetPlayerState()
-			end
+	local spell = ALL_SPELLS[spellName]
+	local spellRange = spell:GetRange()
+
+	if inst:GetDistanceSqToPoint(act.pos) > spellRange * spellRange then
+		--if distance is greater then spell range, need to rebuffer the action 
+		--and push a destination point to the locomotor
+		--print("too far")
+		inst:ClearBufferedAction()
+		act.distance = spellRange
+		act.spell = spellName
+		inst:PushEvent("gfforcemove", {act = act})
+
+		return "idle"
+	else
+		--if distance is valid then return the spell state
+		--print("close enough")
+		act.spell = spellName
+		gfsp:Disable()
+
+		--remove invalid target (FX, NOCLICK, shadows) from the action
+		--this is a doble check for CanCastSpell
+		--TODO - make this check in another place
+		if not ALL_SPELLS[spellName].needTarget 
+			and act.target ~= nil 
+			and not ALL_SPELLS[spellName]:CheckTarget(inst, act.target) 
+		then 
+			act.target = nil 
 		end
+
+		return spell:GetPlayerState()
 	end
 
     --action data is not valid for spell cast

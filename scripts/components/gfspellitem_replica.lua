@@ -79,13 +79,16 @@ end)
 --Safe methods---------------------------
 -----------------------------------------
 
-function GFSpellItem:CanCastSpell(sName)
-    if sName == nil or ALL_SPELLS[sName] == nil then return false end
+function GFSpellItem:IsSpellReady(sName)
+    return self.spellData[sName] == nil or GetTime() > self.spellData[sName].endTime
+end
 
-    if not ALL_SPELLS[sName].passive then
-        return self.spells[sName] ~= nil 
-            and (self.spellData[sName] == nil or GetTime() > self.spellData[sName].endTime)
-    end
+function GFSpellItem:IsSpellValidForItem(sName)
+    return not ALL_SPELLS[sName].passive and self.spells[sName] ~= nil
+end
+
+function GFSpellItem:CanCastSpell(sName)
+    return self:IsSpellReady(sName) and self:IsSpellValidForCaster(sName)
 end
 
 function GFSpellItem:GetSpellRecharge(sName)

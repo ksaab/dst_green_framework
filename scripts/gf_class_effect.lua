@@ -32,7 +32,7 @@ local Effect = Class(function(self, name)
 
     self.updateDurationOnRefresh = true
     self.updateStacksOnRefresh = false
-    self.updateable = true --need to update on ticks or not
+    self.updateable = false --need to update on ticks or not
     self.static = true --for static effects without timers (affixes and etc)
     self.sleeper = false
     self.removableByStacks = true --can be removed by consuming stacks or not

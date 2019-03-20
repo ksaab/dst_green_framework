@@ -5,11 +5,8 @@ local NineSlice = require "widgets/nineslice"
 local CONV_BUTTON = require "widgets/gf_conversation_button"
 
 local ALL_QUESTS = GF.GetQuests()
-local ALL_DIALOGUE_NODES =  GF.GetDialogueNodes()
 local INVALID_TITLE = STRINGS.GF.HUD.INVALID_LINES.INVALID_TITLE
 local INVALID_TEXT = STRINGS.GF.HUD.INVALID_LINES.INVALID_TEXT
-
-local ENUM_OFFER, ENUM_COMPLETE, ENUM_NODE = 0, 1, 2
 
 local function GetAcceptText(text)
     local controller_id = TheInput:GetControllerID()
@@ -29,14 +26,63 @@ local function GetHintText()
     local controller_id = TheInput:GetControllerID()
     return TheInput:ControllerAttached()
         and string.format(
-            "%s / %s — %s\n%s — %s", 
+            "%s / %s - select", 
             TheInput:GetLocalizedControl(controller_id, CONTROL_INVENTORY_UP), 
-            TheInput:GetLocalizedControl(controller_id, CONTROL_INVENTORY_DOWN),
-            STRINGS.GF.HUD.CONVERSATION_DIALOG.HINTMOVE,
-            TheInput:GetLocalizedControl(controller_id, CONTROL_ACCEPT),
-            STRINGS.GF.HUD.CONVERSATION_DIALOG.HINTSELECT)
+            TheInput:GetLocalizedControl(controller_id, CONTROL_INVENTORY_DOWN))
         or ""
 end
+
+--[[ OFFER = 
+    {
+        MIDDLE_BUTTON = 
+        {
+            TEXT = "Middle",
+        },
+        LEFT_BUTTON = 
+        {
+            TEXT = "Left",
+        },
+        RIGHT_BUTTON = 
+        {
+            TEXT = "Right",
+        },
+        TITLE = true,
+        BODY = true,
+        GOAL = true,
+    }, ]]
+local TYPES =
+{
+    OFFER = 
+    {
+        MIDDLE_BUTTON = 
+        {
+            TEXT = "Close",
+        },
+        TITLE = "Pick a quest"
+    },
+    ACCEPT = 
+    {
+        LEFT_BUTTON = 
+        {
+            TEXT = "Decline",
+        },
+        RIGHT_BUTTON = 
+        {
+            TEXT = "Accept",
+        },
+    },
+    COMPLETE = 
+    {
+        LEFT_BUTTON = 
+        {
+            TEXT = "Close",
+        },
+        RIGHT_BUTTON = 
+        {
+            TEXT = "Complete",
+        },
+    }
+}
 
 local function Close(owner)
     --owner.components.gfplayerdialog:HandleQuestButton(1)
@@ -56,14 +102,14 @@ local function Accept(owner, qName)
     --owner.components.gfplayerdialog:HandleQuestButton(0, qName)
     owner:PushEvent("gfDialogButton", {event = 2, name = qName})
     owner:PushEvent("gfPDCloseDialog")
-    --GFDebugPrint("CLIENT: you've accepted the quest.", qName)
+    GFDebugPrint("CLIENT: you've accepted the quest.", qName)
 end
 
 local function Complete(owner, qName)
     --owner.components.gfplayerdialog:HandleQuestButton(3, qName)
     owner:PushEvent("gfDialogButton", {event = 3, name = qName})
     owner:PushEvent("gfPDCloseDialog")
-    --GFDebugPrint("CLIENT: you've trying to complete the quest.", qName)
+    GFDebugPrint("CLIENT: you've trying to complete the quest.", qName)
 end
 
 local ConversationDialog = Class(Widget, function(self, owner)
@@ -71,7 +117,7 @@ local ConversationDialog = Class(Widget, function(self, owner)
     Widget._ctor(self, "ConversationDialog")
 
     self.activeLine = 0
-    --self.onControllerAccept = nil
+    self.onControllerAccept = nil
     self.lastSelect = 0
     --widget itself
     self.root = self:AddChild(Widget("ROOT"))
@@ -118,7 +164,7 @@ local ConversationDialog = Class(Widget, function(self, owner)
     window.middleButton:SetPosition(0, -150)
 
     window.hint = window:AddChild(Text(UIFONT, 36, "Body", UICOLOURS.WHITE))
-    window.hint:SetPosition(0, -275)
+    window.hint:SetPosition(0, -250)
 
     window.questLines = {}
 
@@ -137,14 +183,15 @@ local ConversationDialog = Class(Widget, function(self, owner)
     print("Quest dialog was added to ", owner)
 end)
 
-function ConversationDialog:CleanUp()
+function ConversationDialog:CloseDialog(data)
     if self.shopDialog ~= nil then self.shopDialog:Close() end
-    if self.scroll ~= nil then self.scroll:Kill() end
-    --reset the controller selector
-    self.activeLine = 0
-    --self.onControllerAccept = nil
+    if self.owner.HUD ~= nil then self.owner.HUD:SetInConversation(false) end
     
+    self.activeLine = 0
+    self.onControllerAccept = nil
+
     self:StopUpdating()
+
     self:Hide()
 
     local window = self.window
@@ -164,18 +211,17 @@ function ConversationDialog:CleanUp()
     window.title:SetString()
     window.body:SetString()
     window.goal:SetString()
-end
 
-function ConversationDialog:CloseDialog()
-    self:CleanUp()
-    if self.owner.HUD ~= nil then self.owner.HUD:SetInConversation(false) end
+    for k, v in pairs(window.questLines) do v:Kill() end
+    window.questLines = {}
 end
 
 function ConversationDialog:ShowChoiseDialog(data)
     if self.owner.HUD ~= nil then self.owner.HUD:SetInConversation(true) end
 
-    self:CleanUp()
     self:StartUpdating()
+
+    local TYPE = TYPES.OFFER
 
     local window = self.window
     local lines = window.questLines
@@ -184,85 +230,106 @@ function ConversationDialog:ShowChoiseDialog(data)
     local events = data.events
     local offset = 75
 
-    local items = {}
+    for k, v in pairs(window.questLines) do v:Kill() end
 
+    local i = 0
     for j = 1, #cQuests do
-        if ALL_QUESTS[cQuests[j]] ~= nil then
-            local data = 
-            {
-                type = ENUM_COMPLETE,
-                name = cQuests[j],
-            }
-            table.insert(items, data)
+        i = i + 1
+        local _q = ALL_QUESTS[cQuests[i]]
+        if _q ~= nil then
+            lines[i] = window:AddChild(CONV_BUTTON(
+                function() 
+                    self:CloseDialog()
+                    self.owner:PushEvent("gfPDCompleteDialog", {qName = cQuests[j]}) 
+                end, 
+                GetQuestString(self.owner, cQuests[j], "title"),  
+                {200, 40}
+            ))
+            offset = offset - 35
+            lines[i]:SetPosition(0, offset)
+            lines[i]:MakeCompleteButton()
+            --[[lines[i] = window:AddChild(TEMPLATES.StandardButton(
+                function() 
+                    self:CloseDialog()
+                    self.owner:PushEvent("gfPDCompleteDialog", {qName = cQuests[i]}) 
+                end, 
+                GetQuestString(self.owner, cQuests[i], "title"), 
+                {200, 40}
+            ))
+            offset = offset - 35
+            lines[i]:SetPosition(0, offset)
+            lines[i].image:SetTint(0.3, 1, 0.6, 1)]]
         end
     end
 
+    --offset = offset - 10
     for j = 1, #gQuests do
-        if ALL_QUESTS[gQuests[j]] ~= nil then
-            local data = 
-            {
-                type = ENUM_OFFER,
-                name = gQuests[j],
-            }
-            table.insert(items, data)
+        i = i + 1
+        local _q = ALL_QUESTS[gQuests[j]]
+        if _q ~= nil then
+            lines[i] = window:AddChild(CONV_BUTTON(
+                function() 
+                    self:CloseDialog()
+                    self.owner:PushEvent("gfPDAcceptDialog", {qName = gQuests[j]}) 
+                end, 
+                GetQuestString(self.owner, gQuests[j], "title"),  
+                {200, 40}
+            ))
+            offset = offset - 35
+            lines[i]:SetPosition(0, offset)
+            lines[i]:MakeAcceptButton()
+            --[[lines[i] = window:AddChild(TEMPLATES.StandardButton(
+                function() 
+                    self:CloseDialog()
+                    self.owner:PushEvent("gfPDAcceptDialog", {qName = gQuests[j]}) 
+                end, 
+                GetQuestString(self.owner, gQuests[j], "title"),  
+                {200, 40}
+            ))
+            offset = offset - 35
+            lines[i]:SetPosition(0, offset)]]
         end
     end
 
+    --offset = offset - 10
     for j = 1, #events do
-        if ALL_DIALOGUE_NODES[events[j]] ~= nil then
-            local data = 
-            {
-                type = ENUM_NODE,
-                name = events[j],
-            }
-            table.insert(items, data)
-        end
+        i = i + 1
+        local event = events[j]
+        lines[i] = window:AddChild(CONV_BUTTON(
+            function() 
+                Node(self.owner, event)
+            end, 
+            GetConversationString(self.owner, event, "line"),  
+            {200, 40}
+        ))
+        offset = offset - 35
+        lines[i]:SetPosition(0, offset)
+        --[[lines[i] = window:AddChild(TEMPLATES.StandardButton(
+            function() 
+                --self:CloseDialog()
+                Node(self.owner, event)
+                --self.owner.components.gfplayerdialog:HandleEventButton(event)
+            end, 
+            GetConversationString(self.owner, event, "line"),  
+            {200, 40}
+        ))
+        offset = offset - 35
+        lines[i]:SetPosition(0, offset)
+        lines[i].image:SetTint(0.3, 0.3, 0.9, 1)]]
     end
 
-    local function RowConstructor(context, index)
-        return CONV_BUTTON(self.owner, self)
-    end
-
-    local function ApplyFn(context, widget, data, index) 
-        if data ~= nil then
-            widget:Config(data.name, data.type)
-            widget.index = index
-        elseif widget ~= nil then
-            widget:Hide()
-        end
-    end
-
-    local opts = 
-    {
-        context = {},
-        widget_width  = 300,
-        widget_height = 35,
-        num_visible_rows = math.min(4, #items),
-        num_columns = 1,
-        item_ctor_fn = RowConstructor,
-        apply_fn = ApplyFn,
-        scrollbar_offset = 25,
-        scrollbar_height_offset = -35,
-        peek_percent = 0,
-        allow_bottom_empty_row = true,
-        scroll_per_click = 1,
-    }
-
-    if #items > 0 then
-        self.scroll = self.window:AddChild(TEMPLATES.ScrollingGrid(items, opts))
-        self.scroll:SetPosition(0, -35)
-
+    for k, v in pairs(lines) do print(k, v) end
+    if #lines > 0 then
         self.activeLine = 1
+        self.onControllerAccept = lines[1].button.onclick
         if TheInput:ControllerAttached() then
-            local visible = self.scroll:GetListWidgets()
-            visible[1]:OnGainFocus()
+            lines[1].button:OnGainFocus()
         end
-        --self.onControllerAccept = visible[1].button.onclick
     end
 
     self:Show()
     window.middleButton:Show()
-    window.middleButton:SetText(GetCancelText(STRINGS.GF.HUD.CONVERSATION_DIALOG.BUTTONS.CLOSE))
+    window.middleButton:SetText(GetCancelText(TYPE.MIDDLE_BUTTON.TEXT))
     window.middleButton:SetOnClick(function() Close(self.owner) end)
 
     window.title:Show()
@@ -276,8 +343,9 @@ end
 function ConversationDialog:ShowAcceptDialog(data)
     if self.owner.HUD ~= nil then self.owner.HUD:SetInConversation(true) end
 
-    self:CleanUp()
     self:StartUpdating()
+
+    local TYPE = TYPES.ACCEPT
 
     local window = self.window
     local qName = data.qName
@@ -290,11 +358,11 @@ function ConversationDialog:ShowAcceptDialog(data)
 
     self:Show()
     window.leftButton:Show()
-    window.leftButton:SetText(GetCancelText(STRINGS.GF.HUD.CONVERSATION_DIALOG.BUTTONS.DECLINE))
+    window.leftButton:SetText(GetCancelText(TYPE.LEFT_BUTTON.TEXT))
     window.leftButton:SetOnClick(function() Close(self.owner, qName) end)
 
     window.rightButton:Show()
-    window.rightButton:SetText(GetAcceptText(STRINGS.GF.HUD.CONVERSATION_DIALOG.BUTTONS.ACCEPT))
+    window.rightButton:SetText(GetAcceptText(TYPE.RIGHT_BUTTON.TEXT))
     window.rightButton:SetOnClick(function() Accept(self.owner, qName) end)
 
     self.onControllerAccept = window.rightButton.onclick
@@ -309,14 +377,15 @@ function ConversationDialog:ShowAcceptDialog(data)
     window.body:SetString(qData:GetDescriptionString(self.owner))
     window.goal:SetString(qData:GetGoalString(self.owner)) ]]
 
-    window.hint:SetString("")
+    window.hint:SetString(GetHintText())
 end
 
 function ConversationDialog:ShowCompleteDialog(data)
     if self.owner.HUD ~= nil then self.owner.HUD:SetInConversation(true) end
 
-    self:CleanUp()
     self:StartUpdating()
+
+    local TYPE = TYPES.COMPLETE
 
     local window = self.window
     local qName = data.qName
@@ -329,11 +398,11 @@ function ConversationDialog:ShowCompleteDialog(data)
 
     self:Show()
     window.leftButton:Show()
-    window.leftButton:SetText(GetCancelText(STRINGS.GF.HUD.CONVERSATION_DIALOG.BUTTONS.CLOSE))
+    window.leftButton:SetText(GetCancelText(TYPE.LEFT_BUTTON.TEXT))
     window.leftButton:SetOnClick(function() Close(self.owner, qName) end)
 
     window.rightButton:Show()
-    window.rightButton:SetText(GetAcceptText(STRINGS.GF.HUD.CONVERSATION_DIALOG.BUTTONS.COMPLETE))
+    window.rightButton:SetText(GetAcceptText(TYPE.RIGHT_BUTTON.TEXT))
     window.rightButton:SetOnClick(function() Complete(self.owner, qName) end)
 
     self.onControllerAccept = window.rightButton.onclick
@@ -343,7 +412,7 @@ function ConversationDialog:ShowCompleteDialog(data)
     window.title:SetString(GetQuestString(self.owner, qName, "title"))
     window.body:SetString(GetQuestString(self.owner, qName, "completion"))
 
-    window.hint:SetString("")
+    window.hint:SetString(GetHintText())
 end
 
 function ConversationDialog:OpenShop(list)
@@ -361,49 +430,18 @@ function ConversationDialog:CloseShop()
 end
 
 function ConversationDialog:ControllerSelectLine(down)
-    if not TheInput:ControllerAttached() or self.scroll == nil then return end
-
-    local target = down == true and self.activeLine + 1 or self.activeLine - 1
-    local itemNum = #(self.scroll.items)
-    if target > 0 and target <= itemNum then
-        self.lastSelect = GetTime() + 0.15
-        local visible = self.scroll:GetListWidgets()
-        if visible and #visible > 0 then
-            local maxIndex, minIndex
-            for k, v in pairs(visible) do 
-                if v.index ~= nil then
-                    maxIndex = v.index
-                    if v.index == self.activeLine then 
-                        visible[k]:OnLoseFocus()
-                    end
-                    if minIndex == nil then
-                        minIndex = v.index
-                    end
-                end
+    local lines = self.window.questLines
+    if #lines > 0 then
+        local target = down == true and self.activeLine + 1 or self.activeLine - 1
+        if target > 0 and target <= #lines then
+            self.lastSelect = GetTime() + 0.15
+            if TheInput:ControllerAttached() then 
+                lines[self.activeLine].button:OnLoseFocus() 
+                lines[target].button:OnGainFocus()
             end
-
-            if target > maxIndex - 1 then
-                self.scroll:ScrollToWidgetIndex(math.max(1, math.min(itemNum - 3), target - 3))
-                visible = self.scroll:GetListWidgets()
-                --print("scroll to", math.max(1, math.min(itemNum - 3), target - 3))
-            elseif target < minIndex + 1 then
-                self.scroll:ScrollToWidgetIndex(math.max(1, target))
-                visible = self.scroll:GetListWidgets()
-                --print("scroll to", math.max(1, target))
-            end
-
-            local newFocus
-            for k, v in pairs(visible) do 
-                if v.index == target then 
-                    newFocus = v
-                    break
-                end
-            end
-
-            if newFocus ~= nil then
-                newFocus:OnGainFocus()
-                self.activeLine = target
-            end
+            self.activeLine = target
+            self.onControllerAccept = lines[target].button.onclick
+            print("active line", self.activeLine)
         end
     end
 end
@@ -414,19 +452,8 @@ function ConversationDialog:ControllerCloseButton()
 end
 
 function ConversationDialog:ControllerAcceptButton()
-    if self.onControllerAccept ~= nil then 
-        self.onControllerAccept() 
-        return
-    end
-    if self.activeLine ~= nil and self.scroll ~= nil then
-        local visible = self.scroll:GetListWidgets()
-        for k, v in pairs(visible) do
-            if v.index == self.activeLine then
-                v.onclick()
-                break
-            end
-        end
-    end
+    print("ControllerAcceptButton")
+    if self.onControllerAccept ~= nil then self.onControllerAccept() end
 end
 
 function ConversationDialog:OnUpdate(dt)
@@ -438,5 +465,6 @@ function ConversationDialog:OnUpdate(dt)
         end
     end
 end
+
 
 return ConversationDialog

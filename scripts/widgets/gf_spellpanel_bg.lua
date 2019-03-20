@@ -33,5 +33,9 @@ function SpellPanelBG:SetSize(size)
     end
 end
 
+function SpellPanelBG.__tostring()
+    return string.format("panel background")
+end
+
 
 return SpellPanelBG

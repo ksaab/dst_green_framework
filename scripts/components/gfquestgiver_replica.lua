@@ -34,7 +34,7 @@ local function SpawnMark(self)
     if self._follower ~= nil then return false end
     local mark = SpawnPrefab("gf_quest_mark")
     if mark ~= nil then
-        self.inst:AddChild(mark)
+        --self.inst:AddChild(mark)
         self._follower = mark
     end
 

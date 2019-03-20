@@ -136,17 +136,42 @@ function Spell:ResourceCheck(inst)
     return true
 end
 
-function Spell:PreCastCheck(inst)
+function Spell:CheckTarget(inst, target)
+    if target == nil or target:HasTag("FX") or target:HasTag("NOCLICK") or target:HasTag("shadow")
+        or (target:HasTag("player") and not GFGetPVPEnabled() and self:HasTag("harmful"))
+    then 
+        return false 
+    end
+
+    if self.targetCheckFn then
+        return self:targetCheckFn(inst, target)
+    end
+
+    return true
+end
+
+function Spell:CheckCaster(inst)
+    if self.preCastCheckFn then
+        return self:preCastCheckFn(inst)
+    end
+
+    return true
+end
+
+function Spell:PreCastCheck(inst, target, position)
     --[[ local resCheck = self:ResourceCheck(inst)
     if resCheck ~= true then
         return resCheck
     end ]]
-    
-    if self.preCastCheckFn then
-        local result, reason = self:preCastCheckFn(inst)
-        return result, reason
+    local check, reason
+    check, reason = self:CheckCaster(inst)
+    if not check then return false, reason end
+    if self.needTarget then
+        if target == nil then return false, "NEEDTARGET" end
+        check, reason = self:CheckTarget(inst, target)
+        if not check then return false, reason end
     end
-
+    
     return true
 end
 

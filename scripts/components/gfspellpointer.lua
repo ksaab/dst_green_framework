@@ -41,11 +41,7 @@ local function OverrideLeftMouseActions(inst, target, position)
     local spellName = self.currentSpell
 
     --we cant cast on non-valid ground or if the spell isn't setted
-    if spellName == nil 
-        or not pointer.positionValid 
-    then 
-        return {} --nil, true
-    end
+    if spellName == nil or not pointer.positionValid then return {} end --nil, true
 
     --this part is pretty wierd, but I can't find the better way to deal with item/non-item casts
     ----------------------------------------
@@ -61,19 +57,19 @@ local function OverrideLeftMouseActions(inst, target, position)
 
     local item = self.withItem-- and self.inst.replica.inventory:GetEquippedItem(EQUIPSLOTS.HANDS) or nil
 
-    --check  for recharges, may be it should be removed (can't start targeting while spell is recharging,
+    --check for recharges, may be it should be removed (can't start targeting while spell is recharging,
     --the action also will check it to prevent any abuses
-    if not inst.replica.gfspellcaster:CanCastSpell(spellName) 
-        or (item and not item.replica.gfspellitem:CanCastSpell(spellName))
+    if not inst.replica.gfspellcaster:IsSpellReady(spellName) 
+        or (item and not item.replica.gfspellitem:IsSpellReady(spellName))
         --    and item.replica.inventoryitem:IsHeldBy(self.inst))
     then 
         self:Disable()
         return {} --nil, true
     end
-       
+
     if pointer.targetEntity then
         return inst.components.playeractionpicker:SortActionList({ ACTIONS.GFCASTSPELL }, pointer.targetEntity, item)
-    elseif not ALL_SPELLS[spellName].needTarget then -- can't cast spell that requires target on the ground
+    elseif not ALL_SPELLS[spellName].needTarget then -- can't cast spell that requires a target on the ground
         return inst.components.playeractionpicker:SortActionList({ ACTIONS.GFCASTSPELL }, pointer.targetPosition, item)
     end 
 end
@@ -169,7 +165,7 @@ function GFSpellPointer:Enable(spellName)
         self._currentSpell:set(ALL_SPELLS[spellName].id)
         self.currentSpell = spellName
         --EnableSpellTargetingActions(self.inst)
-        pc.gfSpellPointerEnabled = true
+        pc:SetSpellPointer(true)
         self.inst:ListenForEvent("itemlose", CheckLostedItem)
     end 
 end
@@ -182,7 +178,7 @@ function GFSpellPointer:Disable()
         self.withItem = nil
         --DisableSpellTargetingActions(self.inst)
         if self.inst.components.playercontroller then
-            self.inst.components.playercontroller.gfSpellPointerEnabled = false
+            self.inst.components.playercontroller:SetSpellPointer(false)
         end
         self.inst:RemoveEventCallback("itemlose", CheckLostedItem)
     else
@@ -207,13 +203,13 @@ function GFSpellPointer:StartTargeting(spellName)
         --the host toggled these params when ran the Enable function
         --EnableSpellTargetingActions(self.inst)
         self.currentSpell = spellName
-        pc.gfSpellPointerEnabled = true
+        pc:SetSpellPointer(true)
     end
     if self.inst.components.gfpointer then
         --GFDebugPrint(string.format("GFSpellPointer: Dummy — disable pointer for %s, reason: spell changed",  tostring(self.inst)))
         self.pointer:Destroy()
         --GFDebugPrint(string.format("GFSpellPointer: Dummy — enable pointer for %s",  tostring(self.inst)))
-        self.pointer:Create(ALL_SPELLS[spellName].pointer)
+        self.pointer:Create(ALL_SPELLS[spellName])
     end
 end
 
@@ -223,7 +219,7 @@ function GFSpellPointer:StopTargeting()
         --DisableSpellTargetingActions(self.inst)
         self.currentSpell = nil
         if self.inst.components.playercontroller then
-            self.inst.components.playercontroller.gfSpellPointerEnabled = false
+            self.inst.components.playercontroller:SetSpellPointer(false)
         end
     end
 
@@ -234,6 +230,10 @@ function GFSpellPointer:StopTargeting()
     end
 
     --print(string.format("GFSpellPointer: Dummy — disable pointer for %s, reason: canceled",  tostring(self.inst)))
+end
+
+function GFSpellPointer:GetCurrentSpell()
+    return self.currentSpell
 end
 
 function GFSpellPointer:GetControllerPointActions(position)
@@ -252,7 +252,7 @@ end
 
 function GFSpellPointer:OnRemoveFromEntity()
     if self.inst.components.playercontroller then
-        self.inst.components.playercontroller.gfSpellPointerEnabled = false
+        self.inst.components.playercontroller:SetSpellPointer(false)
     end
     self:Disable()
     if GFGetIsMasterSim() then
@@ -265,8 +265,8 @@ function GFSpellPointer:OnRemoveFromEntity()
 end
 
 function GFSpellPointer:GetDebugString()
-    return string.format("enabled: %s, pointer %s, spell: %s", 
-        tostring(self:IsEnabled()), tostring(self.pointer or "none"), self.currentSpell or "none")
+    return string.format("enabled: %s, pointer %s, spell: %s, item %s", 
+        tostring(self:IsEnabled()), tostring(self.pointer or "none"), self.currentSpell or "none", tostring(self.withItem))
 end
 
 return GFSpellPointer

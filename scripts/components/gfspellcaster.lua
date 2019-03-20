@@ -107,16 +107,16 @@ function GFSpellCaster:ReduceRecharge(sName, reduce)
 end
 
 --main
-function GFSpellCaster:CastSpell(sName, target, pos, item, noRecharge, spellParams)
+function GFSpellCaster:CastSpell(sName, target, pos, item, params)
     if sName == nil or ALL_SPELLS[sName] == nil then return end
 
     local sInst = ALL_SPELLS[sName]
 
-    --if not sInst:DoCastSpell(self.inst, target, pos, item, spellParams) then return false end
-    local res, reason = sInst:DoCastSpell(self.inst, target, pos, item, spellParams)
+    --if not sInst:DoCastSpell(self.inst, target, pos, item, params) then return false end
+    local res, reason = sInst:DoCastSpell(self.inst, target, pos, item, params)
     if not res then return false, reason end
 
-    if not noRecharge then
+    if params == nil or not params.norecharge then
         local doerRecharge = sInst:GetDoerRecharge(self.inst)
         if doerRecharge > 0 then
             self:PushRecharge(sName, doerRecharge * self.baseRecharge * self.rechargeExternal:Get())
@@ -136,25 +136,17 @@ function GFSpellCaster:CastSpell(sName, target, pos, item, noRecharge, spellPara
     return true
 end
 
---friendlyfier
+--friendlyfire
 function GFSpellCaster:SetIsTargetFriendlyFn(fn)
     self.isTargetFriendlyfn = fn
 end
 
 function GFSpellCaster:IsTargetFriendly(target)
     if self.isTargetFriendlyfn then
-        return self:isTargetFriendlyfn(target)
+        return self.isTargetFriendlyfn(self.inst, target)
     end
 
     return false
-end
-
-function GFSpellCaster:CanCastSpell(sName)
-    if sName == nil or ALL_SPELLS[sName] == nil then return false end
-
-    if not ALL_SPELLS[sName].passive then
-        return self.spellData[sName] == nil or GetTime() > self.spellData[sName].endTime
-    end
 end
 
 function GFSpellCaster:IsSpellReady(sName)
@@ -163,6 +155,10 @@ end
 
 function GFSpellCaster:IsSpellValidForCaster(sName)
     return not ALL_SPELLS[sName].passive and self.spells[sName] ~= nil
+end
+
+function GFSpellCaster:CanCastSpell(sName)
+    return self:IsSpellReady(sName) and self:IsSpellValidForCaster(sName)
 end
 
 --get component info
@@ -188,11 +184,10 @@ end
 -----------------------------------------
 --Unsafe methods-------------------------
 -----------------------------------------
-
 function GFSpellCaster:GetValidAiSpell()
     if self.lastCastTime + 1.5 > GetTime() then return end
     for sName, _ in pairs(self.spells) do
-        if self:CanCastSpell(sName) then
+        if self:IsSpellReady(sName) then
             local spellData = ALL_SPELLS[sName]:AICheckFn(self.inst)
             if spellData then
                 spellData.spell = sName
@@ -207,7 +202,7 @@ function GFSpellCaster:GetValidAiSpell()
         local item = self.inst.components.inventory:GetEquippedItem(EQUIPSLOTS.HANDS)
         if item and item.components.gfspellitem then
             itemSpell = item.components.gfspellitem:GetCurrentSpell()
-            if self:CanCastSpell(itemSpell) and item.components.gfspellitem:CanCastSpell(itemSpell) then
+            if self:CanCastSpell(itemSpell) and item.components.gfspellitem:IsSpellReady(itemSpell) then
                 local spellData = ALL_SPELLS[spell]:AICheckFn(self.inst)
                 if spellData then
                     spellData.spell = itemSpell
@@ -221,21 +216,12 @@ function GFSpellCaster:GetValidAiSpell()
     return false
 end
 
-function GFSpellCaster:PreCastCheck(sName)
-    if sName and ALL_SPELLS[sName] then
-        local result, reason = ALL_SPELLS[sName]:PreCastCheck(self.inst)
-        if not result then
-            if self.inst.components.talker then
-                self.inst.components.talker:Say(GetActionFailString(self.inst, "GFCASTSPELL", reason or "GENERIC"), 2.5, false, true, false)
-            end
-
-            return false
-        end
-
-        return true
-    end
+--called main spell function
+function GFSpellCaster:PreCastCheck(sName, target, pos)
+    return ALL_SPELLS[sName]:PreCastCheck(self.inst, target, pos)
 end
 
+--TODO: Write a hook for instant-targeted spells (maybe pick a target with Input:GetEntityUnderMouse and insert it as an act.target)
 function GFSpellCaster:HandleIconClick(sName)
     local inst = self.inst
     if sName and ALL_SPELLS[sName] --spell is correct
@@ -244,12 +230,18 @@ function GFSpellCaster:HandleIconClick(sName)
         and not inst:HasTag("busy")                                   --cast the spell
         and (not inst.components.rider or not inst.components.rider:IsRiding()) --player isn't mounted
     then
-        if self:IsSpellReady(sName) then
+        local check, reason = ALL_SPELLS[sName]:CheckCaster(inst)
+        if not check then self.inst:PushEvent("gfSCCastFailed", reason)
+        elseif self:IsSpellReady(sName) then
             if ALL_SPELLS[sName].instant then
-                local act = BufferedAction(inst, inst, ACTIONS.GFCASTSPELL)
-                act.spell = sName
-                inst:ClearBufferedAction()
-                inst.components.locomotor:PushAction(act, true, true)
+                --so we can't use instant-targeted spells here
+                if not ALL_SPELLS[sName].needTarget then
+                    --pushing the buffered action is not the best idea but I couldn't find any alternatives
+                    local act = BufferedAction(inst, nil, ACTIONS.GFCASTSPELL)
+                    act.spell = sName
+                    inst:ClearBufferedAction()
+                    inst.components.locomotor:PushAction(act, true, true)
+                end
             elseif inst.components.gfspellpointer then
                 inst.components.gfspellpointer:Enable(sName)
             end
@@ -262,7 +254,6 @@ end
 -----------------------------------------
 --Ingame methods-------------------------
 -----------------------------------------
-
 function GFSpellCaster:OnSave(data)
     local savetable = {}
     local currTime = GetTime()

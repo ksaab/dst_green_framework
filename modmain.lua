@@ -70,6 +70,8 @@ GF.InitSpell("spell_throw")
 GF.MakeEquipThrowable("spear", "fly")
 GF.MakeEquipThrowable("spear_wathgrithr", "fly")
 
+--GF.AddBaseSpells("winona", "gw_ss_comet", "gw_ss_lightning", "gw_ss_wave", "gw_eq_acidcloud")
+
 --GF.MakeEquipThrowable("axe", "vspin")
 --GF.MakeEquipThrowable("hammer", "hspin")
 --GF.MakeEquipThrowable("shovel", "rfly")

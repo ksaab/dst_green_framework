@@ -40,6 +40,7 @@ local function CheckSpells(inst)
 			act.distance = spellData.distance or 12
 			act.pos = spellData.pos
 			act.spell = spellData.spell
+			act.params = spellData.params
 
 			return act
 		end

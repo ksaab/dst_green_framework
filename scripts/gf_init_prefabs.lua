@@ -8,22 +8,22 @@ local DIALOGUE_NODES_IDS = _G.GF.GetDialogueNodesIDs()
 
 --[[Init specified prefabs]]--------
 ------------------------------------
-local function PigmanFriendlyFireCheck(self, target)
-    return self.inst.components.combat.target ~= target
+local function PigmanFriendlyFireCheck(inst, target)
+    return inst.components.combat.target ~= target
         and ((target:HasTag("pig") and not target:HasTag("werepig")) 
-            or (self.inst.components.follower and self.inst.components.follower.leader == target))
+            or (inst.components.follower and inst.components.follower.leader == target))
 end
 
-local function BunnymanFriendlyFireCheck(self, target)
-    return self.inst.components.combat.target ~= target
+local function BunnymanFriendlyFireCheck(inst, target)
+    return inst.components.combat.target ~= target
         and (target:HasTag("manrabbit")
-            or (self.inst.components.follower and self.inst.components.follower.leader == target))
+            or (inst.components.follower and inst.components.follower.leader == target))
 end
 
-local function ChessFriendlyFireCheck(self, target)
-    return self.inst.components.combat.target ~= target
+local function ChessFriendlyFireCheck(inst, target)
+    return inst.components.combat.target ~= target
         and (target:HasTag("chess")
-            or (self.inst.components.follower and self.inst.components.follower.leader == target))
+            or (inst.components.follower and inst.components.follower.leader == target))
 end
 
 local function PigmanWantToTalk(talker, inst)
@@ -245,10 +245,10 @@ AddPrefabPostInit("player_classified", function(inst)
 end)
 
 --this function checks spell friendlyfire for players
-local function PlayerFFCheck(self, target)
-    return self.inst == target
+local function PlayerFFCheck(inst, target)
+    return inst == target
         or (target:HasTag("player") and not isPVPEnabled)
-        or (self.inst.components.leader and self.inst.components.leader:IsFollower(target))
+        or (inst.components.leader and inst.components.leader:IsFollower(target))
 end
 
 local function InitPlayer(player)
@@ -261,8 +261,8 @@ local function InitPlayer(player)
         player:AddComponent("gfeventreactor")
         player:AddComponent("gfspellcaster")
         player.components.gfspellcaster:SetIsTargetFriendlyFn(PlayerFFCheck)
-        if _G.GF.EntitiesBaseSpells[prefab] ~= nil then 
-            player.components.gfspellcaster:AddSpells(_G.GF.EntitiesBaseSpells[prefab]) 
+        if _G.GF.EntitiesBaseSpells[player.prefab] ~= nil then 
+            player.components.gfspellcaster:AddSpells(_G.GF.EntitiesBaseSpells[player.prefab]) 
         end
 
         for _, fn in pairs (_G.GF.PostGreenInit["player"]) do
@@ -275,13 +275,13 @@ local function InitPlayer(player)
                 player.components.talker:Say(_G.GetActionFailString(player, "GFDRINKIT", reason or "GENERIC"), 2.5)
             end
         end)
-
-        player:ListenForEvent("gfSCCastFailed", function(player, reason) 
-            if player.components.talker ~= nil then
-                player.components.talker:Say(_G.GetActionFailString(player, "GFCASTSPELL", reason or "GENERIC"), 2.5)
-            end
-        end)
     end
+
+    player:ListenForEvent("gfSCCastFailed", function(player, reason) 
+        if player.components.talker ~= nil then
+            player.components.talker:Say(_G.GetActionFailString(player, "GFCASTSPELL", reason or "GENERIC"), 2.5)
+        end
+    end)
 
     player:ListenForEvent("gfDialogButton", function(inst, data)
         if _G.GFGetIsMasterSim() then

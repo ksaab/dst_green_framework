@@ -140,4 +140,13 @@ function QuestJournalScreen:Close()
     TheFrontEnd:PopScreen(self)
 end
 
+function QuestJournalScreen:OnControl(control, down)
+    if QuestJournalScreen._base.OnControl(self, control, down) then return true end
+
+    if control == _G.CONTROL_CANCEL then 
+        self:Close() 
+        return true
+    end
+end
+
 return QuestJournalScreen

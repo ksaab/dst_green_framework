@@ -8,37 +8,48 @@ local STRINGS = _G.STRINGS
 local defaultLMBAction = STRINGS.GF.HUD.CONTROLLER_DEFAULTS.LMB
 local defaultRMBAction = STRINGS.GF.HUD.CONTROLLER_DEFAULTS.RMB
 
+require("constants")
+
 --screens
 local PopJournal = require "screens/gf_questjournal"
 local PopShop = require "screens/gf_shop"
 
 --widgets
+local Widget = require "widgets/widget"
 local EffectsPanel = require "widgets/gf_effects_panel"
 local SpellPanel = require "widgets/gf_spellpanel"
 local ConversationDialog = require "widgets/gf_conversation_dialog"
 local ShopDialog = require "widgets/gf_shop_dialog"
 local QuestInformer = require "widgets/gf_questinformer"
 local ImageButton = require "widgets/imagebutton"
+local Text = require "widgets/text"
 
---icons for effects
+--[[NEW WIDGETS AND SCREENS]]-----------
+----------------------------------------
 AddClassPostConstruct( "widgets/controls", function(self)
 	print("Init widgets for", self.owner)
-	--[[init new widgets]]
+
 	local owner = self.owner
-	if owner == nil or owner ~= _G.GFGetPlayer() then return end
+	if owner == nil or owner ~= _G.GFGetPlayer() then return end --not sure about his check
 	
+	--buff and debuff panel - shows positive and negative status effects
 	self.gfBuffPanel = self.bottom_root:AddChild(EffectsPanel(owner))
 	self.gfBuffPanel:SetPanel(-450, 150, true, 65)
 	self.gfDebuffPanel = self.bottom_root:AddChild(EffectsPanel(owner))
 	self.gfDebuffPanel:SetPanel(450, 150, false, -65)
 
+	--spell panel - allows to cast spell which are added to the player entity
 	self.inv.gfSpellPanel = self.inv:AddChild(SpellPanel(owner))
+	self.gfSpellPanel = self.inv.gfSpellPanel
 
+	--conversation dialog
 	self.gfConversationDialog = self:AddChild(ConversationDialog(owner))
 	--self.gfConversationDialog.shopDialog = self:AddChild(ShopDialog(owner))
 
+	--text string that shows any info about quests
 	self.gfQuestInformer = self.top_root:AddChild(QuestInformer(owner)) 
 
+	--journal button
 	self.mapcontrols.gfJournalButton = self.mapcontrols:AddChild(ImageButton("images/gfquestjournal.xml", "journalbutton.tex", "journalbutton.tex", nil, nil, nil, {1,1}, {0,0}))
 	self.mapcontrols.gfJournalButton:SetOnClick(function() _G.TheFrontEnd:PushScreen(PopJournal(self.owner)) end)
 	self.mapcontrols.gfJournalButton:SetScale(0.8)
@@ -46,11 +57,10 @@ AddClassPostConstruct( "widgets/controls", function(self)
 	self.mapcontrols.gfJournalButton:SetTooltip(STRINGS.GF.HUD.JOURNAL.BUTTONS.OPEN_JOURNAL)
 end)
 
-require("constants")
-local Text = require "widgets/text"
-
---it's not good, but no idea how to make it better
+--[[HOVERER]]-------------------------------
+--hints for spells and status effects-------
 local function PostHoverer(self, anim, owner)
+	--it's not good, but no idea how to make it better
 	self._prevEntity = nil
 	--text fields
 	self.abilitiesString = self:AddChild(Text(_G.UIFONT, 18, nil, {105/255, 175/255, 234/255, 1}))
@@ -84,6 +94,8 @@ local function PostHoverer(self, anim, owner)
 				and self.owner.HUD.controls.inv 
 				and self.owner.HUD.controls.inv.focus 
 			then 
+				--select an item in the inventory (from the hovered item tile)
+				--may there is a beeter way to do this, but I don't know it
 				local hudTable = {self.owner.HUD.controls.inv.equip, self.owner.HUD.controls.inv.inv}
 				for _, hudElem in pairs(hudTable) do
 					if hudElem ~= nil then
@@ -103,8 +115,11 @@ local function PostHoverer(self, anim, owner)
 			end
 		end
 
+		--defining strings
+		--obj should be a correct entity
 		if obj and (obj.replica.gfeffectable or obj.replica.gfspellitem) then
-			if obj ~= self._prevEntity or _G.GetTime() - self.lasttimeEffectsUpdate > 1 then
+			--if object hasn't changed since the last frame don't need to update it often than one time per second
+			if obj ~= self._prevEntity or _G.GetTime() - self.lasttimeEffectsUpdate > 1 then 
 				local posstr, negstr, affstr, encstr, ispellstr
 				if obj.replica.gfeffectable then
 					local scei = obj.replica.gfeffectable.hudInfo
@@ -157,9 +172,10 @@ local function PostHoverer(self, anim, owner)
 	end
 end
 
---titles for effects and spells
 AddClassPostConstruct("widgets/hoverer", PostHoverer)
 
+--[[CONTROLLER HINTS]]---------------------------------
+--update hints for spell casting and spell panel-------
 local function PostControls(self)
 	local _oldOnUpdate = self.OnUpdate
 	
@@ -171,24 +187,39 @@ local function PostControls(self)
 			and self.owner:IsActionsVisible()
 		then
 			local controller_id = TheInput:GetControllerID()
-			if self.owner.components.playercontroller 
-				and self.owner.components.playercontroller.gfSpellPointerEnabled
+			if self.owner.HUD:IsSpellSelectionEnabled() or self.owner.HUD:IsInConversation() then
+				--spell selection from the spell panel
+				self.groundactionhint:Hide()
+				self.playeractionhint:Hide()
+				--hint will be shown in the spell panel widget
+				--self.playeractionhint:Show()
+				--self.playeractionhint:SetTarget(self.owner)
+				--self.playeractionhint.text:SetString(TheInput:GetLocalizedControl(controller_id, _G.CONTROL_CONTROLLER_ACTION) .. " Choose spell") 
+
+				--self.groundactionhint:Show()
+				--self.groundactionhint:SetTarget(self.owner)
+				--self.groundactionhint:SetScreenOffset(0, -40)
+				--self.groundactionhint.text:SetString(TheInput:GetLocalizedControl(controller_id, _G.CONTROL_CONTROLLER_ALTACTION) .. " Cancel") 
+			elseif self.owner.components.playercontroller ~= nil
+				and self.owner.components.playercontroller:IsSpellPointerEnabled() 
 			then
+				--cast current spell
 				local pointer = self.owner.components.gfspellpointer.pointer
 				if pointer == nil then 
 					self.groundactionhint:Hide()
 					self.playeractionhint:Hide()
 					return 
 				end
+
 				local actTarget = self.owner
-				local offset = -40
+				local offset = 0
 
 				if not pointer.isArrow then
+					offset = -40
 					if pointer.pointer then
 						actTarget = pointer.pointer
 					elseif pointer.targetEntity ~= nil then
 						actTarget = pointer.targetEntity
-						offset = 0
 					end
 				end
 
@@ -210,10 +241,106 @@ local function PostControls(self)
 						.. " "
 						.. (rmb and rmb:GetActionString() or defaultRMBAction))
 				end
-				
 			end
 		end
 	end
 end
 
 AddClassPostConstruct("widgets/controls", PostControls)
+
+--[[INVENTORY BAR]]-------------------------
+--spell panel position and navigation-------
+local function PostInv(self)
+	local _oldCursorRight = self.CursorRight
+	local _oldCursorLeft = self.CursorLeft
+	local _oldCursorUp = self.CursorUp
+	local _oldCursorDown = self.CursorDown
+	local _oldRebuild = self.Rebuild
+	local _oldUpdateCursor = self.UpdateCursor
+
+	function self:CursorRight(...)
+		--block the inventory navigation if player is selecting a spell
+		local hud = self.owner.HUD
+		local pc = self.owner.components.playercontroller
+		if (hud ~= nil and hud:IsControllerCraftingOpen())
+			or not ((hud:IsSpellSelectionEnabled() or hud:IsInConversation())
+				or (pc ~= nil and pc:IsSpellPointerEnabled()))
+		then
+			_oldCursorRight(self, ...)
+		end
+	end
+
+	function self:CursorLeft(...)
+		--block the inventory navigation if player is selecting a spell
+		local hud = self.owner.HUD
+		local pc = self.owner.components.playercontroller
+		if (hud ~= nil and hud:IsControllerCraftingOpen())
+			or not ((hud:IsSpellSelectionEnabled() or hud:IsInConversation())
+				or (pc ~= nil and pc:IsSpellPointerEnabled()))
+		then
+			_oldCursorLeft(self, ...)
+		end
+	end
+
+	function self:CursorUp(...)
+		--block the inventory navigation if player is selecting a spell
+		local hud = self.owner.HUD
+		local pc = self.owner.components.playercontroller
+		if (hud ~= nil and hud:IsControllerCraftingOpen())
+			or not ((hud:IsSpellSelectionEnabled() or hud:IsInConversation())
+				or (pc ~= nil and pc:IsSpellPointerEnabled()))
+		then
+			_oldCursorUp(self, ...)
+		end
+	end
+
+	function self:CursorDown(...)
+		--block the inventory navigation if player is selecting a spell
+		local hud = self.owner.HUD
+		local pc = self.owner.components.playercontroller
+		if (hud ~= nil and hud:IsControllerCraftingOpen())
+			or not ((hud:IsSpellSelectionEnabled() or hud:IsInConversation())
+				or (pc ~= nil and pc:IsSpellPointerEnabled()))
+		then
+			_oldCursorDown(self, ...)
+		end
+	end
+
+	function self:Rebuild(...)
+		--spell panel is binded to the inventory bar
+		--need to update its position if inventory was rebuilded
+		--TODO - make this more flexible
+		_oldRebuild(self, ...)
+		if self.gfSpellPanel ~= nil and self.bg ~= nil then
+			local x, y = self.bg:GetSize()
+			local scale = self.bg:GetScale()
+			local ypos = 245
+			if self.toprow ~= nil then
+				local bpos = self.toprow:GetPosition()
+				if bpos.y ~= 0 then ypos = 350 end
+			end
+			local pos = self.bg:GetPosition()
+			self.gfSpellPanel:SetPosition(-(170 * scale.x) - (x * scale.x) / 2, ypos * scale.y)
+			self.gfSpellPanel:MoveToBack()
+		end
+	end
+
+	function self:UpdateCursor()
+		if self.owner.HUD == nil or not self.owner.HUD:IsSpellSelectionEnabled() then
+			_oldUpdateCursor(self)
+		else
+			--need to hide the inventory hint during the spell selection
+			--spell panel has its own hint
+			self.actionstringbody:SetString("")
+			self.actionstring:Hide()
+
+			if self.cursor ~= nil then self.cursor:Hide() end
+			if self.cursortile ~= nil then 
+				self.cursortile:Kill() 
+				self.cursortile = nil	
+			end
+		end
+	end
+end
+
+AddClassPostConstruct("widgets/inventorybar", PostInv)

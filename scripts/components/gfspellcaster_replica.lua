@@ -138,16 +138,16 @@ function GFSpellCaster:PushRecharge(sName, remain, pass)
     end
 end
 
-function GFSpellCaster:CanCastSpell(sName)
-    if sName == nil and ALL_SPELLS[sName] == nil then return false end
-
-    if not ALL_SPELLS[sName].passive then
-        return self.spellData[sName] == nil or GetTime() > self.spellData[sName].endTime
-    end
+function GFSpellCaster:IsSpellReady(sName)
+    return self.spellData[sName] == nil or GetTime() > self.spellData[sName].endTime
 end
 
 function GFSpellCaster:IsSpellValidForCaster(sName)
-    return self.spells[sName] ~= nil and self:CanCastSpell(sName)
+    return not ALL_SPELLS[sName].passive and self.spells[sName] ~= nil
+end
+
+function GFSpellCaster:CanCastSpell(sName)
+    return self:IsSpellReady(sName) and self:IsSpellValidForCaster(sName)
 end
 
 function GFSpellCaster:GetSpellRecharge(sName)
@@ -168,34 +168,23 @@ end
 -----------------------------------------
 --Unsafe methods-------------------------
 -----------------------------------------
-
 function GFSpellCaster:PreCastCheck(sName)
-    if sName and ALL_SPELLS[sName] then
-        local preCheck = ALL_SPELLS[sName]:PreCastCheck(self.inst)
-        local result, reason = ALL_SPELLS[sName]:PreCastCheck(self.inst)
-        if not result then
-            if self.inst.components.talker then
-                self.inst.components.talker:Say(GetActionFailString(self.inst, "GFCASTSPELL", reason or "GENERIC"), 2.5, false, true, false)
-            end
-
-            return false
-        end
-
-        return true
-    end
+    return ALL_SPELLS[sName]:PreCastCheck(self.inst)
 end
 
 function GFSpellCaster:HandleIconClick(sName)
     local inst = self.inst
-    if sName ~= nil
-        and ALL_SPELLS[sName] ~= nil
+    if sName ~= nil and ALL_SPELLS[sName] ~= nil
         and not (inst:HasTag("playerghost") or inst:HasTag("corpse"))
         and not inst:HasTag("busy")
         and (not inst.replica.rider or not inst.replica.rider:IsRiding())
         and self:IsSpellValidForCaster(sName)
-        --and self:PreCastCheck(sName)
     then
-        SendModRPCToServer(MOD_RPC["GreenFramework"]["GFCLICKSPELLBUTTON"], sName)
+        if self:IsSpellReady(sName) then
+            SendModRPCToServer(MOD_RPC["GreenFramework"]["GFCLICKSPELLBUTTON"], sName)
+        else
+            self.inst:PushEvent("gfSCCastFailed", "NOTREADY")
+        end
     end
 end
 

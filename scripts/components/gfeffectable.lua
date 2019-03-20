@@ -165,7 +165,7 @@ function GFEffectable:ApplyEffect(eName, eParams)
         self.effects[eName] = eData
         if not eInst.static then self.inst:PushEvent("gfEFEffectApplied", {eName = eName, eData = eData}) end
 
-        if eInst.updateable then --static effects are permanent modificators, so don't need to update
+        if eInst.updateable or not eInst.static then --static effects are permanent modificators, so don't need to update
             self.inst:StartUpdatingComponent(self)
             self.isUpdating = true
         end
@@ -331,8 +331,11 @@ function GFEffectable:OnUpdate(dt)
                 eInst:Update(self.inst, eData)
             end
         end
-        if not eInst.static and currTime >= eData.expirationTime then
-            self:RemoveEffect(eName, "expire")
+        if not eInst.static then 
+            needToStopUpdating = false
+            if currTime >= eData.expirationTime then
+                self:RemoveEffect(eName, "expire")
+            end
         end
     end
 
@@ -389,6 +392,9 @@ function GFEffectable:OnLoad(data)
                     stacks = eData.stacks,
                 })
         end
+
+        self.inst:StartUpdatingComponent(self)
+        self.isUpdating = true
     end
 end
 

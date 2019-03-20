@@ -9,40 +9,38 @@ local _G = GLOBAL
 --local GetQuestReminderString = GLOBAL.GetQuestReminderString
 
 AddAction("GFCASTSPELL", STRINGS.ACTIONS.GFCASTSPELL, function(act)
+    print(act)
     local doer = act.doer
     local spellName = act.spell
     local item = act.invobject
-    if spellName ~= nil and doer.components.gfspellcaster ~= nil and ALL_SPELLS[spellName] ~= nil then 
+    if spellName ~= nil and doer.components.gfspellcaster ~= nil and ALL_SPELLS[spellName] ~= nil and not ALL_SPELLS[spellName].passive then 
         if doer:HasTag("player") then
-            if doer.components.gfspellpointer then
-                doer.components.gfspellpointer:Disable()
+            if doer.components.gfspellpointer then doer.components.gfspellpointer:Disable() end --disabling the spell pointer
+
+            if doer:HasTag("playerghost") or doer:HasTag("corpse") then return true end --caster must be alive
+
+            --spell must be ready to cast
+            if not doer.components.gfspellcaster:IsSpellReady(spellName) then
+                return false, "NOTREADY"
+            elseif (item and item.components.gfspellitem and not item.components.gfspellitem:IsSpellReady(spellName)) then
+                return false, "ITEMNOTREADY"
             end
-            local result, reason = doer.components.gfspellcaster:PreCastCheck(spellName)
-            if not result then
-                if doer.components.talker then
-                    doer.components.talker:Say(GetActionFailString(doer, "GFCASTSPELL", reason or "GENERIC"), 2.5)
-                end
-                return true
-            end
-            if not ALL_SPELLS[spellName]:CanBeCastedBy(doer) then
-                if doer.components.talker then
-                    doer.components.talker:Say(GetActionFailString(doer, "GFCASTSPELL", "CAST_FAILED"), 2.5)
-                end
-                return true
-            end
-            if doer.components.gfspellcaster:CanCastSpell(spellName)
-                and not (item and item.components.gfspellitem and not item.components.gfspellitem:CanCastSpell(spellName))
-                and not (doer:HasTag("playerghost") or doer:HasTag("corpse"))
-            then
-                return doer.components.gfspellcaster:CastSpell(spellName, act.target, act.pos, item)
-            end
-            --[[return doer.components.gfspellcaster:CanCastSpell(spellName)
-                and not (item and item.components.gfspellitem and not item.components.gfspellitem:CanCastSpell(spellName))
-                and not (doer:HasTag("playerghost") or doer:HasTag("corpse"))
-                and doer.components.gfspellcaster:CastSpell(spellName, act.target, act.pos, item)
-                or false]]
+
+            --checking for ammo, target and other conditions
+            --actually this should be true almost everytime, but conditions may become false during the cast animation
+            local result, reason = doer.components.gfspellcaster:PreCastCheck(spellName, act.target, act.pos)
+            if not result then return false, reason end
+
+            --this check shuold be false when caster tries to cast the spell
+            --but spell can't be casted by this character with current conditions
+            if not ALL_SPELLS[spellName]:CanBeCastedBy(doer) then return false, "CAST_FAILED" end
+
+            --try to cast a spell, main spell function may return false
+            return doer.components.gfspellcaster:CastSpell(spellName, act.target, act.pos, item, act.params)
         else
-            return doer.components.gfspellcaster:CastSpell(spellName, act.target, act.pos, item)
+            --TODO
+            --write some logic for non-players
+            return doer.components.gfspellcaster:CastSpell(spellName, act.target, act.pos, item, act.params)
         end
     end
 
@@ -63,17 +61,22 @@ ACTIONS.GFCASTSPELL.strfn = function(act)
 end
 
 AddAction("GFSTARTSPELLTARGETING", STRINGS.ACTIONS.GFSTARTSPELLTARGETING, function(act)
-    local doer = act.doer--doer.replica.inventory:GetEquippedItem(GLOBAL.EQUIPSLOTS.HANDS)
+    local doer = act.doer
     local item = act.invobject
     if doer and doer.components.gfspellpointer and doer.components.gfspellcaster then
         if item and item.components.gfspellitem then
             local itemSpell = item.components.gfspellitem:GetCurrentSpell()
-            if item.components.gfspellitem:CanCastSpell(itemSpell) 
-                and doer.components.gfspellcaster:PreCastCheck(itemSpell)
-            then
-                doer.components.gfspellpointer.withItem = item
-                doer.components.gfspellpointer:Enable(itemSpell)
-                return true
+            if item.components.gfspellitem:IsSpellReady(itemSpell) and doer.components.gfspellcaster:IsSpellReady(itemSpell) then --check for cooldown
+                local valid, reason = ALL_SPELLS[itemSpell]:CheckCaster(doer) --check for ammo, target, etc
+                if valid then
+                    doer.components.gfspellpointer.withItem = item
+                    doer.components.gfspellpointer:Enable(itemSpell)
+                else
+                    --player can't cast a spell, need to push info string
+                    doer:PushEvent("gfSCCastFailed", reason)
+                end
+
+                return valid
             end
         end
     end
@@ -163,70 +166,97 @@ ACTIONS.GFLETSTALK.priority = 10
 
 --ACTION COLLECTORS------
 -------------------------
+--TODO : May be collectors should to add a spell name to the action
+--spell - equipped - point
 AddComponentAction("POINT", "gfspellitem", function(inst, doer, pos, actions, right)
-    if doer:HasTag("busy")
-        or doer.replica.inventory:GetActiveItem() ~= nil --prevent casts with an active item
-        or doer.replica.gfspellcaster == nil --doer must be a caster
-        or doer.components.gfspellpointer == nil --and have a pointer
+    if not right 
+        or doer:HasTag("busy")
+        or doer.replica.inventory:GetActiveItem() ~= nil --prevent casts when there is an active item
+        or doer.replica.gfspellcaster == nil             --doer must be a caster
+        or doer.components.gfspellpointer == nil         --we need a pointer to target spells
+        or doer.components.gfspellpointer:IsEnabled()    --pointer should be disabled
     then 
         return
     end 
 
-    local gfsp = doer.components.gfspellpointer
-    local spellName
-    local spell
-
-    if right and not gfsp:IsEnabled() then
-        spellName = inst.replica.gfspellitem:GetCurrentSpell()
-        if spellName ~= nil then
-            spell = ALL_SPELLS[spellName]
-            if spell 
-                and inst.replica.gfspellitem:CanCastSpell(spellName)
-                and doer.replica.gfspellcaster:CanCastSpell(spellName) 
-            then
-                if not spell.instant then
-                    table.insert(actions, ACTIONS.GFSTARTSPELLTARGETING)
-                elseif not spell.needTarget then
-                    table.insert(actions, ACTIONS.GFCASTSPELL)
-                end
-            end
+    local spellName = inst.replica.gfspellitem:GetCurrentSpell()
+    if spellName ~= nil 
+        and ALL_SPELLS[spellName] ~= nil
+        and inst.replica.gfspellitem:IsSpellReady(spellName)
+        and doer.replica.gfspellcaster:IsSpellReady(spellName) 
+    then
+        local spell = ALL_SPELLS[spellName]
+        if not spell.instant then
+            --non-instant spells require to enable the spell pointer
+            table.insert(actions, ACTIONS.GFSTARTSPELLTARGETING)
+        elseif not spell.needTarget then
+            --but instant spells that require a target can't be casted on point
+            table.insert(actions, ACTIONS.GFCASTSPELL)
         end
     end
 end)
 
+--spell - equipped - target
 AddComponentAction("EQUIPPED", "gfspellitem", function(inst, doer, target, actions, right)
-    if doer:HasTag("busy")
-        or doer.replica.inventory:GetActiveItem() ~= nil --prevent casts with an active item
-        or doer.replica.gfspellcaster == nil --doer must be a caster
-        or doer.components.gfspellpointer == nil --and have a pointer
-        --or (target ~= nil 
-        --    and ((target:HasTag("NOCLICK") or target:HasTag("shadow"))
-        --        or (target.replica.gfquestgiver ~= nil and target.replica.gfquestgiver:HasQuests())))
+    if not right 
+        or doer:HasTag("busy")
+        or doer.replica.inventory:GetActiveItem() ~= nil --prevent casts when there is an active item
+        or doer.replica.gfspellcaster == nil             --doer must be a caster
+        or doer.components.gfspellpointer == nil         --we need a pointer to target spells
+        or doer.components.gfspellpointer:IsEnabled()    --pointer should be disabled
     then 
         return
     end 
 
-    local gfsp = doer.components.gfspellpointer
-    local spellName
-    local spell
-
-    if right and not gfsp:IsEnabled() then
-        spellName = inst.replica.gfspellitem:GetCurrentSpell()
-        if spellName ~= nil then
-            spell = ALL_SPELLS[spellName]
-            if spell 
-                and inst.replica.gfspellitem:CanCastSpell(spellName)
-                and doer.replica.gfspellcaster:CanCastSpell(spellName) 
-            then
-                if not spell.instant then
-                    table.insert(actions, ACTIONS.GFSTARTSPELLTARGETING)
-                else
-                    table.insert(actions, ACTIONS.GFCASTSPELL)
-                end
-            end
+    local spellName = inst.replica.gfspellitem:GetCurrentSpell()
+    if spellName ~= nil 
+        and ALL_SPELLS[spellName] ~= nil
+        and inst.replica.gfspellitem:IsSpellReady(spellName)
+        and doer.replica.gfspellcaster:IsSpellReady(spellName) 
+    then
+        local spell = ALL_SPELLS[spellName]
+        if not spell.instant then
+            --non-instant spells require to enable the spell pointer
+            table.insert(actions, ACTIONS.GFSTARTSPELLTARGETING)
+        elseif not spell.needTarget or spell:CheckTarget(doer, target) then
+            --need to check - is target valid for this spell or not
+            --CheckTarget is a both-side function, be sure that it will not cause crashes on the client side
+            table.insert(actions, ACTIONS.GFCASTSPELL)
         end
     end
 end)
+
+--spell - item in inventory (scrolls, etc)
+--TODO: Write a hook for instant-targeted spells (maybe pick a target with Input:GetEntityUnderMouse and insert it as an act.target)
+AddComponentAction("INVENTORY", "gfspellitem", function(inst, doer, actions, right)
+    if inst.replica.equippable ~= nil                    --this collector shouldn't override the "equip" action
+        or doer:HasTag("busy")
+        or doer.replica.inventory:GetActiveItem() ~= nil --prevent casts when there is an active item
+        or doer.replica.gfspellcaster == nil             --doer must be a caster
+        or doer.components.gfspellpointer == nil         --we need a pointer to target spells
+        or doer.components.gfspellpointer:IsEnabled()    --pointer should be disabled
+    then 
+        return
+    end 
+
+    local spellName = inst.replica.gfspellitem:GetCurrentSpell()
+    if spellName ~= nil 
+        and ALL_SPELLS[spellName] ~= nil
+        and inst.replica.gfspellitem:IsSpellReady(spellName)
+        and doer.replica.gfspellcaster:IsSpellReady(spellName) 
+    then
+        local spell = ALL_SPELLS[spellName]
+        if not spell.instant then
+            --non-instant spells require to enable the spell pointer
+            table.insert(actions, ACTIONS.GFSTARTSPELLTARGETING)
+        elseif not spell.needTarget then
+            --but instant spells that require a target can't be casted on point
+            --so we can't use instant-targeted spells here
+            table.insert(actions, ACTIONS.GFCASTSPELL)
+        end
+    end
+end)
+
 --[[ 
 AddComponentAction("INVENTORY", "gfspellitem", function(inst, doer, actions)
     if inst.replica.gfspellitem
@@ -244,32 +274,6 @@ AddComponentAction("INVENTORY", "gfdrinkable", function(inst, doer, actions, rig
 		and not doer:HasTag("cantdrink")
     then
         table.insert(actions, ACTIONS.GFDRINKIT)
-    end
-end)
-
-AddComponentAction("INVENTORY", "gfspellitem", function(inst, doer, actions, right)
-    if inst.replica.equippable == nil
-        and not doer.replica.inventory:GetActiveItem() ~= inst
-    then
-        local gfsp = doer.components.gfspellpointer
-        local spellName
-        local spell
-        if not gfsp:IsEnabled() then
-            spellName = inst.replica.gfspellitem:GetCurrentSpell()
-            if spellName ~= nil then
-                spell = ALL_SPELLS[spellName]
-                if spell 
-                    and inst.replica.gfspellitem:CanCastSpell(spellName)
-                    and doer.replica.gfspellcaster:CanCastSpell(spellName) 
-                then
-                    if not spell.instant then
-                        table.insert(actions, ACTIONS.GFSTARTSPELLTARGETING)
-                    else
-                        table.insert(actions, ACTIONS.GFCASTSPELL)
-                    end
-                end
-            end
-        end
     end
 end)
 
