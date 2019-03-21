@@ -131,7 +131,7 @@ function GFSpellCaster:CastSpell(sName, target, pos, item, params)
 
     self.lastCastTime = GetTime()
 
-    self.inst:PushEvent("gfSCCastSuccess", {spell = sInst, target = target, pos = pos, item = item, params = spellParams})
+    self.inst:PushEvent("gfSCCastSuccess", {spell = sInst, target = target, pos = pos, item = item, params = params})
 
     return true
 end
