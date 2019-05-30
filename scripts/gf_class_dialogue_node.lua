@@ -39,18 +39,33 @@ function DialogueNode:RunNode(doer, interlocutor)
     if self.nodeFn ~= nil then
         local res = self.nodeFn(doer, interlocutor)
         if res ~= nil then
+            if self.isLast then 
+                --closing a dialogue window if the node is marked as last
+                doer.components.gfplayerdialog:CloseDialog() 
+                return
+            end
+
+            if self.hasQuests then
+                --collect quests if needed
+                local quests = (interlocutor ~= nil and interlocutor.components.gfquestgiver ~= nil)
+                    and interlocutor.components.gfquestgiver:PickQuests(doer)
+                    or nil
+                if quests ~= nil then
+                    data[3] = quests.offer
+                    data[4] = quests.complete
+                end
+            end
+
             if type(res) == "table" then
-                doer.components.gfplayerdialog:StartConversationWith(interlocutor, res, self.hasQuests)
+                doer.components.gfplayerdialog:KeepConversation(interlocutor, res)
             elseif type(res) == "string" then
-                doer.components.gfplayerdialog:StartConversationWith(interlocutor, {res}, self.hasQuests)
+                doer.components.gfplayerdialog:KeepConversation(interlocutor, {res})
             end
         end
     else
-        print("DialogueNode", self.name, "doesn't have an event function!")
+        print("DialogueNode", self.name, "doesn't have an invalid event function!")
+        doer.components.gfplayerdialog:CloseDialog() 
     end
-
-    --closing a dialog if node marked as last
-    if self.isLast then doer.components.gfplayerdialog:CloseDialog() end
 end
 
 function DialogueNode:CollectQuests(doer, interlocutor)

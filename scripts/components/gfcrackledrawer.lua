@@ -93,6 +93,7 @@ function GFCrackleDrawer:DrowCrackles(points)
 
         local pointsToDraw = {{x = lgtn.start.x, z = lgtn.start.z}, {x = lgtn.finish.x, z = lgtn.finish.z}}
         local needPoints = dist * 1.5
+        local angleOffset = 1
 
         while #pointsToDraw <= needPoints do
             --print("--------------------------")
@@ -106,7 +107,7 @@ function GFCrackleDrawer:DrowCrackles(points)
                     --print(string.format("start %i (%.2f, %.2f), end %i (%.2f, %.2f)", j, pointsToDraw[j].x, pointsToDraw[j].z,
                         --j + 1, pointsToDraw[j + 1].x, pointsToDraw[j + 1].z))
                     local dx, dz = vend.x - vstart.x, vend.z - vstart.z
-                    local angle = math.atan2(dx, dz) + (math.random(50) - 25) * DEGREES - 1.57
+                    local angle = math.atan2(dx, dz) + angleOffset * math.random(15) * DEGREES - 1.57
                     local lenght = math.sqrt(dx * dx + dz * dz) / 2
                     --print("angle, lenght", angle / DEGREES, lenght)
                     --print("inserting pt in pos", j + 1)
@@ -115,6 +116,7 @@ function GFCrackleDrawer:DrowCrackles(points)
                     --print(string.format("%i (%.2f, %.2f) is last element", j, pointsToDraw[j].x, pointsToDraw[j].z))
                 end
                 j = j + 2
+                angleOffset = angleOffset * -1
             end
         end
 

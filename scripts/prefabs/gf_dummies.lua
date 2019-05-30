@@ -70,6 +70,30 @@ local function netdummyfn()
     return inst
 end
 
+local function emitterdummyfn()
+	local inst = CreateEntity()
+	inst.entity:AddTransform()
+    inst.entity:AddNetwork()
+    inst.entity:AddSoundEmitter()
+    inst.entity:AddVFXEffect()
+
+    inst:AddTag("NOCLICK")
+
+    inst:AddComponent("gfparticleemitter")
+    inst.components.gfparticleemitter:Config({})
+    inst.components.gfparticleemitter:Start()
+
+    inst.entity:SetPristine()
+
+    if not TheWorld.ismastersim then
+        return inst
+    end
+
+    inst.persists = false
+
+    return inst
+end
+
 local function redirectdummyfn()
     local inst = CreateEntity()
     
@@ -102,4 +126,6 @@ return Prefab( "gf_local_dummy", localdummyfn),
     Prefab( "gf_net_dummy", netdummyfn),
     Prefab( "gf_lightning_dummy", lightningdummyfn),
     Prefab( "gf_crackle_dummy", crackledummyfn),
-    Prefab( "gf_redirect_dummy", redirectdummyfn)
+    Prefab( "gf_redirect_dummy", redirectdummyfn),
+    Prefab( "gf_emitter_dummy", emitterdummyfn)
+    

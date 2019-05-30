@@ -74,10 +74,16 @@ AddComponentPostInit("playercontroller", function(self)
             local act = self.inst.components.playeractionpicker:SortActionList({ ACTIONS.GFSTOPSPELLTARGETING }, position, nil)[1]
             if act ~= nil then
                 if not self.ismastersim then
-                    act.preview_cb = function()
+                    if self.locomotor == nil then
                         self.remote_controls[_G.CONTROL_CONTROLLER_ALTACTION] = 0
                         local isreleased = not TheInput:IsControlPressed(_G.CONTROL_CONTROLLER_ALTACTION)
                         SendRPCToServer(RPC.ControllerAltActionButton, act.action.code, self.inst, isreleased, nil, act.action.mod_name)
+                    else
+                        act.preview_cb = function()
+                            self.remote_controls[_G.CONTROL_CONTROLLER_ALTACTION] = 0
+                            local isreleased = not TheInput:IsControlPressed(_G.CONTROL_CONTROLLER_ALTACTION)
+                            SendRPCToServer(RPC.ControllerAltActionButton, act.action.code, self.inst, isreleased, nil, act.action.mod_name)
+                        end
                     end
                 end
 
@@ -123,13 +129,23 @@ AddComponentPostInit("playercontroller", function(self)
                     if act then
                         if not self.ismastersim then
                             --need to use custom data for default RPC (we get info about target from the spell pointer)
-                            act.preview_cb = function()
+                            if self.locomotor == nil then
                                 self.remote_controls[GLOBAL.CONTROL_CONTROLLER_ACTION] = 0
                                 local isreleased = not TheInput:IsControlPressed(GLOBAL.CONTROL_CONTROLLER_ACTION)
                                 if target then
                                     SendRPCToServer(RPC.ControllerActionButton, act.action.code, target, isreleased, nil, act.action.mod_name)
                                 else
                                     SendRPCToServer(RPC.ControllerActionButtonPoint, act.action.code, position.x, position.z, isreleased, nil, act.action.mod_name)
+                                end
+                            else
+                                act.preview_cb = function()
+                                    self.remote_controls[GLOBAL.CONTROL_CONTROLLER_ACTION] = 0
+                                    local isreleased = not TheInput:IsControlPressed(GLOBAL.CONTROL_CONTROLLER_ACTION)
+                                    if target then
+                                        SendRPCToServer(RPC.ControllerActionButton, act.action.code, target, isreleased, nil, act.action.mod_name)
+                                    else
+                                        SendRPCToServer(RPC.ControllerActionButtonPoint, act.action.code, position.x, position.z, isreleased, nil, act.action.mod_name)
+                                    end
                                 end
                             end
                         end
@@ -231,7 +247,7 @@ AddClassPostConstruct("screens/playerhud", function (self)
                     self:SetSpellSelection(false)
                 elseif control == _G.CONTROL_ACCEPT then
                     --select a spell ("A" - button)
-                    --control should be disabled after first run (need to ignore key holding) to prevent instant cast
+                    --control should be disabled after first run (need to ignore key holding) to prevent an instant cast
                     if not self.gfLockActionButton then
                         self.controls.gfSpellPanel:UseActiveSpell()
                         self:SetSpellSelection(false) --always need to remove the SpellSelect flag due the spell panel was removed or something else
@@ -267,7 +283,7 @@ AddClassPostConstruct("screens/playerhud", function (self)
             elseif self:IsInConversation() then
                 if control == _G.CONTROL_ACCEPT then
                     --select a row or accept/complete a quest ("A" - button)
-                    --control should be disabled after first run (need to ignore key holding) to prevent instant action
+                    --control should be disabled after first run (need to ignore key holding) to prevent an instant action
                     if not self.gfLockActionButton then
                         if self.controls.gfConversationDialog ~= nil then
                             self.controls.gfConversationDialog:ControllerAcceptButton()

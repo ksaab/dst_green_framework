@@ -42,6 +42,8 @@ end
 ----------------------------------------------
 --############################################
 
+require "gf_init_particle_emitters"
+
 --init global storages for items
 local DialogueNodes = {}
 local DialogueNodesIDs = {}

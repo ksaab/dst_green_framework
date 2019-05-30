@@ -9,7 +9,7 @@ local _G = GLOBAL
 --local GetQuestReminderString = GLOBAL.GetQuestReminderString
 
 AddAction("GFCASTSPELL", STRINGS.ACTIONS.GFCASTSPELL, function(act)
-    print(act)
+    --print("action", _G.PrintTable(act))
     local doer = act.doer
     local spellName = act.spell
     local item = act.invobject
@@ -36,6 +36,7 @@ AddAction("GFCASTSPELL", STRINGS.ACTIONS.GFCASTSPELL, function(act)
             if not ALL_SPELLS[spellName]:CanBeCastedBy(doer) then return false, "CAST_FAILED" end
 
             --try to cast a spell, main spell function may return false
+            print("casting...")
             return doer.components.gfspellcaster:CastSpell(spellName, act.target, act.pos, item, act.params)
         else
             --TODO

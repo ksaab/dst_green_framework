@@ -57,12 +57,23 @@ end)
 --server and client metods ---------------------------------
 ------------------------------------------------------------
 
+--for classified-replica effects
 function Effect:HUDOnUpdate(inst, eData)
     if self.hudonapplyfn then self:hudonapplyfn(inst, eData) end
 end
 
 function Effect:HUDOnRemove(inst, eData)
-    if self.hudonremovefn then self:hudonremovefn(inst) end
+    if self.hudonremovefn then self:hudonremovefn(inst, eData) end
+end
+
+--for any-replica effects
+function Effect:ClientOnApply(inst, eData)
+    --print("pre class fx")
+    if self.clientonapplyfn then self:clientonapplyfn(inst, eData) end
+end
+
+function Effect:ClientOnRemove(inst, eData)
+    if self.clientonremovefn then self:clientonremovefn(inst, eData) end
 end
 
 ------------------------------------------------------------
@@ -117,6 +128,7 @@ function Effect:Remove(inst, eData, reason)
 end
 
 function Effect:ConsumeStacks(inst, eData, value)
+    --print("before consuming", eData.stacks, "consume", value)
     value = value or 1
     local stacks = eData.stacks - value
 
@@ -128,9 +140,10 @@ function Effect:ConsumeStacks(inst, eData, value)
             eData.stacks = 1
         end
     else
-        eData.stacks = math.max(stacks, self.maxStacks)
+        eData.stacks = math.min(stacks, self.maxStacks)
     end
 
+    --print("after consuming", eData.stacks)
     self:Refresh(inst, eData, {duration = 0, stacks = 0})
 end
 

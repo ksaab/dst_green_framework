@@ -23,18 +23,23 @@ local function UpdateClassifiedEffect(inst, eName, timer, stacks)
     end
 
     ALL_EFFECTS[eName]:HUDOnUpdate(inst, self.effects[eName])
-    inst:PushEvent("gfEFUpdateIcon", {eName = eName, timer = timer, stacks = stacks})
+    if not ALL_EFFECTS[eName].noicon then
+        inst:PushEvent("gfEFUpdateIcon", {eName = eName, timer = timer, stacks = stacks})
+    end
 end
 
 local function RemoveClasifiedEffect(inst, eName)
     local self = inst.replica.gfeffectable
 
+    ALL_EFFECTS[eName]:HUDOnRemove(inst, self.effects[eName])
+
     if not GFGetIsMasterSim() then
         self.effects[eName] = nil
     end
 
-    ALL_EFFECTS[eName]:HUDOnRemove(inst)
-    inst:PushEvent("gfEFRemoveIcon", {eName = eName})
+    if not ALL_EFFECTS[eName].noicon then
+        inst:PushEvent("gfEFRemoveIcon", {eName = eName})
+    end
 end
 
 local function DoDeserealizeEventStream(classified)
@@ -82,12 +87,15 @@ local function DeserializeStaticHovers(inst)
             eData.stacks = 1
             eData.static = ALL_EFFECTS[eName].static
             self.effects[eName] = eData
+
+            eInst:ClientOnApply(inst, eData)
         end
     end
 
     --removing nonexistent effects
     for eName, _ in pairs(self.effects) do
         if ALL_EFFECTS[eName].type >= 3 and not currEffects[eName] then
+            eInst:ClientOnRemove(inst, self.effects[eName])
             self.effects[eName] = nil
         end
     end
@@ -115,12 +123,15 @@ local function DeserializeActiveHovers(inst)
             eData.stacks = 1
             if eInst.static then eData.static = true end
             self.effects[eName] = eData
+
+            eInst:ClientOnApply(inst, eData)
         end
     end
 
     --removing nonexistent effects
     for eName, _ in pairs(self.effects) do
         if ALL_EFFECTS[eName].type < 3 and not currEffects[eName] then
+            eInst:ClientOnRemove(inst, self.effects[eName])
             self.effects[eName] = nil
         end
     end
@@ -227,16 +238,21 @@ function GFEffectable:ApplyEffect(eName)
     local eInst = ALL_EFFECTS[eName]
     if GFGetIsMasterSim() and eInst.type ~= 0 then
         self.effects = self.inst.components.gfeffectable.effects 
+        if self.effects[eName] == nil then return end
 
         if eInst.pushToReplica then
             self:UpdateReplicaEffects(eInst.type >= 3)
+            --print("replica fx")
+            eInst:ClientOnApply(self.inst, self.effects[eName])
         end
 
         if self.classified ~= nil and eInst.pushToClassified then
             if self.inst == ThePlayer and not GFGetIsDedicatedNet() then
                 --if inst is the not dedicated host-player, don't need to push net variable
                 eInst:HUDOnUpdate(self.inst, self.effects[eName])
-                self.inst:PushEvent("gfEFUpdateIcon", {eName = eName})
+                if not eInst.noicon then
+                    self.inst:PushEvent("gfEFUpdateIcon", {eName = eName})
+                end
             else
                 --tell the player-client about a new effect
                 local eData = self.effects[eName]
@@ -256,10 +272,14 @@ function GFEffectable:RefreshEffect(eName)
     if GFGetIsMasterSim() and self.classified ~= nil and eInst.type ~= 0 and eInst.pushToClassified then
         --but always client should know full information about classified effects (icon)
         self.effects = self.inst.components.gfeffectable.effects
+        if self.effects[eName] == nil then return end
+
         if self.inst == ThePlayer and not GFGetIsDedicatedNet() then
             --if inst is the not dedicated host-player, don't need to push net variable
             eInst:HUDOnUpdate(self.inst, self.effects[eName])
-            self.inst:PushEvent("gfEFUpdateIcon", {eName = eName})
+            if not eInst.noicon then
+                self.inst:PushEvent("gfEFUpdateIcon", {eName = eName})
+            end
         else
             --tell the player-client that the effect was updated
             local eData = self.effects[eName]
@@ -275,16 +295,20 @@ function GFEffectable:RemoveEffect(eName)
     local eInst = ALL_EFFECTS[eName]
     if GFGetIsMasterSim() and eInst.type ~= 0 then
         self.effects = self.inst.components.gfeffectable.effects
+        if self.effects[eName] == nil then return end
 
         if eInst.pushToReplica then
             self:UpdateReplicaEffects(eInst.type >= 3)
+            eInst:ClientOnRemove(self.inst, self.effects[eName])
         end
 
         if self.classified ~= nil and eInst.pushToClassified then
             if self.inst == ThePlayer and not GFGetIsDedicatedNet() then
                 --if inst is the not dedicated host-player, don't need to push net variable
                 eInst:HUDOnRemove(self.inst)
-                self.inst:PushEvent("gfEFRemoveIcon", {eName = eName})
+                if not eInst.noicon then
+                    self.inst:PushEvent("gfEFRemoveIcon", {eName = eName})
+                end
             else
                 --tell the player-client that the effect was removed
                 self.classified._gfEFEventStream:push_string(string.format("3;%i", ALL_EFFECTS[eName].id))

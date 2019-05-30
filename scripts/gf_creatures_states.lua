@@ -84,3 +84,31 @@ local ghostCastSpell = State{
 
 AddStategraphState("ghost", ghostCastSpell)
 AddStategraphActionHandler("ghost", ActionHandler(ACTIONS.GFCASTSPELL, "castspell"))
+
+local tallbirdCastSpell = State{
+    name = "castspell",
+    tags = { "casting", "busy" },
+
+    onenter = function(inst)
+        inst.Physics:Stop()            
+        inst.AnimState:PlayAnimation("steal")
+        inst.SoundEmitter:PlaySound("dontstarve/creatures/smallbird/scratch_ground")
+    end,
+
+	timeline =
+    {
+        TimeEvent(11 * FRAMES, function(inst) 
+            inst:PerformBufferedAction() 
+        end),
+    },
+	
+    events =
+    {
+        EventHandler("animover", function(inst) 
+            inst.sg:GoToState("idle") 
+        end),
+    },    
+}
+
+AddStategraphState("tallbird", tallbirdCastSpell)
+AddStategraphActionHandler("tallbird", ActionHandler(ACTIONS.GFCASTSPELL, "castspell"))

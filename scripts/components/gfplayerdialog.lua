@@ -4,10 +4,6 @@ local ALL_DIALOGUE_NODES = GF.GetDialogueNodes()
 local DIALOGUE_NODES_IDS = GF.GetDialogueNodesIDs()
 local PopShop = require "screens/gf_shop"
 
-local function TrackFail(inst)
-    inst.components.gfplayerdialog:CloseDialog()
-end
-
 local function TrackInterlocutor(inst, interlocutor)
     if not inst:IsValid() or not interlocutor:IsValid() or not inst:IsNear(interlocutor, 15) then
         TrackFail(inst)
@@ -29,10 +25,12 @@ local GFPlayerDialog = Class(function(self, inst)
     self._trackNodes = {} --on click events
     --self._trackDialog = {} --info strings
 
-    --self.TrackFail = TrackFail
+    local function _trackFail()
+        self:CloseDialog() 
+    end
 
-    inst:ListenForEvent("death", TrackFail)
-    inst:ListenForEvent("onremove", TrackFail)
+    inst:ListenForEvent("death", function() _trackFail() end)
+    inst:ListenForEvent("onremove", function() _trackFail() end)
 end)
 
 -----------------------------------
@@ -54,13 +52,32 @@ end
 -----------------------------------
 --conversation methods-------------
 -----------------------------------
-function GFPlayerDialog:StartConversation(data) --safe
+--unsafe, don't use it directly
+function GFPlayerDialog:KeepConversation(interlocutor, data) 
+    if data ~= nil then
+        if self._trackInterlocutor == nil and interlocutor ~= nil then
+            self:StartConversationWith(interlocutor, data)
+        else
+            self:PushDialog(data[1], data[2], data[3], data[4])
+        end
+    end
+end
+
+--safe
+--args: interlocutor [entity with the gfinterlocutor component], data - <node name [string], choises [string[]], quests to offer [string[]], quests to complete [string[]]>
+--return: nothing
+--use this to show a dialogue without interlocutor
+function GFPlayerDialog:StartConversation(data) 
     if data ~= nil then
         self:StopTrack()
         self:PushDialog(data[1], data[2], data[3], data[4])
     end
 end
 
+--safe
+--args: interlocutor [entity with the gfinterlocutor component], data - <node name [string], choises [string[]], quests to offer [string[]], quests to complete [string[]]>
+--return: nothing
+--use this to start a conversation with an interlocutor
 function GFPlayerDialog:StartConversationWith(interlocutor, data, pushQuests) --safe
     if not self.canSpeak or interlocutor == nil or data == nil or interlocutor.components.gfinterlocutor == nil then return false end
 
@@ -81,12 +98,13 @@ function GFPlayerDialog:StartConversationWith(interlocutor, data, pushQuests) --
     self:PushDialog(data[1], data[2], data[3], data[4])
 end
 
-function GFPlayerDialog:PushDialog(strid, nodes, offer, complete) --UNSAFE, do not use it directly
+--unsafe, do not use it directly
+function GFPlayerDialog:PushDialog(strid, nodes, offer, complete) 
     self._trackQuests = {}
     self._trackNodes = {}
     --self._trackDialog = {}
     --dialog for a host palyer
-    if GFGetPlayer() == self.inst then
+    if GFGetPlayer() == self.inst and not GFGetIsDedicatedNet() then
         if offer ~= nil and #offer > 0 then
             for i = 1, #offer do
                 if ALL_QUESTS[offer[i]] ~= nil then
@@ -168,7 +186,11 @@ function GFPlayerDialog:PushDialog(strid, nodes, offer, complete) --UNSAFE, do n
     return true
 end
 
-function GFPlayerDialog:CloseDialog() --safe
+--safe
+--args: none
+--return: nothing
+--use this to stop a conversation
+function GFPlayerDialog:CloseDialog()
     self._trackQuests = {} --quests
     self._trackNodes = {} --on click events
     --self._trackDialog = {} --info strings
@@ -201,6 +223,7 @@ end
 -----------------------------------------
 --track methods--------------------------
 -----------------------------------------
+--unsafe
 function GFPlayerDialog:StartTrack(interlocutor, checkDistance)
     if interlocutor == nil or interlocutor.components.gfinterlocutor == nil then 
         print("ilocutor is nil")
@@ -224,6 +247,7 @@ function GFPlayerDialog:StartTrack(interlocutor, checkDistance)
     return true
 end
 
+--unsafe
 function GFPlayerDialog:StopTrack()
     if self._trackInterlocutor == nil then return end
 
@@ -241,68 +265,75 @@ end
 -----------------------------------------
 --network methods------------------------
 -----------------------------------------
+--unsafe
 function GFPlayerDialog:HandleButton(event, name, hash)
-    if GFGetIsMasterSim() then
-        --event: 0 - close, 1 - dialogue node, 2 - accept a quest, 3 - complete a quest, 4 - abandon a quest
-        if event == 0 then
-            self:CloseDialog()
-        elseif event == 1 then
-            local nInst = ALL_DIALOGUE_NODES[name]
-            local initiator = self:GetTrackingEntity()
+    --client just need to send an rpc
+    if not GFGetIsMasterSim() then
+        SendModRPCToServer(MOD_RPC["GreenFramework"]["GFDIALOGRPC"], event, name, hash)
+        return
+    end
 
-            if self._trackNodes[name]
-                and ALL_DIALOGUE_NODES[name] ~= nil
-                and nInst:Check(self.inst, initiator)
-            then 
-                nInst:RunNode(self.inst, initiator)
-            else
-                GFDebugPrint(string.format("WARNING: %s tries to run impermissible event %s", tostring(self.inst), name)) 
-            end
-        elseif self.inst.components.gfquestdoer ~= nil then
-            if self._trackQuests[name] and ALL_QUESTS[name] ~= nil then
+    --event: 0 - close, 1 - dialogue node, 2 - accept a quest, 3 - complete a quest, 4 - abandon a quest
+    if event == 0 then
+        self:CloseDialog()
+    elseif event == 1 then
+        --client has clicked a non-quest button in the dialogue window
+        local nInst = ALL_DIALOGUE_NODES[name]
+        local initiator = self:GetTrackingEntity()
+
+        if self._trackNodes[name]
+            and nInst ~= nil
+            and nInst:Check(self.inst, initiator)
+        then 
+            nInst:RunNode(self.inst, initiator)
+        else
+            print(string.format("WARNING: %s tries to run impermissible event %s", tostring(self.inst), name)) 
+        end
+    elseif self.inst.components.gfquestdoer ~= nil then
+        --client has clicked a quest button in the dialogue window
+        if self._trackQuests[name] and ALL_QUESTS[name] ~= nil then
+            local giver = self:GetTrackingEntity()
+            if event == 2 then
+                --client attempts to accept a quest
                 local giver = self:GetTrackingEntity()
-                if event == 2 then
-                    --accept quest
-                    local giver = self:GetTrackingEntity()
-                    if giver ~= nil then
-                        if giver.components.gfquestgiver:IsGiverFor(name) then
-                            self.inst.components.gfquestdoer:AcceptQuest(name, self:GetTrackingHash())
-                            self:CloseDialog()
-                        else
-                            GFDebugPrint(string.format("WARNING: %s tries to accept quest %s", tostring(self.inst), name)) 
-                        end
-                    else
-                        self.inst.components.gfquestdoer:AcceptQuest(name)
+                if giver ~= nil then
+                    if giver.components.gfquestgiver:IsGiverFor(name) then
+                        self.inst.components.gfquestdoer:AcceptQuest(name, self:GetTrackingHash())
                         self:CloseDialog()
-                    end
-                elseif event == 3 then
-                    --complete quest
-                    local giver = self:GetTrackingEntity()
-                    if giver ~= nil then
-                        if giver.components.gfquestgiver:IsCompleterFor(name) then
-                            self.inst.components.gfquestdoer:CompleteQuest(name, self:GetTrackingHash())
-                            self:CloseDialog()
-                        else
-                            GFDebugPrint(string.format("WARNING: %s tries to complete quest %s", tostring(self.inst), name)) 
-                        end
                     else
-                        self.inst.components.gfquestdoer:CompleteQuest(name)
-                        self:CloseDialog()
+                        print(string.format("WARNING: %s tries to accept quest %s", tostring(self.inst), name)) 
                     end
+                else
+                    self.inst.components.gfquestdoer:AcceptQuest(name)
+                    self:CloseDialog()
                 end
-            elseif event == 4 then
-                --abandon quest
-                --actually this is not from this player dialog window, but there is no reason to create a new rpc
-                self.inst.components.gfquestdoer:AbandonQuest(name, hash)
-            else
-                GFDebugPrint(string.format("WARNING: %s tries to run impermissible quest %s", tostring(self.inst), name)) 
+            elseif event == 3 then
+                --client attempts to complete a quest
+                local giver = self:GetTrackingEntity()
+                if giver ~= nil then
+                    if giver.components.gfquestgiver:IsCompleterFor(name) then
+                        self.inst.components.gfquestdoer:CompleteQuest(name, self:GetTrackingHash())
+                        self:CloseDialog()
+                    else
+                        print(string.format("WARNING: %s tries to complete quest %s", tostring(self.inst), name)) 
+                    end
+                else
+                    self.inst.components.gfquestdoer:CompleteQuest(name)
+                    self:CloseDialog()
+                end
             end
+        elseif event == 4 then
+            --abandon quest
+            --actually this event is not from the player dialog window, but there is no reason to create a new rpc
+            self.inst.components.gfquestdoer:AbandonQuest(name, hash)
         end
     else
-        SendModRPCToServer(MOD_RPC["GreenFramework"]["GFDIALOGRPC"], event, name, hash)
+        print(string.format("WARNING: unknown event %s from %s", tostring(event), tostring(self.inst))) 
     end
 end
 
+--unsafe, feature for the future update
+--[[-----------------------------------
 function GFPlayerDialog:StartTradingWith(shop)
     if shop == nil or shop.components.gfshop == nil then return false end
     if self:StartTrack(shop) then
@@ -340,5 +371,12 @@ function GFPlayerDialog:HandleShopButton(event, itemID, num)
         end
     end
 end
+-------------------------------------]]
+
+function GFPlayerDialog:GetDebugString()
+
+    return string.format("talker: %s", tostring(self._trackInterlocutor))
+end
+
 
 return GFPlayerDialog

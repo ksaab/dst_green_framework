@@ -278,6 +278,7 @@ local function fn()
 	phys:SetCapsule(1, 5)
     
     inst:AddTag("NOCLICK")
+    inst:AddTag("scarytoprey")
 
     inst._tail = net_bool(inst.GUID, "gf_throw_dummy.tail", "enabletail")
     --inst._tail:set_local(false)

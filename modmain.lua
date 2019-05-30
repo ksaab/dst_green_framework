@@ -21,6 +21,7 @@ PrefabFiles =
     "gf_reticules",
     "gf_quest_mark",
     "gf_dummy_throw",
+    "gf_emitter_component",
 }
 
 Assets = 
@@ -31,6 +32,19 @@ Assets =
     Asset("ATLAS", "images/gfspellhud.xml"),
     Asset("IMAGE", "images/gfquestjournal.tex"),
     Asset("ATLAS", "images/gfquestjournal.xml"),
+
+    Asset("IMAGE", "images/gfoverlays.tex"),
+	Asset("ATLAS", "images/gfoverlays.xml"),
+	Asset("IMAGE", "images/gfbloodlines.tex"),
+    Asset("ATLAS", "images/gfbloodlines.xml"),
+
+    Asset("IMAGE", "fx/fxdrop.tex"),
+    Asset("IMAGE", "fx/fxsparkle.tex"),
+    Asset("IMAGE", "fx/fxsquare.tex"),
+    Asset("IMAGE", "fx/fxskull.tex"),
+    Asset("IMAGE", "fx/fxbubble.tex"),
+    Asset("IMAGE", "fx/fxhorizontalpulse.tex"),
+    Asset("IMAGE", "fx/fxverticalpulse.tex"),
 
     Asset("ANIM", "anim/gf_player_fast_cast.zip"),
     Asset("ANIM", "anim/gf_player_read_scroll.zip"),
@@ -87,3 +101,5 @@ GF.MakeEquipThrowable("spear_wathgrithr", "fly")
 --GF.AddShopItem("spear",     "Spear",        "spear", nil,       nil,    "spear.tex",    "images/inventoryimages.xml")
 --GF.AddShopItem("meat",      "Meat",         nil, "gem",     5,      "meat.tex",     "images/inventoryimages.xml")
 --GF.AddShopItem("armorruins",  "Tulecite Armor",    "strawhat", "meat",    10,     "armorruins.tex", "images/inventoryimages.xml")
+
+--GF.SpellPostInit("gw_ef_mandrake", function(spell) print("reinit") spell.castTime = 5 end )

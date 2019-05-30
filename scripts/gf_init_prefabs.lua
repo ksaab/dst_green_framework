@@ -26,6 +26,10 @@ local function ChessFriendlyFireCheck(inst, target)
             or (inst.components.follower and inst.components.follower.leader == target))
 end
 
+local function TallbirdFriendlyFireCheck(inst, target)
+    return inst.components.combat.target ~= target and target:HasTag("tallbird")
+end
+
 local function PigmanWantToTalk(talker, inst)
     return not inst:HasTag("werepig") and not inst:HasTag("sfhostile")
 end
@@ -100,6 +104,12 @@ local prefabs_post_init =
         if _G.GFGetIsMasterSim() then
             inst:AddComponent("gfspellcaster")
             inst.components.gfspellcaster:SetIsTargetFriendlyFn(ChessFriendlyFireCheck)
+        end
+    end,
+    tallbird = function(inst) 
+        if _G.GFGetIsMasterSim() then
+            inst:AddComponent("gfspellcaster")
+            inst.components.gfspellcaster:SetIsTargetFriendlyFn(TallbirdFriendlyFireCheck)
         end
     end,
 }

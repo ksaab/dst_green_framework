@@ -1313,7 +1313,8 @@ AddStategraphActionHandler("wilson", ActionHandler(ACTIONS.GFCASTSPELL, function
 		then 
 			act.target = nil 
 		end
-
+		
+		--print("action", act, _G.PrintTable(act))
 		return spell:GetPlayerState()
 	end
 

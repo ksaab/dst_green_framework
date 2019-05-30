@@ -16,13 +16,16 @@ local PopShop = require "screens/gf_shop"
 
 --widgets
 local Widget = require "widgets/widget"
+local ImageButton = require "widgets/imagebutton"
+local Text = require "widgets/text"
+--custom
 local EffectsPanel = require "widgets/gf_effects_panel"
 local SpellPanel = require "widgets/gf_spellpanel"
 local ConversationDialog = require "widgets/gf_conversation_dialog"
 local ShopDialog = require "widgets/gf_shop_dialog"
 local QuestInformer = require "widgets/gf_questinformer"
-local ImageButton = require "widgets/imagebutton"
-local Text = require "widgets/text"
+local BleedOverlay = require "widgets/gf_bleeding_overlay"
+local PoisonOverlay = require "widgets/gf_poison_overlay"
 
 --[[NEW WIDGETS AND SCREENS]]-----------
 ----------------------------------------
@@ -55,6 +58,10 @@ AddClassPostConstruct( "widgets/controls", function(self)
 	self.mapcontrols.gfJournalButton:SetScale(0.8)
 	self.mapcontrols.gfJournalButton:SetPosition(0, 80)
 	self.mapcontrols.gfJournalButton:SetTooltip(STRINGS.GF.HUD.JOURNAL.BUTTONS.OPEN_JOURNAL)
+
+	--overlays
+	self.gfBleedingOverlay = self.top_root:AddChild(BleedOverlay(owner))
+	self.gfPoisonOverlay = self.top_root:AddChild(PoisonOverlay(owner))
 end)
 
 --[[HOVERER]]-------------------------------
@@ -212,10 +219,10 @@ local function PostControls(self)
 				end
 
 				local actTarget = self.owner
-				local offset = 0
+				local offsetA = -40
+				local offsetB = 0
 
 				if not pointer.isArrow then
-					offset = -40
 					if pointer.pointer then
 						actTarget = pointer.pointer
 					elseif pointer.targetEntity ~= nil then
@@ -228,7 +235,7 @@ local function PostControls(self)
 				if lmb and lmb.action == ACTIONS.GFCASTSPELL then
 					self.playeractionhint:Show()
 					self.playeractionhint:SetTarget(actTarget)
-					self.playeractionhint:SetScreenOffset(0, offset)
+					self.playeractionhint:SetScreenOffset(0, offsetA)
 					self.playeractionhint.text:SetString(TheInput:GetLocalizedControl(controller_id, _G.CONTROL_CONTROLLER_ACTION) 
 						.. " "
 						.. (lmb and lmb:GetActionString() or defaultLMBAction))
@@ -237,6 +244,7 @@ local function PostControls(self)
 				if rmb and rmb.action == ACTIONS.GFSTOPSPELLTARGETING then
 					self.groundactionhint:Show()
 					self.groundactionhint:SetTarget(self.owner)
+					--self.playeractionhint:SetScreenOffset(0, offsetB)
 					self.groundactionhint.text:SetString(TheInput:GetLocalizedControl(controller_id, _G.CONTROL_CONTROLLER_ALTACTION) 
 						.. " "
 						.. (rmb and rmb:GetActionString() or defaultRMBAction))

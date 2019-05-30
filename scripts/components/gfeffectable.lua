@@ -131,7 +131,6 @@ function GFEffectable:CheckResists(effect)
             if self.resists[tag] and self.resists[tag] ~= 0 then
                 if math.random() < self.resists[tag] then
                     --GFDebugPrint(("GFEffectable: effects %s was resisted by %s"):format(effect.name, tostring(self.inst)))
-                    self.inst:PushEvent("gfeffectresisted", {effect = effect})
                     return false
                 end
             end
@@ -142,10 +141,24 @@ function GFEffectable:CheckResists(effect)
 end
 
 function GFEffectable:ApplyEffect(eName, eParams)
-    if eName == nil or ALL_EFFECTS[eName] == nil or not ALL_EFFECTS[eName]:Check(self.inst) then return false end
+    if eName == nil 
+        or ALL_EFFECTS[eName] == nil 
+        or not ALL_EFFECTS[eName]:Check(self.inst)
+        or not self.inst:IsValid()
+        or self.inst:HasTag("playerghost")
+        or self.inst:HasTag("corpse")
+        or (self.inst.components.health ~= nil and self.inst.components.health:IsDead())
+    then 
+        return false 
+    end
 
     eParams = eParams or {} --set to empty if nil
     local eInst = ALL_EFFECTS[eName]
+
+    if not self:CheckResists(eInst) then 
+        self.inst:PushEvent("gfeffectresisted", {effect = eInst})
+        return false 
+    end
 
     if self.effects[eName] ~= nil then
         --effect already exists on entity
@@ -153,33 +166,22 @@ function GFEffectable:ApplyEffect(eName, eParams)
         if eInst.nonRefreshable then return false end --not all effects are refresheable --and self:CheckResists(effect) --check resists and other stuff
 
         eInst:Refresh(self.inst, eData, eParams) --refreshing the existing effect
-        if not eInst.static then self.inst:PushEvent("gfEFEffectRefreshed", {eName = eName, eData = eData}) end
+        if not eInst.static then self.inst:PushEvent("gfEFEffectApplied", {refreshed = true, effect = eInst, params = eData}) end
 
         --GFDebugPrint(("%s refreshes %s"):format(tostring(self.inst), eName))
         self.inst.replica.gfeffectable:RefreshEffect(eName)
 
         return true
-    elseif self:CheckResists(eInst) then
+    else
         local eData = {}
-        eInst:Apply(self.inst, eData, eParams)
         self.effects[eName] = eData
-        if not eInst.static then self.inst:PushEvent("gfEFEffectApplied", {eName = eName, eData = eData}) end
+        eInst:Apply(self.inst, eData, eParams)
+
+        if not eInst.static then self.inst:PushEvent("gfEFEffectApplied", {refreshed = true, effect = eInst, params = eData}) end
 
         if eInst.updateable or not eInst.static then --static effects are permanent modificators, so don't need to update
             self.inst:StartUpdatingComponent(self)
             self.isUpdating = true
-        end
-
-        if eInst.fx ~= nil then
-            local obj = SpawnPrefab(eInst.fx)
-            if obj ~= nil then
-                if obj.Follower ~= nil then
-                    obj.Follower:FollowSymbol(self.inst.GUID, self.followSymbol, 0, self.followYOffset, 0)
-                    eData.fx = obj
-                else
-                    obj:Remove()
-                end
-            end
         end
 
         --GFDebugPrint(("%s now is affected by %s"):format(tostring(self.inst), eName))
@@ -211,11 +213,68 @@ function GFEffectable:PushEffect(name, from, duration, stacks, other)
     self:ApplyEffect(name, data)
 end
 
-function GFEffectable:ConsumeStacks(eName, value)
+function GFEffectable:PushFX(eName, prefab, symbol, offset)
     if eName == nil or ALL_EFFECTS[eName] == nil or self.effects[eName] == nil then return false end
+
+    local eData = self.effects[eName]
+    
+    if eData._fx ~= nil and eData._fx:IsValid() then
+        eData._fx:Remove()
+    end
+
+    local fx = SpawnPrefab(prefab)
+    if fx ~= nil then
+        if fx.Follower ~= nil then
+            local x, y, z
+            if offset ~= nil then
+                x, y, z = unpack(offset)
+            else
+                x, y, z = 0, self.followYOffset, 0
+            end
+            fx.Follower:FollowSymbol(self.inst.GUID, symbol or self.followSymbol, x, y, z)
+            eData._fx = fx
+        else
+            eData._fx = nil
+            fx:Remove()
+            GFDebugPrint(string.format("incorrect follower prefab %s for effect %s", prefab, eName))
+        end
+    end
+end
+
+function GFEffectable:PushTempFX(prefab, symbol, offset)
+    local fx = SpawnPrefab(prefab)
+    if fx ~= nil then
+        if fx.Follower ~= nil then
+            local x, y, z
+            if offset ~= nil then
+                x, y, z = unpack(offset)
+            else
+                x, y, z = 0, self.followYOffset, 0
+            end
+            fx.Follower:FollowSymbol(self.inst.GUID, symbol or self.followSymbol, x, y, z)
+        else
+            fx:Remove()
+            GFDebugPrint(string.format("incorrect temp fx prefab %s", prefab))
+        end
+    end
+end
+
+function GFEffectable:ConsumeStacks(eName, value)
+    if eName == nil or self.effects[eName] == nil then return false end
 
     local eInst = ALL_EFFECTS[eName]
     eInst:ConsumeStacks(self.inst, self.effects[eName], value or 1)
+
+    self.inst.replica.gfeffectable:RefreshEffect(eName)
+end
+
+function GFEffectable:DurationDelta(eName, value)
+    if eName == nil or self.effects[eName] == nil then return false end
+
+    local eInst = ALL_EFFECTS[eName]
+    self.effects[eName].expirationTime = self.effects[eName].expirationTime + value or 0
+
+    self.inst.replica.gfeffectable:RefreshEffect(eName)
 end
 
 function GFEffectable:RemoveEffect(eName, reason)
@@ -226,11 +285,13 @@ function GFEffectable:RemoveEffect(eName, reason)
     local eData = self.effects[eName]
 
     --killing fx
-    if eData.fx ~= nil and eData.fx:IsValid() then eData.fx:Remove() end
+    if eData._fx ~= nil and eData._fx:IsValid() then eData.fx:Remove() end
 
     eInst:Remove(self.inst, eData, reason)
-    self.effects[eName] = nil
+    
     self.inst.replica.gfeffectable:RemoveEffect(eName)
+    self.effects[eName] = nil
+
     if not eInst.static then self.inst:PushEvent("gfEFEffectRemoved", {eName = eName, reason = reason}) end
 
     --GFDebugPrint(("%s is no longer affected by %s, reason %s "):format(tostring(self.inst), eName, reason))

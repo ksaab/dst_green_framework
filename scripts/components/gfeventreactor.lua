@@ -55,7 +55,7 @@ function GFEventReactor:AddReaction(name, data)
 
     self.reactions[event][name] = react
 
-    self.inst:PushEvent("scnewreaction", {name = name, event = event})
+    --self.inst:PushEvent("scnewreaction", {name = name, event = event})
     --GFDebugPrint(("GFEventReactor: reaction %s added on event %s"):format(name, event))
 end
 
@@ -100,7 +100,7 @@ function GFEventReactor:RemoveReaction(name, type)
                 self:RemoveCallback(type)
             end
 
-            self.inst:PushEvent("screactionremoved", {name = name, type = type})
+            --self.inst:PushEvent("screactionremoved", {name = name, type = type})
         end
     else
         for type, group in pairs(self.reactions) do
@@ -113,7 +113,7 @@ function GFEventReactor:RemoveReaction(name, type)
                     self:RemoveCallback(type)
                 end
 
-                self.inst:PushEvent("screactionremoved", {name = name, type = type})
+                --self.inst:PushEvent("screactionremoved", {name = name, type = type})
             end
         end
     end
