@@ -74,7 +74,7 @@ end
 function SpellButton:SetHint(val)
     if val then
         if self.num <= 4 then
-            print("show hint for", self)
+            --print("show hint for", self)
             self.hint:Show()
             self.hint:MoveToFront()
             local controller_id = TheInput:GetControllerID()

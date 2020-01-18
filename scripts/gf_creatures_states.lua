@@ -29,6 +29,10 @@ local pigmanCastSpell = State{
 
 AddStategraphState("pig", pigmanCastSpell)
 AddStategraphActionHandler("pig", ActionHandler(ACTIONS.GFCASTSPELL, "castspell"))
+AddStategraphState("merm", pigmanCastSpell)
+AddStategraphActionHandler("merm", ActionHandler(ACTIONS.GFCASTSPELL, "castspell"))
+AddStategraphState("bunnyman", pigmanCastSpell)
+AddStategraphActionHandler("bunnyman", ActionHandler(ACTIONS.GFCASTSPELL, "castspell"))
 
 local knightCastSpell = State{
     name = "castspell",
@@ -37,7 +41,7 @@ local knightCastSpell = State{
 	onenter = function(inst)
 		inst.Physics:Stop()
         inst.AnimState:PlayAnimation("taunt")
-        inst.SoundEmitter:PlaySound("dontstarve/creatures/knight"..inst.kind.."/voice")
+        inst.SoundEmitter:PlaySound("dontstarve/creatures/knight" .. inst.kind .. "/voice")
 	end,
 
 	timeline =
@@ -112,3 +116,117 @@ local tallbirdCastSpell = State{
 
 AddStategraphState("tallbird", tallbirdCastSpell)
 AddStategraphActionHandler("tallbird", ActionHandler(ACTIONS.GFCASTSPELL, "castspell"))
+
+local spiderCastSpell = State{
+    name = "castspell",
+    tags = { "casting", "busy" },
+
+    onenter = function(inst)
+        inst.Physics:Stop()
+        inst.AnimState:PlayAnimation("taunt")
+        inst.SoundEmitter:PlaySound("dontstarve/creatures/spider/scream")
+    end,
+
+    timeline =
+    {
+        TimeEvent(14 * FRAMES, function(inst) inst:PerformBufferedAction() end),
+    },
+
+    events=
+    {
+        EventHandler("animover", function(inst)
+            inst:PerformBufferedAction()
+            inst.sg:GoToState("idle")
+        end),
+    },
+}
+
+AddStategraphState("spider", spiderCastSpell)
+AddStategraphActionHandler("spider", ActionHandler(ACTIONS.GFCASTSPELL, "castspell"))
+
+local batCastSpell = State{
+    name = "castspell",
+    tags = { "casting", "busy" },
+
+    onenter = function(inst)
+        inst.Physics:Stop()
+        inst.AnimState:PlayAnimation("taunt")
+    end,
+
+    timeline =
+    {
+        TimeEvent(1*FRAMES, function(inst) inst.SoundEmitter:PlaySound("dontstarve/creatures/bat/taunt") end ),
+        TimeEvent(7*FRAMES, function(inst) inst.SoundEmitter:PlaySound("dontstarve/creatures/bat/flap") end ),
+        TimeEvent(18*FRAMES, function(inst) inst.SoundEmitter:PlaySound("dontstarve/creatures/bat/flap") end ),
+        TimeEvent(28*FRAMES, function(inst) inst.SoundEmitter:PlaySound("dontstarve/creatures/bat/flap") end ),
+        TimeEvent(32*FRAMES, function(inst) inst:PerformBufferedAction() end),
+        TimeEvent(43*FRAMES, function(inst) inst.SoundEmitter:PlaySound("dontstarve/creatures/bat/flap") end ),
+    },
+
+    events=
+    {
+        EventHandler("animover", function(inst)
+            inst.sg:GoToState("idle")
+        end),
+    },
+}
+
+AddStategraphState("bat", batCastSpell)
+AddStategraphActionHandler("bat", ActionHandler(ACTIONS.GFCASTSPELL, "castspell"))
+
+local houndCastSpell = State{
+    name = "castspell",
+    tags = { "busy", "casting" },
+
+    onenter = function(inst)
+        inst.Physics:Stop()
+        inst.AnimState:PlayAnimation("taunt")
+    end,
+
+    timeline =
+    {
+        TimeEvent(13 * FRAMES, function(inst) inst.SoundEmitter:PlaySound(inst.sounds.bark) end),
+        TimeEvent(24 * FRAMES, function(inst)
+            inst:PerformBufferedAction()
+            inst.SoundEmitter:PlaySound(inst.sounds.bark) 
+        end),
+    },
+
+    events =
+    {
+        EventHandler("animover", function(inst)
+            inst.sg:GoToState("idle")
+        end),
+    },
+}
+
+AddStategraphState("hound", houndCastSpell)
+AddStategraphActionHandler("hound", ActionHandler(ACTIONS.GFCASTSPELL, "castspell"))
+AddStategraphState("icehound", houndCastSpell)
+AddStategraphActionHandler("icehound", ActionHandler(ACTIONS.GFCASTSPELL, "castspell"))
+AddStategraphState("firehound", houndCastSpell)
+AddStategraphActionHandler("firehound", ActionHandler(ACTIONS.GFCASTSPELL, "castspell"))
+
+local mosquitoCastSpell = State{
+    name = "attack",
+    tags = { "busy", "casting" },
+
+    onenter = function(inst)
+        inst.Physics:Stop()
+        inst.AnimState:PlayAnimation("atk")
+    end,
+
+    timeline =
+    {
+        TimeEvent(10*FRAMES, function(inst) inst.SoundEmitter:PlaySound(inst.sounds.attack) end),
+        TimeEvent(15*FRAMES, function(inst) inst:PerformBufferedAction() end),
+    },
+
+    events =
+    {
+        EventHandler("animover", function(inst) inst.sg:GoToState("idle") end),
+    },
+}
+
+AddStategraphState("mosquito", mosquitoCastSpell)
+AddStategraphActionHandler("mosquito", ActionHandler(ACTIONS.GFCASTSPELL, "castspell"))

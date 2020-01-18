@@ -8,6 +8,8 @@ local DIALOGUE_NODES_IDS = _G.GF.GetDialogueNodesIDs()
 
 --[[Init specified prefabs]]--------
 ------------------------------------
+
+--FRIENDLY FIRE CHECKS
 local function PigmanFriendlyFireCheck(inst, target)
     return inst.components.combat.target ~= target
         and ((target:HasTag("pig") and not target:HasTag("werepig")) 
@@ -21,15 +23,36 @@ local function BunnymanFriendlyFireCheck(inst, target)
 end
 
 local function ChessFriendlyFireCheck(inst, target)
-    return inst.components.combat.target ~= target
-        and (target:HasTag("chess")
-            or (inst.components.follower and inst.components.follower.leader == target))
+    return inst.components.combat.target ~= target and target:HasTag("chess")
 end
 
 local function TallbirdFriendlyFireCheck(inst, target)
     return inst.components.combat.target ~= target and target:HasTag("tallbird")
 end
 
+local function SpiderFriendlyFireCheck(inst, target)
+    return inst.components.combat.target ~= target and target:HasTag("spider")
+end
+
+local function BeefaloFriendlyFireCheck(inst, target)
+    return inst.components.combat.target ~= target and target:HasTag("beefalo")
+end
+
+local function BatFriendlyFireCheck(inst, target)
+    return inst.components.combat.target ~= target and target:HasTag("bat")
+end
+
+local function MermFriendlyFireCheck(inst, target)
+    return inst.components.combat.target ~= target and target:HasTag("merm")
+end
+
+local function HoundFriendlyFireCheck(inst, target)
+    return inst.components.combat.target ~= target
+        and (target:HasTag("hound")
+            or (inst.components.follower and inst.components.follower.leader == target))
+end
+
+--CONVERSATION CHECKS
 local function PigmanWantToTalk(talker, inst)
     return not inst:HasTag("werepig") and not inst:HasTag("sfhostile")
 end
@@ -48,6 +71,8 @@ local pigkingShopList =
 
 local prefabs_post_init = 
 {
+    --creatures
+    --intelligent
     pigman = function(inst) 
         if _G.GFGetIsMasterSim() then
             inst:AddComponent("gfspellcaster")
@@ -64,16 +89,111 @@ local prefabs_post_init =
             --inst.components.gfquestgiver:AddQuest("collect_ten_rocks")
         end
     end,
-    ghost = function(inst)
+    bunnyman = function(inst) 
         if _G.GFGetIsMasterSim() then
             inst:AddComponent("gfspellcaster")
+            inst.components.gfspellcaster:SetIsTargetFriendlyFn(BunnymanFriendlyFireCheck)
+
+            --inst:AddComponent("gfinterlocutor")
+            --inst:AddComponent("gfquestgiver")
         end
     end,
+    merm = function(inst) 
+        if _G.GFGetIsMasterSim() then
+            inst:AddComponent("gfspellcaster")
+            inst.components.gfspellcaster:SetIsTargetFriendlyFn(MermFriendlyFireCheck)
+        end
+    end,
+
+    --hounds
+    hound = function(inst) 
+        if _G.GFGetIsMasterSim() then
+            inst:AddComponent("gfspellcaster")
+            inst.components.gfspellcaster:SetIsTargetFriendlyFn(HoundFriendlyFireCheck)
+        end
+    end,
+    firehound = function(inst) 
+        if _G.GFGetIsMasterSim() then
+            inst:AddComponent("gfspellcaster")
+            inst.components.gfspellcaster:SetIsTargetFriendlyFn(HoundFriendlyFireCheck)
+        end
+    end,
+    icehound = function(inst) 
+        if _G.GFGetIsMasterSim() then
+            inst:AddComponent("gfspellcaster")
+            inst.components.gfspellcaster:SetIsTargetFriendlyFn(HoundFriendlyFireCheck)
+        end
+    end,
+
+    --ghosts
     abigail = function(inst)
         if _G.GFGetIsMasterSim() then
             inst:AddComponent("gfspellcaster")
         end
     end,
+    ghost = function(inst)
+        if _G.GFGetIsMasterSim() then
+            inst:AddComponent("gfspellcaster")
+        end
+    end,
+    
+    --chess
+    knight = function(inst) 
+        if _G.GFGetIsMasterSim() then
+            inst:AddComponent("gfspellcaster")
+            inst.components.gfspellcaster:SetIsTargetFriendlyFn(ChessFriendlyFireCheck)
+        end
+    end,
+
+    --spiders
+    spider = function(inst) 
+        if _G.GFGetIsMasterSim() then
+            inst:AddComponent("gfspellcaster")
+            inst.components.gfspellcaster:SetIsTargetFriendlyFn(SpiderFriendlyFireCheck)
+        end
+    end,
+    spider_warrior = function(inst) 
+        if _G.GFGetIsMasterSim() then
+            inst:AddComponent("gfspellcaster")
+            inst.components.gfspellcaster:SetIsTargetFriendlyFn(SpiderFriendlyFireCheck)
+        end
+    end,
+    spider_spitter = function(inst) 
+        if _G.GFGetIsMasterSim() then
+            inst:AddComponent("gfspellcaster")
+            inst.components.gfspellcaster:SetIsTargetFriendlyFn(SpiderFriendlyFireCheck)
+        end
+    end,
+    spider_hider = function(inst) 
+        if _G.GFGetIsMasterSim() then
+            inst:AddComponent("gfspellcaster")
+            inst.components.gfspellcaster:SetIsTargetFriendlyFn(SpiderFriendlyFireCheck)
+        end
+    end,
+    spider_dropper = function(inst) 
+        if _G.GFGetIsMasterSim() then
+            inst:AddComponent("gfspellcaster")
+            inst.components.gfspellcaster:SetIsTargetFriendlyFn(SpiderFriendlyFireCheck)
+        end
+    end,
+
+    --other surface
+    tallbird = function(inst) 
+        if _G.GFGetIsMasterSim() then
+            inst:AddComponent("gfspellcaster")
+            inst.components.gfspellcaster:SetIsTargetFriendlyFn(TallbirdFriendlyFireCheck)
+        end
+    end,
+
+    --other cave
+    bat = function(inst) 
+        if _G.GFGetIsMasterSim() then
+            inst:AddComponent("gfspellcaster")
+            inst.components.gfspellcaster:SetIsTargetFriendlyFn(BatFriendlyFireCheck)
+        end
+    end,
+    
+    --structures
     pigking = function(inst) 
         if _G.GFGetIsMasterSim() then
         inst:AddComponent("gfinterlocutor")
@@ -85,33 +205,13 @@ local prefabs_post_init =
         --inst.components.gfshop:SetItemList(pigkingShopList)
         end
     end,
+
     --[[goldnugget = function(inst)
         if _G.GFGetIsMasterSim() then
             inst:AddComponent("gfcurrency")
             inst.components.gfcurrency:SetValue("gold", 1)
         end
     end]]
-    bunnyman = function(inst) 
-        if _G.GFGetIsMasterSim() then
-            inst:AddComponent("gfspellcaster")
-            inst.components.gfspellcaster:SetIsTargetFriendlyFn(BunnymanFriendlyFireCheck)
-
-            --inst:AddComponent("gfinterlocutor")
-            --inst:AddComponent("gfquestgiver")
-        end
-    end,
-    knight = function(inst) 
-        if _G.GFGetIsMasterSim() then
-            inst:AddComponent("gfspellcaster")
-            inst.components.gfspellcaster:SetIsTargetFriendlyFn(ChessFriendlyFireCheck)
-        end
-    end,
-    tallbird = function(inst) 
-        if _G.GFGetIsMasterSim() then
-            inst:AddComponent("gfspellcaster")
-            inst.components.gfspellcaster:SetIsTargetFriendlyFn(TallbirdFriendlyFireCheck)
-        end
-    end,
 }
 
 for prefab, fn in pairs(prefabs_post_init) do
@@ -256,8 +356,9 @@ end)
 
 --this function checks spell friendlyfire for players
 local function PlayerFFCheck(inst, target)
+    local doer = inst --hack for pvp turf mod, need to make it better later
     return inst == target
-        or (target:HasTag("player") and not isPVPEnabled)
+        or (target:HasTag("player") and not _G.TheNet:GetPVPEnabled())
         or (inst.components.leader and inst.components.leader:IsFollower(target))
 end
 

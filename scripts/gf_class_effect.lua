@@ -47,7 +47,7 @@ local Effect = Class(function(self, name)
     
     --functions
     self.checkfn = nil
-    self.onapplyfn = nil
+    self.onapplyfn = function(effect, inst, eData) print(string.format("%s doesn't have visual data for %s!", effect.name, inst.prefab)) end
     self.onrefreshfn = nil
     self.onupdatefn = nil
     self.onremovefn = nil
@@ -74,6 +74,40 @@ end
 
 function Effect:ClientOnRemove(inst, eData)
     if self.clientonremovefn then self:clientonremovefn(inst, eData) end
+end
+
+function Effect:AttachFX(inst, eData, name, prefab)
+    local fx = SpawnPrefab(prefab)
+
+    if fx == nil then return end
+
+    if eData._fxs == nil then
+        eData._fxs = {}
+    elseif eData._fxs[name] ~= nil and eData._fxs[name]:IsValid() then
+        eData._fxs[name]:Remove()
+    end
+
+    eData._fxs[name] = fx
+
+    return fx
+end
+
+function Effect:DetachFX(inst, eData, name)
+    if eData._fxs == nil or eData._fxs[name]== nil then return end
+
+    eData._fxs[name]:Remove()
+    eData._fxs[name] = nil
+end
+
+function Effect:DetachAllFX(inst, eData)
+    if eData._fxs == nil then return end
+
+    for k, v in pairs(eData._fxs == nil) do
+        if v:IsValid() then 
+            v:Remove()
+            eData._fxs[k] = nil
+        end
+    end
 end
 
 ------------------------------------------------------------

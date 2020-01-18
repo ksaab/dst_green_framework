@@ -69,7 +69,7 @@ local function TryAddAffix(inst)
     local self = inst.components.gfeffectable
     if self and self.isNew then
         for affixType, affixData in pairs(BASE_EFFECTS[inst.prefab]) do
-            if math.random() < affixData.chance then
+            if #(affixData.list) > 0 and math.random() < affixData.chance then
                 local aff = affixData.list[math.random(#(affixData.list))]
                 --GFDebugPrint(("Add [%s-type] affix [%s] to %s"):format(affixType, aff, tostring(self.inst)))
                 self:ApplyEffect(aff)

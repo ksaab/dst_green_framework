@@ -1,6 +1,6 @@
 --Green Framework. Please, don't copy any files or functions from this mod, because it can break other mods based on the GF.
 local GF = {}
-local DEVMODE = true
+local DEVMODE = false
 local DisableCritical = false
 
 rawset(_G, "GF", GF)
@@ -8,7 +8,7 @@ rawset(GF, "DevMode", DEVMODE)
 rawset(GF, "DisableCritical", DisableCritical)
 
 function GF.CheckVersion() return true end
-function GF.GetVersion() return 2.0 end
+function GF.GetVersion() return 2.2 end
 
 --############################################
 ----------------------------------------------
@@ -403,6 +403,52 @@ end
 
 function GFAddBaseEffects()
     IsDepreciated()
+end
+
+--[[BLODD COLOURS]]
+local BLOOD_COLOURS = 
+{
+    OIL = {0, 0.1, 0.2, 1},
+    GHOST_ESSENCE = {0.1, 0.1, 0.1, 1},
+    PLANT_JUICE = {115 / 255, 160 / 255, 50 / 255, 1},
+}
+
+local bloodColours = 
+{
+    -- character
+    wx78     = BLOOD_COLOURS.OIL,
+    wormwood = BLOOD_COLOURS.PLANT_JUICE,
+    -- chess
+    knight = BLOOD_COLOURS.OIL,
+    bishop = BLOOD_COLOURS.OIL,
+    rook   = BLOOD_COLOURS.OIL,
+    bishop_nightmare = BLOOD_COLOURS.OIL,
+    knight_nightmare = BLOOD_COLOURS.OIL,
+    rook_nightmare   = BLOOD_COLOURS.OIL,
+    -- ghost and shadows
+    ghost          = BLOOD_COLOURS.GHOST_ESSENCE,
+    terrorbeak     = BLOOD_COLOURS.GHOST_ESSENCE,
+    crawlinghorror = BLOOD_COLOURS.GHOST_ESSENCE,
+}
+
+rawset(GF, "BloodColours", bloodColours)
+
+function GF.SetBloodColour(prefab, colour)
+    if type(colour) == "string" then
+        if BLOOD_COLOURS[colour] ~= nil then
+            colour = BLOOD_COLOURS[colour]
+        elseif PLAYERCOLOURS[colour] ~= nil then
+            colour = PLAYERCOLOURS[colour]
+        end
+    end
+
+    if type(colour) == "table" then
+        GF.BloodColours[prefab] = colour
+    end
+end
+
+function GF.GetBloodColour(prefab)
+    return bloodColours[prefab] or {0.5, 0.1, 0.1, 1}
 end
 
 --############################################

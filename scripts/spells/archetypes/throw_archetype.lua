@@ -4,7 +4,7 @@ local GFSpell = require("gf_class_spell")
 local ThrowableParams = GF.ThrowableParams
 
 local function DoCast(self, doer, target, position, item)
-    print(self, doer, target, position, item)
+    --print(self, doer, target, position, item)
     if position == nil 
         or item == nil 
         or item.components.equippable == nil

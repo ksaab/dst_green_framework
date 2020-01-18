@@ -88,14 +88,14 @@ local function DeserializeStaticHovers(inst)
             eData.static = ALL_EFFECTS[eName].static
             self.effects[eName] = eData
 
-            eInst:ClientOnApply(inst, eData)
+            ALL_EFFECTS[eName]:ClientOnApply(inst, eData)
         end
     end
 
     --removing nonexistent effects
     for eName, _ in pairs(self.effects) do
         if ALL_EFFECTS[eName].type >= 3 and not currEffects[eName] then
-            eInst:ClientOnRemove(inst, self.effects[eName])
+            ALL_EFFECTS[eName]:ClientOnRemove(inst, self.effects[eName])
             self.effects[eName] = nil
         end
     end
@@ -124,14 +124,14 @@ local function DeserializeActiveHovers(inst)
             if eInst.static then eData.static = true end
             self.effects[eName] = eData
 
-            eInst:ClientOnApply(inst, eData)
+            ALL_EFFECTS[eName]:ClientOnApply(inst, eData)
         end
     end
 
     --removing nonexistent effects
     for eName, _ in pairs(self.effects) do
         if ALL_EFFECTS[eName].type < 3 and not currEffects[eName] then
-            eInst:ClientOnRemove(inst, self.effects[eName])
+            ALL_EFFECTS[eName]:ClientOnRemove(inst, self.effects[eName])
             self.effects[eName] = nil
         end
     end
@@ -243,7 +243,9 @@ function GFEffectable:ApplyEffect(eName)
         if eInst.pushToReplica then
             self:UpdateReplicaEffects(eInst.type >= 3)
             --print("replica fx")
-            eInst:ClientOnApply(self.inst, self.effects[eName])
+            if not GFGetIsDedicatedNet() then
+                eInst:ClientOnApply(self.inst, self.effects[eName])
+            end
         end
 
         if self.classified ~= nil and eInst.pushToClassified then
@@ -299,11 +301,13 @@ function GFEffectable:RemoveEffect(eName)
 
         if eInst.pushToReplica then
             self:UpdateReplicaEffects(eInst.type >= 3)
-            eInst:ClientOnRemove(self.inst, self.effects[eName])
+            if ThePlayer ~= nil and not GFGetIsDedicatedNet() then
+                eInst:ClientOnRemove(self.inst, self.effects[eName])
+            end
         end
 
         if self.classified ~= nil and eInst.pushToClassified then
-            if self.inst == ThePlayer and not GFGetIsDedicatedNet() then
+            if not GFGetIsDedicatedNet() then
                 --if inst is the not dedicated host-player, don't need to push net variable
                 eInst:HUDOnRemove(self.inst)
                 if not eInst.noicon then
@@ -370,6 +374,35 @@ function GFEffectable:GetRemainTime(eName)
         return self.effects[eName] ~= nil and math.max(self.effects[eName].expirationTime - GetTime(), 0) or 0
     end
 end
+
+function GFEffectable:PushFX(eName, prefab, symbol, offset)
+    if eName == nil or ALL_EFFECTS[eName] == nil or self.effects[eName] == nil then return false end
+
+    local eData = self.effects[eName]
+    
+    if eData ~= nil and eData._fx ~= nil and eData._fx:IsValid() then
+        eData._fx:Remove()
+    end
+
+    local fx = SpawnPrefab(prefab)
+    if fx ~= nil then
+        if fx.Follower ~= nil then
+            local x, y, z
+            if offset ~= nil then
+                x, y, z = unpack(offset)
+            else
+                x, y, z = 0, self.followYOffset, 0
+            end
+            fx.Follower:FollowSymbol(self.inst.GUID, symbol or self.followSymbol, x, y, z)
+            eData._fx = fx
+        else
+            eData._fx = nil
+            fx:Remove()
+            GFDebugPrint(string.format("incorrect follower prefab %s for effect %s", prefab, eName))
+        end
+    end
+end
+
 
 
 return GFEffectable

@@ -4,31 +4,10 @@ local _G = GLOBAL
 local ALL_SPELLS = _G.GF.GetSpells()
 local ACTIONS = _G.ACTIONS
 local BufferedAction = _G.BufferedAction
+--local DynamicPosition = _G.DynamicPosition or function(pos) return pos end
+local Vector3 = _G.Vector3
 
 _G.require "behaviours/standstill"
-
-local function CheckSpells(inst)
-	if inst.spells ~= nil and inst:HasTag("spellcaster") then
-		for k, v in pairs(inst.spells) do
-			if v.AICanCastFn then
-				local checkres = v:AICanCastFn()
-				if checkres then
-					local act = BufferedAction(inst, inst, ACTIONS.DOCASTSPELL)
-					act.target = checkres.target
-					act.range = checkres.range
-					act.pos = checkres.pos
-					act.spell = k
-
-					return act
-				end
-			--else
-				--print(("Spell %s has no AI check function"):format(k))
-			end
-		end
-	end
-
-	return false
-end
 
 local function CheckSpells(inst)
 	local splcstr = inst.components.gfspellcaster
@@ -36,9 +15,14 @@ local function CheckSpells(inst)
 		local spellData = splcstr:GetValidAiSpell()
 		if spellData then
 			local act = BufferedAction(inst, inst, ACTIONS.GFCASTSPELL)
-			act.target = spellData.target
+			if act.SetActionPoint then
+				act._vanillaPos = spellData.pos or Vector3(inst.Transform:GetWorldPosition())
+				act:SetActionPoint(act._vanillaPos)
+			else
+				act.pos = spellData.pos or Vector3(inst.Transform:GetWorldPosition())
+			end
+			act.target = spellData.target or inst
 			act.distance = spellData.distance or 12
-			act.pos = spellData.pos
 			act.spell = spellData.spell
 			act.params = spellData.params
 
@@ -93,10 +77,14 @@ local function MakeCalmChatter(self)
 	table.insert(self.bt.root.children, 1, DoChat)
 end
 
-AddBrainPostInit("pigbrain", MakeCaster)
 AddBrainPostInit("pigbrain", MakeCalmChatter)
+
+AddBrainPostInit("pigbrain", MakeCaster)
 AddBrainPostInit("bunnymanbrain", MakeCaster)
 AddBrainPostInit("knightbrain", MakeCaster)
 AddBrainPostInit("ghostbrain", MakeCaster)
 AddBrainPostInit("abigailbrain", MakeCaster)
 AddBrainPostInit("tallbirdbrain", MakeCaster)
+AddBrainPostInit("spiderbrain", MakeCaster)
+AddBrainPostInit("batbrain", MakeCaster)
+AddBrainPostInit("houndbrain", MakeCaster)

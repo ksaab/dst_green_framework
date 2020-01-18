@@ -15,6 +15,7 @@ local ShakeAllCameras = _G.ShakeAllCameras
 local CAMERASHAKE = _G.CAMERASHAKE
 local Vector3 = _G.Vector3
 local BufferedAction = _G.BufferedAction
+--local DynamicPosition = _G.DynamicPosition or function(pos) return pos end
 
 local ALL_SPELLS = _G.GF.GetSpells()
 
@@ -81,8 +82,8 @@ local gfcustomcast = State
 
 		local act = inst:GetBufferedAction()
 		if act and act.spell then
-			if act.pos then
-				inst:ForceFacePoint(act.pos.x, 0, act.pos.z)
+			if act._vanillaPos then
+				inst:ForceFacePoint(act._vanillaPos.x, 0, act._vanillaPos.z)
 			end
 			inst.AnimState:PlayAnimation("gf_fast_cast_pre")
 			inst.AnimState:PushAnimation("gf_fast_cast_loop", true)
@@ -132,8 +133,8 @@ local gfchannelcast = State
 
 		local act = inst:GetBufferedAction()
 		if act and act.spell then
-			if act.pos then
-				inst:ForceFacePoint(act.pos.x, 0, act.pos.z)
+			if act._vanillaPos then
+				inst:ForceFacePoint(act._vanillaPos.x, 0, act._vanillaPos.z)
 			end
 			inst.AnimState:PlayAnimation("channel_pre")
 			inst.AnimState:PushAnimation("channel_loop", true)
@@ -181,8 +182,8 @@ local gfcastwithstaff = State{
 		inst.components.locomotor:Stop()
 		local act = inst:GetBufferedAction()
 		if act and act.spell then
-			if act.pos then
-				inst:ForceFacePoint(act.pos.x, 0, act.pos.z)
+			if act._vanillaPos then
+				inst:ForceFacePoint(act._vanillaPos.x, 0, act._vanillaPos.z)
 			end
 			inst.AnimState:PlayAnimation("staff_pre")
         	inst.AnimState:PushAnimation("staff", false)
@@ -230,8 +231,8 @@ local gfthrow = State{
 
 		local act = inst:GetBufferedAction()
 		if act and act.spell then
-			if act.pos then
-				inst:ForceFacePoint(act.pos.x, 0, act.pos.z)
+			if act._vanillaPos then
+				inst:ForceFacePoint(act._vanillaPos.x, 0, act._vanillaPos.z)
 			end
 
 			inst.AnimState:PlayAnimation("throw", false)
@@ -280,8 +281,8 @@ local gfgroundslam = State{
 		inst.components.locomotor:Stop()
 		local act = inst:GetBufferedAction()
 		if act and act.spell then
-			if act.pos then
-				inst:ForceFacePoint(act.pos.x, 0, act.pos.z)
+			if act._vanillaPos then
+				inst:ForceFacePoint(act._vanillaPos.x, 0, act._vanillaPos.z)
 			end
 			inst.AnimState:PlayAnimation("atk_leap_pre")
         	inst.AnimState:PushAnimation("atk_leap_lag", false)
@@ -331,8 +332,8 @@ local gfreadscroll = State
 		local act = inst:GetBufferedAction()
 		if act and act.spell then
 			local castTime = math.max(0.75, GetSpellCastTime(act.spell))
-			if act.pos then
-				inst:ForceFacePoint(act.pos.x, 0, act.pos.z)
+			if act._vanillaPos then
+				inst:ForceFacePoint(act._vanillaPos.x, 0, act._vanillaPos.z)
 			end
 
 			inst.AnimState:PlayAnimation("scroll_open", false) 
@@ -389,8 +390,8 @@ local gftwirlcast = State
 
 		local act = inst:GetBufferedAction()
 		if act and act.spell then
-			if act.pos then
-				inst:ForceFacePoint(act.pos.x, 0, act.pos.z)
+			if act._vanillaPos then
+				inst:ForceFacePoint(act._vanillaPos.x, 0, act._vanillaPos.z)
 			end
 
 			inst.AnimState:PlayAnimation("lunge_pre")
@@ -439,8 +440,8 @@ local gfbookcast = State
 
 		local act = inst:GetBufferedAction()
 		if act and act.spell then
-			if act.pos then
-				inst:ForceFacePoint(act.pos.x, 0, act.pos.z)
+			if act._vanillaPos then
+				inst:ForceFacePoint(act._vanillaPos.x, 0, act._vanillaPos.z)
 			end
 
 			local item = act.invobject
@@ -489,9 +490,9 @@ local gfhighleap = State{
 		inst.components.locomotor:Stop()
 
 		local act = inst:GetBufferedAction()
-		if act and act.spell and act.pos and IsValidGround(act.pos) then
-			if act.pos then
-				inst:ForceFacePoint(act.pos.x, 0, act.pos.z)
+		if act and act.spell and act._vanillaPos and IsValidGround(act._vanillaPos) then
+			if act._vanillaPos then
+				inst:ForceFacePoint(act._vanillaPos.x, 0, act._vanillaPos.z)
 			end
 
 			local item = act.invobject
@@ -541,8 +542,8 @@ local gftdartshoot = State{
 
 		local act = inst:GetBufferedAction()
 		if act and act.spell then
-			if act.pos then
-				inst:ForceFacePoint(act.pos.x, 0, act.pos.z)
+			if act._vanillaPos then
+				inst:ForceFacePoint(act._vanillaPos.x, 0, act._vanillaPos.z)
 			end
 
 			inst.AnimState:PlayAnimation("dart_pre", false)
@@ -588,9 +589,9 @@ local gfleap = State{
 		inst.components.locomotor:Stop()
 
 		local act = inst:GetBufferedAction()
-		if act and act.spell and act.pos and IsValidGround(act.pos) then
-			if act.pos then
-				inst:ForceFacePoint(act.pos.x, 0, act.pos.z)
+		if act and act.spell and act._vanillaPos and IsValidGround(act._vanillaPos) then
+			if act._vanillaPos then
+				inst:ForceFacePoint(act._vanillaPos.x, 0, act._vanillaPos.z)
 			end
 
 			inst.AnimState:PlayAnimation("atk_leap_pre")
@@ -638,8 +639,8 @@ local gfflurry = State{
 
 		local act = inst:GetBufferedAction()
 		if act and act.spell then
-			if act.pos then
-				inst:ForceFacePoint(act.pos.x, 0, act.pos.z)
+			if act._vanillaPos then
+				inst:ForceFacePoint(act._vanillaPos.x, 0, act._vanillaPos.z)
 			end
 
 			inst.AnimState:PlayAnimation("multithrust_yell", false)
@@ -731,8 +732,8 @@ local gfparry = State{
 
 		local act = inst:GetBufferedAction()
 		if act and act.spell then
-			if act.pos then
-				inst:ForceFacePoint(act.pos.x, 0, act.pos.z)
+			if act._vanillaPos then
+				inst:ForceFacePoint(act._vanillaPos.x, 0, act._vanillaPos.z)
 			end
 
             inst.AnimState:PlayAnimation("parry_pre")
@@ -839,15 +840,27 @@ AddStategraphActionHandler("wilson_client", ActionHandler(ACTIONS.GFCASTSPELL, f
 	local gfsp = inst.components.gfspellpointer
     
 	--some spell need a position, but the "equipped" collector returns only a target
+	--also neet to wrap pos to DynamicPosition if RoT is enabled
 	if act.pos == nil then
 		if act.target == nil then
 			--if we don't have a target too (an instant spell from inventory or spell from panel) set caster as default target and get its position
 			act.target = inst
-			act.pos = Vector3(inst.Transform:GetWorldPosition())
+			if act.SetActionPoint ~= nil then
+				act:SetActionPoint(Vector3(inst.Transform:GetWorldPosition()))
+			else
+				act.pos = Vector3(inst.Transform:GetWorldPosition())
+			end
 		else
-			act.pos = Vector3(inst.Transform:GetWorldPosition())
+			if act.SetActionPoint ~= nil then
+				act:SetActionPoint(Vector3(act.target.Transform:GetWorldPosition()))
+			else
+				act.pos = Vector3(act.target.Transform:GetWorldPosition())
+			end
 		end
 	end
+
+	--small fix until rot is released
+	act._vanillaPos = (act.pos.local_pt ~= nil) and Vector3(act.pos.local_pt.x, 0, act.pos.local_pt.z) or act.pos
 
 	local spellName
 	if act.spell ~= nil then --an instant spell without item (from the spell panel)
@@ -862,7 +875,7 @@ AddStategraphActionHandler("wilson_client", ActionHandler(ACTIONS.GFCASTSPELL, f
 
 	if spellName == nil or ALL_SPELLS[spellName] == nil or ALL_SPELLS[spellName].passive then return "idle" end --invalid spell
 
-	local check, reason = CanCastSpell(spellName, inst, item, act.target, act.pos)
+	local check, reason = CanCastSpell(spellName, inst, item, act.target, act._vanillaPos)
 	if not check then
 		inst:PushEvent("gfSCCastFailed", reason)
 		return "idle"
@@ -871,7 +884,7 @@ AddStategraphActionHandler("wilson_client", ActionHandler(ACTIONS.GFCASTSPELL, f
 	local spell = ALL_SPELLS[spellName]
 	local spellRange = spell:GetRange()
 
-	if inst:GetDistanceSqToPoint(act.pos) > spellRange * spellRange then
+	if inst:GetDistanceSqToPoint(act._vanillaPos) > spellRange * spellRange then
 		--if distance is greater then spell range, need to rebuffer the action 
 		--and push a destination point to the locomotor
 		--print("too far")

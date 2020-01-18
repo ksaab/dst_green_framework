@@ -4,7 +4,9 @@ local STRINGS = GLOBAL.STRINGS
 local ACTIONS = GLOBAL.ACTIONS
 local ALL_SPELLS = GLOBAL.GF.GetSpells()
 local GetString = GLOBAL.GetString
+local TheInput = GLOBAL.TheInput
 local GetActionFailString = GLOBAL.GetActionFailString
+local KEY_ALT = GLOBAL.KEY_ALT
 local _G = GLOBAL
 --local GetQuestReminderString = GLOBAL.GetQuestReminderString
 
@@ -26,9 +28,10 @@ AddAction("GFCASTSPELL", STRINGS.ACTIONS.GFCASTSPELL, function(act)
                 return false, "ITEMNOTREADY"
             end
 
+            local actualPos = act._vanillaPos or act.pos
             --checking for ammo, target and other conditions
             --actually this should be true almost everytime, but conditions may become false during the cast animation
-            local result, reason = doer.components.gfspellcaster:PreCastCheck(spellName, act.target, act.pos)
+            local result, reason = doer.components.gfspellcaster:PreCastCheck(spellName, act.target, actualPos)
             if not result then return false, reason end
 
             --this check shuold be false when caster tries to cast the spell
@@ -36,12 +39,12 @@ AddAction("GFCASTSPELL", STRINGS.ACTIONS.GFCASTSPELL, function(act)
             if not ALL_SPELLS[spellName]:CanBeCastedBy(doer) then return false, "CAST_FAILED" end
 
             --try to cast a spell, main spell function may return false
-            print("casting...")
-            return doer.components.gfspellcaster:CastSpell(spellName, act.target, act.pos, item, act.params)
+            return doer.components.gfspellcaster:CastSpell(spellName, act.target, actualPos, item, act.params)
         else
             --TODO
             --write some logic for non-players
-            return doer.components.gfspellcaster:CastSpell(spellName, act.target, act.pos, item, act.params)
+            local actualPos = act._vanillaPos or act.pos
+            return doer.components.gfspellcaster:CastSpell(spellName, act.target, actualPos, item, act.params)
         end
     end
 

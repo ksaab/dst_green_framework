@@ -43,7 +43,6 @@ local SpellPanel = Class(Widget, function(self, owner)
     --need to update spells, event will be fired before this widget is ready
     if self.owner.replica.gfspellcaster ~= nil then
         for k, v in pairs(self.owner.replica.gfspellcaster.spells) do
-            print(k, v)
             self:AddSpell({sName = k})
         end
     end
@@ -199,7 +198,6 @@ function SpellPanel:SwapIcons(source, right)
 end
 
 function SpellPanel:SetHintPosition()
-    print(78 * (#(self.body.icons) - 1) - 86, -12, 0)
     self.hint:SetPosition(78 * (#(self.body.icons) - 1) + 1136, -12, 0)
 end
 

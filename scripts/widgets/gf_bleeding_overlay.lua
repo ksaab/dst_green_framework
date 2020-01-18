@@ -9,7 +9,7 @@ local ClickThrough = function()
     return true, true 
 end
 
-local BloodStroke = Class(Widget, function(self, panel)
+local BloodStroke = Class(Widget, function(self, panel, colour)
     Widget._ctor(self, "BloodStroke")
 
     self:Hide()
@@ -23,13 +23,20 @@ local BloodStroke = Class(Widget, function(self, panel)
     self.size = {0, 0}
     self.pos = Vector3(0, 0, 0)
 
+    self._r1 = colour[1] * 1.25
+    self._r2 = math.max(0, self._r1 - 0.1)
+    self._g1 = colour[2] * 1.25
+    self._b1 = colour[3] * 1.25
+
     self.leak = self:AddChild(Image())
     self.leak:SetVRegPoint(ANCHOR_TOP)
+    self.leak:SetTint(unpack(colour))
+    self.leak:SetTint(self._r1, self._g1, self._b1, 1)
 
     self._leak = self:AddChild(Image())
     self._leak:SetVRegPoint(ANCHOR_TOP)
     self._leak:SetScale(0.75, 1)
-    self._leak:SetTint(0.9, 1, 1, 1)
+    self._leak:SetTint(self._r2, self._g1, self._b1, 1)
 
     self.inst.CanMouseThrough       = ClickThrough
     self.leak.inst.CanMouseThrough  = ClickThrough
@@ -54,8 +61,8 @@ function BloodStroke:InitLeak(scale, mult)
     self.leak:SetTexture("images/gfbloodlines.xml", "blood_line_" .. variety ..".tex")
     self._leak:SetTexture("images/gfbloodlines.xml", "blood_line_blur_" .. variety ..".tex")
 
-    self.leak:SetTint(1, 1, 1, 1)
-    self._leak:SetTint(0.9, 1, 1, 1)
+    self.leak:SetTint(self._r1, self._g1, self._b1, 1)
+    self._leak:SetTint(self._r2, self._g1, self._b1, 1)
 
     self.size = {self.leak:GetSize()}
     self.pos = self.leak:GetPosition()
@@ -80,8 +87,8 @@ function BloodStroke:PlayLeak(dt)
 
     if self.leakPercent > 0.5 then
         if self.disapperPercent < 1 then
-            self.leak:SetTint(1, 1, 1, 1 - self.disapperPercent)
-            self._leak:SetTint(0.9, 1, 1, 1 - self.disapperPercent)
+            self.leak:SetTint(self._r1, self._g1, self._b1, 1 - self.disapperPercent)
+            self._leak:SetTint(self._r2, self._g1, self._b1, 1 - self.disapperPercent)
             --self.drop:SetTint(1, 1, 1, 1 - self.disapperPercent)
             self.disapperPercent = self.disapperPercent + dt * self.mult * 2
         else
@@ -111,7 +118,7 @@ local BleedingOverlay = Class(Widget, function(self, owner)
     self.sources = {}
 
     for i = 1, 10 do
-        self.leaks[i] = self.bg:AddChild(BloodStroke(self))
+        self.leaks[i] = self.bg:AddChild(BloodStroke(self, GF.GetBloodColour(owner.prefab)))
     end
 
     self.strength = 0

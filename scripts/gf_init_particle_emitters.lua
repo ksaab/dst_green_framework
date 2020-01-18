@@ -15,6 +15,26 @@ local textures =
 
 local envelopeScaleVariety = 
 {
+    gfsmallnoscaleenvelope = 
+    {
+        { 0,	{ 0.25, 0.25 } },
+        { 1,	{ 0.25, 0.25 } },
+    },
+    gfmediumnoscaleenvelope = 
+    {
+        { 0,	{ 0.5, 0.5 } },
+        { 1,	{ 0.5, 0.5 } },
+    },
+    gfhugenoscaleenvelope = 
+    {
+        { 0,	{ 1, 1 } },
+        { 1,	{ 1, 1 } },
+    },
+    gfgaintnoscaleenvelope = 
+    {
+        { 0,	{ 1.25, 1.25 } },
+        { 1,	{ 1.25, 1.25 } },
+    },
     gfdefaultscaleenvelope = 
     {
         { 0,	{ 0, 0 } },
@@ -59,8 +79,8 @@ local envelopeColourVariety =
 {
     gfdefaultcolourenvelope = 
     {
-        { 0, {1, 1, 1, 1} },
-		{ 1, {1, 1, 1, 0} },
+        { 0, {1, 1, 1, 0.5} },
+		{ 1, {1, 1, 1, 0.0} },
     },
     gfbluecolourenvelope = 
     {

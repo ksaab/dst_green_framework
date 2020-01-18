@@ -6,7 +6,7 @@ local PopShop = require "screens/gf_shop"
 
 local function TrackInterlocutor(inst, interlocutor)
     if not inst:IsValid() or not interlocutor:IsValid() or not inst:IsNear(interlocutor, 15) then
-        TrackFail(inst)
+        inst.components.gfplayerdialog:CloseDialog() 
     end
 end
 
@@ -226,11 +226,11 @@ end
 --unsafe
 function GFPlayerDialog:StartTrack(interlocutor, checkDistance)
     if interlocutor == nil or interlocutor.components.gfinterlocutor == nil then 
-        print("ilocutor is nil")
+        --print("ilocutor is nil")
         self:StopTrack()
         return false 
     elseif self._trackInterlocutor == interlocutor then
-        print("ilocutor is same")
+        --print("ilocutor is same")
         return true
     end
 
@@ -243,7 +243,7 @@ function GFPlayerDialog:StartTrack(interlocutor, checkDistance)
         self._trackTask = self.inst:DoPeriodicTask(0.5, TrackInterlocutor, nil, interlocutor)
     end
 
-    GFDebugPrint(("%s has started tracking %s"):format(tostring(self.inst), tostring(self._trackInterlocutor)))
+    --GFDebugPrint(("%s has started tracking %s"):format(tostring(self.inst), tostring(self._trackInterlocutor)))
     return true
 end
 
@@ -258,7 +258,7 @@ function GFPlayerDialog:StopTrack()
         self._trackTask = nil
     end
 
-    GFDebugPrint(("%s has stopped tracking %s"):format(tostring(self.inst), tostring(self._trackInterlocutor)))
+    --GFDebugPrint(("%s has stopped tracking %s"):format(tostring(self.inst), tostring(self._trackInterlocutor)))
     self._trackInterlocutor = nil
 end
 
