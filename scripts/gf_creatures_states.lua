@@ -208,7 +208,7 @@ AddStategraphState("firehound", houndCastSpell)
 AddStategraphActionHandler("firehound", ActionHandler(ACTIONS.GFCASTSPELL, "castspell"))
 
 local mosquitoCastSpell = State{
-    name = "attack",
+    name = "castspell",
     tags = { "busy", "casting" },
 
     onenter = function(inst)
