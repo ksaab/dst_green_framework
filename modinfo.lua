@@ -1,6 +1,6 @@
-name = "Green![DEV]"
+name = "Green!"
 id = "GreenFramework"
-version = "2.2.62"
+version = "2.2.64"
 author = "ksaab"
 
 description = "Enhanced magic system for Don't Starve Together"
